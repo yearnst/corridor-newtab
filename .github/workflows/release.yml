@@ -1,6 +1,6 @@
 name: 发版
 
-# 打一个 v 开头的 tag 就会自动建 Release，说明取自 CHANGELOG：
+# 打一个 v 开头的 tag 就会自动打包、建 Release、把 zip 挂上去，说明取自 CHANGELOG：
 #   git tag v1.19.1 && git push origin v1.19.1
 
 on:
@@ -34,6 +34,21 @@ jobs:
             exit 1
           fi
 
+      - name: 打包
+        run: |
+          V="${{ steps.ver.outputs.version }}"
+          ZIP="$PWD/dist/corridor-newtab-v$V.zip"
+          mkdir -p dist
+          # 扁平包：manifest.json 必须在 zip 根目录，所以进到扩展那一层再压
+          ( cd corridor-newtab && zip -r -q -X "$ZIP" . \
+              -x 'README.md' '.DS_Store' '*/.DS_Store' '._*' '*/._*' '__MACOSX/*' '*.map' '*.zip' 'node_modules/*' )
+          LIST="$(unzip -l "$ZIP")"
+          echo "$LIST" | tail -1
+          case "$LIST" in
+            *" manifest.json"*) echo "✓ manifest.json 在根目录" ;;
+            *) echo "::error::manifest.json 不在 zip 根目录，Chrome 会拒绝"; exit 1 ;;
+          esac
+
       - name: 从 CHANGELOG 里取出这一版的说明
         id: notes
         run: |
@@ -48,8 +63,9 @@ jobs:
             echo ""
             echo "---"
             echo ""
-            echo "**安装**：把仓库 clone 下来，在 \`chrome://extensions/\` 打开开发者模式，"
-            echo "「加载已解压的扩展程序」选 \`corridor-newtab/\` 文件夹。"
+            echo "**安装**：下载下方的 zip 并解开，在 \`chrome://extensions/\` 打开开发者模式，"
+            echo "「加载已解压的扩展程序」选解开后的那个文件夹；"
+            echo "或者 clone 本仓库，直接选 \`corridor-newtab/\`。"
             echo ""
             echo "完整说明见 [corridor-newtab/README.md](../../blob/main/corridor-newtab/README.md)。"
             echo "CHANGELOG_EOF"
@@ -61,5 +77,6 @@ jobs:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: 长廊 Corridor ${{ steps.ver.outputs.tag }}
           body: ${{ steps.notes.outputs.notes }}
+          files: dist/*.zip
           draft: false
           prerelease: false
