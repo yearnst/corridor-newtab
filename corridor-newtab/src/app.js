@@ -1603,6 +1603,7 @@ async function buildTab(tab, s) {
         <div class="dbt">${esc(T('aiProfile'))}</div>
         <div class="dbc profrow">
           <select class="sel" id="aiProf">
+            ${profs.length ? '' : `<option value="" selected disabled>${esc(T('aiNoProfShort'))}</option>`}
             ${profs.map(p => `<option value="${esc(p.id)}"${p.id === ai.cur ? ' selected' : ''}>${esc(profName(p))}</option>`).join('')}
             <option value="__new">${esc(T('aiProfNew'))}</option>
           </select>
@@ -2700,21 +2701,34 @@ function wire() {
 
   /* 键盘 */
   addEventListener('keydown', e => {
-    if (e.target.matches('input,select,textarea')) { if (e.key === 'Escape') e.target.blur(); return; }
+    if (e.target.matches('input,select,textarea')) {
+      /* Esc 先退出输入。框里本来就是空的（比如藏品库一打开就聚焦、还没打字的搜索框），
+         那这一下顺手把面板一起关掉——不然看着像 Esc 失灵：面板还开着，
+         而 i / z / m / 空格 又都被「有面板开着」挡住，得按第二次才活过来。
+         框里有字就只退出输入，再按一次才关。 */
+      if (e.key === 'Escape') {
+        e.target.blur();
+        if (!e.target.value && $$('.sheet.open').length) { e.preventDefault(); closeSheets(); }
+      }
+      return;
+    }
     const open = $$('.sheet.open').length > 0;
     switch (e.key) {
       case 'ArrowRight': case 'j': if (!Z.on) { e.preventDefault(); go(1); } break;
       case 'ArrowLeft': case 'k': if (!Z.on) { e.preventDefault(); go(-1); } break;
       case 'Escape': if (open) { e.preventDefault(); closeSheets(); } else if (drawerOpen()) { e.preventDefault(); closeDrawer(); } break;
       case ' ': if (!open) { e.preventDefault(); A.paused = !A.paused; startTimer(); } break;
-      case 'f': case 'F': $('#btnFav').click(); break;
-      case 'z': case 'Z': if (!open) $('#btnZoom').click(); break;
-      case 'i': case 'I': if (!open) $('#btnInfo').click(); break;
-      case 'l': case 'L': if (!open) $('#btnLib').click(); break;
-      case 's': case 'S': if (!open) $('#btnSet').click(); break;
-      case 'c': case 'C': if (!open) applySetting('clock', A.set.clock === 'off' ? 'bar' : A.set.clock === 'bar' ? 'grand' : 'off'); break;
-      case 'm': case 'M': if (!open) $('#btnMode').click(); break;
-      case 'd': case 'D': if (A.cur) download(A.cur); break;
+      /* 字母快捷键一律 preventDefault：藏品库一打开就把焦点给了搜索框，
+         不拦住的话这个字母会接着被打进那个框里（按 L 打开，框里就先躺了个 l）。
+         上面已经把「焦点在输入框里」的情况提前 return 掉了，这里拦不到正常打字。 */
+      case 'f': case 'F': e.preventDefault(); $('#btnFav').click(); break;
+      case 'z': case 'Z': if (!open) { e.preventDefault(); $('#btnZoom').click(); } break;
+      case 'i': case 'I': if (!open) { e.preventDefault(); $('#btnInfo').click(); } break;
+      case 'l': case 'L': if (!open) { e.preventDefault(); $('#btnLib').click(); } break;
+      case 's': case 'S': if (!open) { e.preventDefault(); $('#btnSet').click(); } break;
+      case 'c': case 'C': if (!open) { e.preventDefault(); applySetting('clock', A.set.clock === 'off' ? 'bar' : A.set.clock === 'bar' ? 'grand' : 'off'); } break;
+      case 'm': case 'M': if (!open) { e.preventDefault(); $('#btnMode').click(); } break;
+      case 'd': case 'D': if (A.cur) { e.preventDefault(); download(A.cur); } break;
     }
   });
   ['mousemove', 'keydown', 'wheel', 'pointerdown'].forEach(ev => addEventListener(ev, armIdle, { passive: true }));
