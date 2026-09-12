@@ -1,7 +1,7 @@
 name: 发版
 
-# 打一个 v 开头的 tag 就会自动打包、建 Release、把 zip 挂上去：
-#   git tag v1.19.0 && git push origin v1.19.0
+# 打一个 v 开头的 tag 就会自动建 Release，说明取自 CHANGELOG：
+#   git tag v1.19.1 && git push origin v1.19.1
 
 on:
   push:
@@ -34,9 +34,6 @@ jobs:
             exit 1
           fi
 
-      - name: 打包
-        run: bash tools/pack.sh
-
       - name: 从 CHANGELOG 里取出这一版的说明
         id: notes
         run: |
@@ -51,8 +48,7 @@ jobs:
             echo ""
             echo "---"
             echo ""
-            echo "**安装**：下方的 zip 是 Chrome Web Store 用的上传包。"
-            echo "想自己加载，把仓库 clone 下来，在 \`chrome://extensions/\` 打开开发者模式，"
+            echo "**安装**：把仓库 clone 下来，在 \`chrome://extensions/\` 打开开发者模式，"
             echo "「加载已解压的扩展程序」选 \`corridor-newtab/\` 文件夹。"
             echo ""
             echo "完整说明见 [corridor-newtab/README.md](../../blob/main/corridor-newtab/README.md)。"
@@ -65,6 +61,5 @@ jobs:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: 长廊 Corridor ${{ steps.ver.outputs.tag }}
           body: ${{ steps.notes.outputs.notes }}
-          files: dist/*.zip
           draft: false
           prerelease: false

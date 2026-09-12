@@ -1,0 +1,27 @@
+# GitHub Pages 站点配置
+# index.html 是站点首页（静态文件，不经 Jekyll 模板处理）；
+# 其余 .md 文档（README / PRIVACY / CHANGELOG …）由 Jekyll 套 primer 主题渲染。
+
+title: 长廊 Corridor
+description: 打开新标签页，看见一幅画。106 幅公有领域杰作 · 双语策展导览 · 五种呈现方式 · 装上就离线可用。
+lang: zh-CN
+theme: jekyll-theme-primer
+
+# 关键：不开这一项，README 顶部 <div align="center"> 里的 Markdown
+# 会被 kramdown 当成纯文本原样吐出来（标题、徽章、导航全塌成一坨）。
+kramdown:
+  parse_block_html: true
+
+# 注意：GitHub Pages 默认启用 jekyll-optional-front-matter，它有一份写死的
+# FILENAME_BLACKLIST —— README / LICENSE / LICENCE / COPYING / CODE_OF_CONDUCT /
+# CONTRIBUTING / ISSUE_TEMPLATE / PULL_REQUEST_TEMPLATE 这些文件永远不会生成 .html，
+# 站内链接别指它们（CONTRIBUTING 之类请直接链 GitHub 上的源文件）。
+# 目录里的 README.md 由 jekyll-readme-index 变成该目录的 index，
+# 所以完整手册的地址是 corridor-newtab/ 而不是 corridor-newtab/README.html。
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+

@@ -4,7 +4,7 @@
 
 **打开新标签页，看见一幅画。**
 
-[![version](https://img.shields.io/badge/version-1.19.0-1a1a1a?style=flat-square)](https://github.com/yearnst/corridor-newtab/releases)
+[![version](https://img.shields.io/badge/version-1.19.1-1a1a1a?style=flat-square)](https://github.com/yearnst/corridor-newtab/releases)
 [![license](https://img.shields.io/badge/license-MIT-1a1a1a?style=flat-square)](LICENSE)
 [![manifest](https://img.shields.io/badge/Manifest-V3-1a1a1a?style=flat-square)](corridor-newtab/manifest.json)
 [![chrome](https://img.shields.io/badge/Chrome-110+-1a1a1a?style=flat-square)](https://www.google.com/chrome/)
@@ -14,7 +14,7 @@
 
 [安装](#安装) · [它能做什么](#它能做什么) · [完整手册](corridor-newtab/README.md) · [隐私](PRIVACY.md) · [更新记录](CHANGELOG.md) · [English](#english)
 
-<img src="store/screenshots/1-wall.png" width="760" alt="美术馆展墙模式">
+<img src="media/1-wall.png" width="760" alt="美术馆展墙模式">
 
 </div>
 
@@ -32,12 +32,12 @@
 
 <table>
 <tr>
-<td width="50%"><img src="store/screenshots/9-metal.png" alt="金箔背景板"></td>
-<td width="50%"><img src="store/screenshots/6-carousel.png" alt="环形长廊"></td>
+<td width="50%"><img src="media/9-metal.png" alt="金箔背景板"></td>
+<td width="50%"><img src="media/6-carousel.png" alt="环形长廊"></td>
 </tr>
 <tr>
-<td width="50%"><img src="store/screenshots/7-film.png" alt="胶卷模式"></td>
-<td width="50%"><img src="store/screenshots/5-settings.png" alt="设置 · 墙色与色调"></td>
+<td width="50%"><img src="media/7-film.png" alt="胶卷模式"></td>
+<td width="50%"><img src="media/5-settings.png" alt="设置 · 墙色与色调"></td>
 </tr>
 </table>
 
@@ -105,11 +105,7 @@ corridor-newtab/          扩展本体（加载已解压的扩展程序就选这
 ├── icons/                16 / 32 / 48 / 128
 └── README.md             完整手册（很长，什么都写了）
 
-store/                    Chrome Web Store 上架素材
-├── screenshots/          10 张 1280×800
-└── promo-*.png           440×280 / 1400×560
-
-tools/pack.sh             打包成可上传的 zip
+media/                    README 与项目主页用的截图（10 张 1280×800）
 ```
 
 ## 开发
@@ -117,15 +113,15 @@ tools/pack.sh             打包成可上传的 zip
 没有构建步骤，没有依赖，没有 node_modules——改完源码，回 `chrome://extensions/`
 点一下刷新就生效。
 
-```bash
-# 打包成可上传 Chrome Web Store 的 zip
-bash tools/pack.sh
+想自己打一个 zip（比如上传到商店），把扩展那一层压起来就行——
+包里只放扩展真正要用的东西，README 与系统垃圾文件排除在外：
 
-# 产物：dist/corridor-newtab-v<版本号>.zip
+```bash
+cd corridor-newtab
+zip -r -X ../corridor-newtab.zip . -x 'README.md' '.DS_Store' '*/.DS_Store' '._*'
 ```
 
-`pack.sh` 会读 `manifest.json` 里的版本号命名，并把 README、文档、
-系统垃圾文件排除在包外——上传包里只有扩展真正要用的东西。
+`manifest.json` 必须在 zip 的根目录，不要多套一层文件夹。
 
 ## 隐私
 

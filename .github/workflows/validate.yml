@@ -8,7 +8,7 @@ on:
 
 jobs:
   validate:
-    name: 打包自检
+    name: 静态自检
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,8 +20,19 @@ jobs:
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "manifest 版本号：$V"
 
-      - name: 打包（pack.sh 自带 JSON、图标、CSP、eval 检查）
-        run: bash tools/pack.sh
+      - name: 静态自检（JSON、图标、CSP、eval）
+        run: |
+          python3 -m json.tool corridor-newtab/manifest.json > /dev/null
+          python3 -m json.tool corridor-newtab/data/catalog.json > /dev/null
+          for L in corridor-newtab/_locales/*/messages.json; do python3 -m json.tool "$L" > /dev/null; done
+          for S in 16 32 48 128; do test -f "corridor-newtab/icons/$S.png" || { echo "::error::缺 icons/$S.png"; exit 1; }; done
+          if grep -rnE '(^|[^a-zA-Z.])eval\(|new Function\(' corridor-newtab/src; then
+            echo "::error::源码里出现了 eval / new Function"; exit 1
+          fi
+          grep -q "script-src 'self'" corridor-newtab/manifest.json || {
+            echo "::error::CSP 里的 script-src 不是 'self'"; exit 1
+          }
+          echo "自检通过"
 
       - name: manifest 权限没有被悄悄扩大
         run: |
@@ -84,9 +95,3 @@ jobs:
           sys.exit(1 if bad else 0)
           PY
 
-      - name: 留存打包产物
-        uses: actions/upload-artifact@v4
-        with:
-          name: corridor-newtab-v${{ steps.ver.outputs.version }}
-          path: dist/*.zip
-          retention-days: 14
