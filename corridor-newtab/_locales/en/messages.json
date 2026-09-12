@@ -1,0 +1,8 @@
+{
+  "appName":    { "message": "Corridor · Art New Tab",
+                  "description": "Extension name" },
+  "appShort":   { "message": "Corridor",
+                  "description": "Short name" },
+  "appDesc":    { "message": "Every new tab is a gallery wall. 106 public-domain masterpieces with curated notes, five ways to hang them, fully offline.",
+                  "description": "Store summary" }
+}

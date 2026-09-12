@@ -1,0 +1,41 @@
+name: 🖼 推荐一幅画 / 勘误
+description: 推荐值得收进来的公有领域作品，或指出某幅画的信息写错了
+labels: ["artwork"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 类型
+      options:
+        - 推荐新作品
+        - 现有作品信息有误
+    validations:
+      required: true
+  - type: input
+    id: title
+    attributes:
+      label: 作品标题
+      placeholder: "星月夜 / The Starry Night"
+    validations:
+      required: true
+  - type: input
+    id: commons
+    attributes:
+      label: Wikimedia Commons 链接
+      description: 推荐新作品时必填，图片须在 upload.wikimedia.org 上且标注为公有领域
+      placeholder: "https://commons.wikimedia.org/wiki/File:..."
+  - type: textarea
+    id: detail
+    attributes:
+      label: 详细说明
+      description: |
+        勘误请写清「现在是什么、应该是什么」，并附一个权威出处（美术馆官网、Wikidata 条目）。
+        推荐作品请说一句为什么值得收——这个项目挑画不看名气，看的是「挂在墙上好不好看」。
+    validations:
+      required: true
+  - type: checkboxes
+    id: pd
+    attributes:
+      label: 版权
+      options:
+        - label: 我确认这幅作品及其扫描件已进入公有领域

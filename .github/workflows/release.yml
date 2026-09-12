@@ -1,0 +1,70 @@
+name: 发版
+
+# 打一个 v 开头的 tag 就会自动打包、建 Release、把 zip 挂上去：
+#   git tag v1.19.0 && git push origin v1.19.0
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '版本号（例如 v1.19.0）'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 确定版本号
+        id: ver
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          V="${TAG#v}"
+          M=$(sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' corridor-newtab/manifest.json | head -1)
+          echo "tag=$TAG"     >> "$GITHUB_OUTPUT"
+          echo "version=$V"   >> "$GITHUB_OUTPUT"
+          if [ "$V" != "$M" ]; then
+            echo "::error::tag 是 $TAG，但 manifest.json 里写的是 $M。两边必须一致。"
+            exit 1
+          fi
+
+      - name: 打包
+        run: bash tools/pack.sh
+
+      - name: 从 CHANGELOG 里取出这一版的说明
+        id: notes
+        run: |
+          V="${{ steps.ver.outputs.version }}"
+          {
+            echo "notes<<CHANGELOG_EOF"
+            awk -v v="## [$V]" '
+              index($0, v)==1 {f=1; next}
+              f && /^## \[/ {exit}
+              f {print}
+            ' CHANGELOG.md
+            echo ""
+            echo "---"
+            echo ""
+            echo "**安装**：下方的 zip 是 Chrome Web Store 用的上传包。"
+            echo "想自己加载，把仓库 clone 下来，在 \`chrome://extensions/\` 打开开发者模式，"
+            echo "「加载已解压的扩展程序」选 \`corridor-newtab/\` 文件夹。"
+            echo ""
+            echo "完整说明见 [corridor-newtab/README.md](../../blob/main/corridor-newtab/README.md)。"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: 建 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: 长廊 Corridor ${{ steps.ver.outputs.tag }}
+          body: ${{ steps.notes.outputs.notes }}
+          files: dist/*.zip
+          draft: false
+          prerelease: false

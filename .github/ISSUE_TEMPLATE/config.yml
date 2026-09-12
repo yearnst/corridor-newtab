@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 安全问题
+    url: https://github.com/yearnst/corridor-newtab/blob/main/SECURITY.md
+    about: 请不要开公开 Issue，按 SECURITY.md 发邮件
+  - name: 💬 使用问题 / 想法讨论
+    url: https://github.com/yearnst/corridor-newtab/discussions
+    about: 不确定算不算 bug、想聊聊某个功能该怎么做，来这里
+  - name: 📖 完整手册
+    url: https://github.com/yearnst/corridor-newtab/blob/main/corridor-newtab/README.md
+    about: 每个设置项、每种模式的详细说明，提问前可以先翻一下

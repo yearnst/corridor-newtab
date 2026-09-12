@@ -1,0 +1,92 @@
+name: 校验
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: 打包自检
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 读取版本号
+        id: ver
+        run: |
+          V=$(sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' corridor-newtab/manifest.json | head -1)
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "manifest 版本号：$V"
+
+      - name: 打包（pack.sh 自带 JSON、图标、CSP、eval 检查）
+        run: bash tools/pack.sh
+
+      - name: manifest 权限没有被悄悄扩大
+        run: |
+          # 常驻权限只允许这四个；多一个都要在 PR 里单独说明并改这份清单
+          EXPECTED='alarms downloads storage unlimitedStorage'
+          ACTUAL=$(python3 -c "
+          import json
+          m=json.load(open('corridor-newtab/manifest.json'))
+          print(' '.join(sorted(m.get('permissions',[]))))
+          ")
+          echo "期望：$EXPECTED"
+          echo "实际：$ACTUAL"
+          [ "$ACTUAL" = "$EXPECTED" ] || {
+            echo "::error::常驻权限变了。这会直接影响 Chrome Web Store 审核，请在 PR 里说明原因并更新本检查。"
+            exit 1
+          }
+
+      - name: host 权限仍限于三个维基媒体域名
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          m = json.load(open('corridor-newtab/manifest.json'))
+          want = {"https://upload.wikimedia.org/*",
+                  "https://commons.wikimedia.org/*",
+                  "https://www.wikidata.org/*"}
+          got = set(m.get("host_permissions", []))
+          if got != want:
+              print(f"::error::host_permissions 变了：{sorted(got)}")
+              sys.exit(1)
+          print("host_permissions 正常")
+          PY
+
+      - name: 作品目录完整性
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          items = json.load(open('corridor-newtab/data/catalog.json'))
+          print(f"目录里有 {len(items)} 条记录")
+          required = ['id','title','artist','life','year','ys','medium','dims','museum',
+                      'place','movement','region','tags','mature','format','note','look',
+                      'img','src','vis']
+          bad, seen = 0, set()
+          for i, w in enumerate(items):
+              wid = w.get('id', f'#{i}')
+              missing = [k for k in required if k not in w]
+              if missing:
+                  print(f"::error::{wid} 缺字段：{missing}"); bad += 1
+              if wid in seen:
+                  print(f"::error::id 重复：{wid}"); bad += 1
+              seen.add(wid)
+              base = w.get('img', {}).get('base', '')
+              full = w.get('img', {}).get('full', '')
+              for u in (base, full):
+                  if u and not u.startswith('https://upload.wikimedia.org/'):
+                      print(f"::error::{wid} 的图片不在 upload.wikimedia.org 下：{u}"); bad += 1
+              lic = w.get('src', {}).get('licence', '')
+              if 'public domain' not in lic.lower() and not lic.upper().startswith('PDM'):
+                  print(f"::error::{wid} 的授权不是公有领域：{lic!r}"); bad += 1
+          print("全部通过" if not bad else f"{bad} 处问题")
+          sys.exit(1 if bad else 0)
+          PY
+
+      - name: 留存打包产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: corridor-newtab-v${{ steps.ver.outputs.version }}
+          path: dist/*.zip
+          retention-days: 14

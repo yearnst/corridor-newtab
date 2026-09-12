@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>长廊</title>
+<link rel="stylesheet" href="src/gallery.css">
+</head>
+<body data-mode="immersive" data-kb="1" data-clock="0" data-frame="gilt" data-mat="1">
+
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.6l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></symbol>
+  <symbol id="i-zoom" viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 011-1h4M20 9V5a1 1 0 00-1-1h-4M4 15v4a1 1 0 001 1h4M20 15v4a1 1 0 01-1 1h-4"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.6v.6"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.2"/></symbol>
+  <symbol id="i-set" viewBox="0 0 24 24"><path d="M10.39 2.84L13.61 2.84L13.08 5.18L16.06 6.42L17.33 4.38L19.62 6.67L17.58 7.94L18.82 10.92L21.16 10.39L21.16 13.61L18.82 13.08L17.58 16.06L19.62 17.33L17.33 19.62L16.06 17.58L13.08 18.82L13.61 21.16L10.39 21.16L10.92 18.82L7.94 17.58L6.67 19.62L4.38 17.33L6.42 16.06L5.18 13.08L2.84 13.61L2.84 10.39L5.18 10.92L6.42 7.94L4.38 6.67L6.67 4.38L7.94 6.42L10.92 5.18Z" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.1"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9.5 5v14M14.5 5v14"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.8l12 7.2-12 7.2z"/></symbol>
+  <symbol id="i-frame" viewBox="0 0 24 24"><rect x="3.2" y="4.2" width="17.6" height="15.6" rx="1.4"/><path d="M6.4 7.4h11.2v9.2H6.4z"/></symbol>
+  <symbol id="i-imm" viewBox="0 0 24 24"><rect x="2.6" y="4.6" width="18.8" height="14.8" rx="2"/><path d="M2.6 15l5-4.6 4.4 4 3.4-2.8 6 5.4"/></symbol>
+  <symbol id="i-daily" viewBox="0 0 24 24"><path d="M4.6 6.2h6.2l1.5 1.9h7.1a1 1 0 011 1v8.7a1 1 0 01-1 1H4.6a1 1 0 01-1-1V7.2a1 1 0 011-1z"/><path d="M3.9 11.4h16.2"/><path d="M12 11.4v3.1M10.4 13l1.6 1.6 1.6-1.6"/></symbol>
+  <symbol id="i-m-immersive" viewBox="0 0 24 24"><rect x="2.4" y="4.4" width="19.2" height="15.2" rx="1.8"/><path d="M2.4 15.4l5.1-4.7 4.4 4 3.4-2.8 6.3 5.6"/><circle cx="16.6" cy="9.1" r="1.5"/></symbol>
+  <symbol id="i-m-wall" viewBox="0 0 24 24"><rect x="3.2" y="3.6" width="17.6" height="16.8" rx="1.2"/><rect x="6.6" y="7" width="10.8" height="10" rx=".6"/></symbol>
+  <symbol id="i-m-masonry" viewBox="0 0 24 24"><rect x="3" y="3.4" width="5.4" height="8" rx=".9"/><rect x="3" y="13" width="5.4" height="7.6" rx=".9"/><rect x="9.3" y="3.4" width="5.4" height="12.4" rx=".9"/><rect x="9.3" y="17.4" width="5.4" height="3.2" rx=".9"/><rect x="15.6" y="3.4" width="5.4" height="6" rx=".9"/><rect x="15.6" y="11" width="5.4" height="9.6" rx=".9"/></symbol>
+  <symbol id="i-m-film" viewBox="0 0 24 24"><rect x="2.2" y="5.6" width="19.6" height="12.8" rx="1.2"/><path d="M2.2 8.4h19.6M2.2 15.6h19.6"/><path d="M4.6 6.9v.1M8.2 6.9v.1M11.8 6.9v.1M15.4 6.9v.1M19 6.9v.1M4.6 17.1v.1M8.2 17.1v.1M11.8 17.1v.1M15.4 17.1v.1M19 17.1v.1" stroke-width="1.7" stroke-linecap="round"/><path d="M9.4 8.4v7.2M14.6 8.4v7.2"/></symbol>
+  <symbol id="i-m-carousel" viewBox="0 0 24 24"><rect x="8.4" y="5.4" width="7.2" height="13.2" rx="1"/><path d="M6 7.6v8.8M18 7.6v8.8M3.4 9.4v5.2M20.6 9.4v5.2"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.1"/><path d="M12 2.5v2.2M12 19.3v2.2M4.7 12H2.5M21.5 12h-2.2M6.6 6.6L5 5M19 19l-1.6-1.6M17.4 6.6L19 5M5 19l1.6-1.6"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 14.7A8.7 8.7 0 019.3 3.5 8.7 8.7 0 1020.5 14.7z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.6" cy="10.6" r="6.4"/><path d="M15.4 15.4L20 20"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-fit" viewBox="0 0 24 24"><path d="M8 3.6H4.8A1.2 1.2 0 003.6 4.8V8M16 3.6h3.2a1.2 1.2 0 011.2 1.2V8M8 20.4H4.8a1.2 1.2 0 01-1.2-1.2V16M16 20.4h3.2a1.2 1.2 0 001.2-1.2V16"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 6.5h15M9.5 6.5V4.6h5v1.9M6.6 6.5l.9 12.4a1.2 1.2 0 001.2 1.1h6.6a1.2 1.2 0 001.2-1.1l.9-12.4"/></symbol>
+</svg>
+
+<div id="stage">
+  <div class="layer" id="layA"><div class="imm-bg"></div><img class="imm-img" alt=""></div>
+  <div class="layer" id="layB"><div class="imm-bg"></div><img class="imm-img" alt=""></div>
+  <div id="wall">
+    <div id="walltex"><i></i></div>
+    <div id="wallmottle"></div>
+    <div id="wallgrain"></div>
+    <div id="wallshade"></div>
+    <div id="spot"></div>
+    <div class="hang">
+      <div class="frame-wrap">
+        <div class="frame">
+          <span class="lip"></span>
+          <div class="mat"><span class="bevel"><img id="wallImg" alt=""><span class="artshade"></span></span></div>
+        </div>
+      </div>
+      <div class="lb-slot">
+        <aside id="label">
+          <div class="lb-artist"></div>
+          <div class="lb-title"></div>
+          <div class="lb-title-alt"></div>
+          <div class="lb-meta"></div>
+          <div class="lb-mu"></div>
+        </aside>
+      </div>
+    </div>
+  </div>
+  <div id="veil"></div>
+
+  <!-- 瀑布流 -->
+  <div id="masonry"><div class="mcols" id="mcols"></div></div>
+
+  <!-- 虚拟展厅 -->
+  <!-- 环形长廊 -->
+  <div id="carousel">
+    <div class="cspot"></div>
+    <div class="cworld" id="cworld"></div>
+    <div class="cfloor"></div>
+    <div class="ccap" id="ccap"></div>
+  </div>
+
+  <!-- 胶卷 -->
+  <div id="film">
+    <canvas class="fband" id="fband"></canvas>
+    <div class="fstrip" id="fstrip">
+      <div class="frow" id="frow"></div>
+    </div>
+    <canvas class="fband over" id="fover"></canvas>
+    <div class="ccap" id="fcap"></div>
+    <div class="fhint" id="fhint"></div>
+  </div>
+</div>
+
+<div id="chrome">
+  <div id="topbar">
+    <div class="brand"><b>长廊</b><i>CORRIDOR</i></div>
+    <div class="spacer"></div>
+    <div id="clockbar"><b>--:--</b><span></span></div>
+    <button class="seal" id="btnDaily" data-tip="" aria-label="">
+      <svg viewBox="0 0 24 24"><use href="#i-daily"></use></svg>
+      <i class="pip"></i>
+    </button>
+    <button class="iconbtn" id="btnMode" data-tip=""><svg><use href="#i-frame"></use></svg></button>
+    <button class="iconbtn" id="btnLib"  data-tip=""><svg><use href="#i-grid"></use></svg></button>
+    <button class="iconbtn" id="btnSet"  data-tip=""><svg><use href="#i-set"></use></svg></button>
+  </div>
+
+  <div id="clockgrand"><div id="cgTime">--:--</div><div id="cgRule"></div><div id="cgDate"></div></div>
+
+  <section id="card">
+    <div class="eyebrow"><span class="dot"></span><span id="cbMov"></span><span id="cbYear"></span></div>
+    <h1><span id="cbTitle"></span><span class="en" id="cbTitleEn"></span></h1>
+    <p class="who"><b id="cbArtist"></b> <span id="cbLife"></span></p>
+    <p class="where" id="cbWhere"></p>
+    <div id="look"><b id="lookLab"></b><span id="lookTxt"></span></div>
+    <div id="palette"></div>
+  </section>
+
+  <div id="dock">
+    <span id="counter"></span>
+    <button class="iconbtn" id="btnPrev" data-tip=""><svg><use href="#i-left"></use></svg></button>
+    <button class="iconbtn" id="btnPlay" data-tip=""><svg><use href="#i-pause"></use></svg></button>
+    <button class="iconbtn" id="btnNext" data-tip=""><svg><use href="#i-right"></use></svg></button>
+    <button class="iconbtn" id="btnFav"  data-tip=""><svg><use href="#i-star"></use></svg></button>
+    <button class="iconbtn" id="btnZoom" data-tip=""><svg><use href="#i-zoom"></use></svg></button>
+    <button class="iconbtn" id="btnInfo" data-tip=""><svg><use href="#i-info"></use></svg></button>
+  </div>
+
+  <div class="nav-hot l" id="hotL"><span class="arrow"><svg><use href="#i-left"></use></svg></span></div>
+  <div class="nav-hot r" id="hotR"><span class="arrow"><svg><use href="#i-right"></use></svg></span></div>
+  <div id="progress"><i></i></div>
+</div>
+
+<!-- 今日画夹 -->
+<div class="sheet" id="revealSheet">
+  <div class="rv">
+    <div class="rv-head">
+      <b id="rvTitle"></b>
+      <span id="rvDate"></span>
+      <button class="iconbtn rv-x" id="rvClose"><svg><use href="#i-x"></use></svg></button>
+    </div>
+    <div class="rv-stage" id="rvStage"></div>
+    <div class="rv-foot" id="rvFoot"></div>
+  </div>
+</div>
+
+<!-- 藏品库 -->
+<div class="sheet" id="libSheet">
+  <div class="sheet-in">
+    <div class="sheet-head">
+      <h2 id="libTitle"></h2>
+      <div class="tabs" id="libTabs">
+        <button data-t="all" class="on"></button>
+        <button data-t="fav"></button>
+        <button data-t="hist"></button>
+        <button data-t="daily" id="ltDaily"></button>
+        <button data-t="lib" id="ltLib"></button>
+      </div>
+      <label class="searchbox"><svg><use href="#i-search"></use></svg><input id="libQ" type="search" autocomplete="off"></label>
+      <div class="spacer"></div>
+      <button class="bigbtn" id="libReset"></button>
+      <button class="iconbtn" data-close><svg><use href="#i-x"></use></svg></button>
+    </div>
+    <div class="sheet-body">
+      <div id="libFilters"></div>
+      <div class="grid" id="libGrid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 作品详情 -->
+<div class="sheet" id="infoSheet">
+  <div class="sheet-in">
+    <div class="sheet-head">
+      <h2 id="infoHead"></h2><div class="spacer"></div>
+      <button class="iconbtn" id="btnDl" data-tip=""><svg><use href="#i-dl"></use></svg></button>
+      <button class="iconbtn" data-close><svg><use href="#i-x"></use></svg></button>
+    </div>
+    <div class="sheet-body" id="infoBody"></div>
+  </div>
+</div>
+
+<!-- 高清查看 -->
+<div class="sheet" id="zoomSheet">
+  <div id="zoomStage"><img id="zoomImg" alt=""></div>
+  <div id="zoomTop">
+    <span class="zt" id="zoomTitle"></span><span class="zs" id="zoomSize"></span>
+    <button class="iconbtn" data-close><svg><use href="#i-x"></use></svg></button>
+  </div>
+  <div id="zoomHint"></div>
+  <div id="zoomBar">
+    <button class="iconbtn" id="zOut"><svg><use href="#i-minus"></use></svg></button>
+    <span class="lvl" id="zLvl">100%</span>
+    <button class="iconbtn" id="zIn"><svg><use href="#i-plus"></use></svg></button>
+    <button class="iconbtn" id="zFit"><svg><use href="#i-fit"></use></svg></button>
+    <button class="iconbtn" id="zDl"><svg><use href="#i-dl"></use></svg></button>
+  </div>
+</div>
+
+<!-- 设置抽屉 -->
+<aside id="drawer" aria-hidden="true">
+  <header>
+    <h2 id="drawerTitle"></h2>
+    <div class="spacer"></div>
+    <button class="iconbtn" id="btnTheme"></button>
+    <div class="dscope seg" id="dscope">
+      <button data-v="cur"></button><button data-v="all"></button></div>
+    <button class="bigbtn" id="drawerReset"></button>
+    <button class="iconbtn" id="drawerClose"><svg><use href="#i-x"></use></svg></button>
+  </header>
+  <nav class="dtabs" id="dtabs">
+    <button data-dt="show" class="on"></button>
+    <button data-dt="room"></button>
+    <button data-dt="play"></button>
+    <button data-dt="lib"></button>
+    <button data-dt="data"></button>
+  </nav>
+  <div class="dsearch"><i class="dsi"></i><input id="dq" type="text" autocomplete="off" spellcheck="false">
+    <button class="dqx" id="dqx" hidden aria-label="clear">&times;</button></div>
+  <div class="dbody" id="drawerBody"></div>
+</aside>
+
+<div id="toast"></div>
+<div id="boot"><div class="b"><b>CORRIDOR</b><i></i></div></div>
+
+<script type="module" src="src/app.js"></script>
+</body>
+</html>

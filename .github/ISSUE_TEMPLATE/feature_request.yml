@@ -1,0 +1,30 @@
+name: 💡 提一个想法
+description: 想要一种新的呈现方式、新的画框、新的设置项
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 你遇到的是什么情况
+      description: 先说困扰，再说方案——这样更容易找到比你想的更好的做法
+      placeholder: "我把墙调成了深色，但展签还是浅底黑字，看着刺眼"
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: 你希望它变成什么样
+    validations:
+      required: true
+  - type: textarea
+    id: refs
+    attributes:
+      label: 有参照物吗
+      description: 真实展厅的照片、别的软件的截图、一段描述都行
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: 确认一下
+      options:
+        - label: 这个想法不需要新增任何浏览器权限（新增权限会影响商店审核，需要单独讨论）
+        - label: 这个想法不需要联网到 Wikimedia 以外的服务器

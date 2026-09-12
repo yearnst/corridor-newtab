@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "default_locale": "zh_CN",
+  "name": "__MSG_appName__",
+  "short_name": "__MSG_appShort__",
+  "version": "1.19.0",
+  "description": "__MSG_appDesc__",
+  "minimum_chrome_version": "110",
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "alarms",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://upload.wikimedia.org/*",
+    "https://commons.wikimedia.org/*",
+    "https://www.wikidata.org/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
+  "background": {
+    "service_worker": "src/sw.js",
+    "type": "module"
+  },
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "options_page": "options.html",
+  "action": {
+    "default_title": "__MSG_appShort__",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png",
+      "48": "icons/48.png",
+      "128": "icons/128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http://localhost:* http://127.0.0.1:*; font-src 'self'; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; object-src 'none'; frame-src 'none'; child-src 'none'; form-action 'none'; base-uri 'none';"
+  }
+}

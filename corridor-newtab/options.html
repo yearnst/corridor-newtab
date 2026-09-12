@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<title>长廊 · 设置</title>
+<link rel="stylesheet" href="src/gallery.css">
+<style>
+  body{overflow:auto;background:#0d0d0e}
+  .wrap{max-width:720px;margin:0 auto;padding:48px 28px 80px}
+  .hd{display:flex;align-items:baseline;gap:12px;margin-bottom:6px}
+  .hd b{font-family:var(--serif);letter-spacing:.3em;font-size:20px}
+  .hd i{font-style:normal;color:var(--ink-faint);font-size:11px;letter-spacing:.22em}
+  .lead{color:var(--ink-faint);font-size:13px;line-height:1.8;margin:10px 0 26px}
+</style></head>
+<body data-mode="immersive">
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 6.5h15M9.5 6.5V4.6h5v1.9M6.6 6.5l.9 12.4a1.2 1.2 0 001.2 1.1h6.6a1.2 1.2 0 001.2-1.1l.9-12.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+</svg>
+<div class="wrap">
+  <div class="hd"><b id="hName">长廊</b><i>CORRIDOR</i></div>
+  <p class="lead" id="hLead"></p>
+  <div id="body"></div>
+</div>
+<div id="toast"></div>
+<script type="module" src="src/options.js"></script>
+</body></html>
