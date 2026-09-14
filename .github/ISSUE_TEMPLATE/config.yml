@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: 🧩 从 Chrome 网上应用店安装
+    url: https://chromewebstore.google.com/detail/mnllopjjkbkoeljonbgmlabijamcjlam
+    about: 还没装？从这里装最省事，以后会自动更新
   - name: 🔒 安全问题
     url: https://github.com/yearnst/corridor-newtab/blob/main/SECURITY.md
     about: 请不要开公开 Issue，按 SECURITY.md 发邮件

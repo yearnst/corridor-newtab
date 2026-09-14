@@ -9,6 +9,7 @@
 [![manifest](https://img.shields.io/badge/Manifest-V3-1a1a1a?style=flat-square)](corridor-newtab/manifest.json)
 [![chrome](https://img.shields.io/badge/Chrome-110+-1a1a1a?style=flat-square)](https://www.google.com/chrome/)
 [![offline](https://img.shields.io/badge/offline-yes-1a1a1a?style=flat-square)](#隐私)
+[![chrome web store](https://img.shields.io/chrome-web-store/v/mnllopjjkbkoeljonbgmlabijamcjlam?style=flat-square&label=chrome%20web%20store&color=1a1a1a)](https://chromewebstore.google.com/detail/mnllopjjkbkoeljonbgmlabijamcjlam)
 
 106 幅公有领域杰作 · 双语策展导览 · 五种呈现方式 · 装上就离线可用
 
@@ -62,9 +63,11 @@
 
 ### 从 Chrome 网上应用店（推荐）
 
-> 审核中，通过后此处会放出链接。
+**[▸ 从 Chrome 网上应用店安装](https://chromewebstore.google.com/detail/mnllopjjkbkoeljonbgmlabijamcjlam)**
 
-### 开发者模式加载（当前可用）
+装完打开一个新标签页就行，不需要下面那些步骤。
+
+### 开发者模式加载（想改源码时用）
 
 ```bash
 git clone https://github.com/yearnst/corridor-newtab.git
@@ -182,7 +185,8 @@ endpoint you typed in. Point it at any OpenAI- or Anthropic-compatible endpoint
 and a model can translate the whole interface and every note into any two of
 78 languages — one native, one foreign — with the wall label flipping between them.
 
-**Install (unpacked):** clone this repository, open `chrome://extensions/`,
+**Install:** [get it on the Chrome Web Store](https://chromewebstore.google.com/detail/mnllopjjkbkoeljonbgmlabijamcjlam) — then open a new tab.
+To run it from source instead, clone this repository, open `chrome://extensions/`,
 enable Developer mode, choose **Load unpacked**, and select the `corridor-newtab/`
 folder. Chrome 110+.
 

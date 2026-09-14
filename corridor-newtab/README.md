@@ -8,12 +8,18 @@
 
 ---
 
-## 一、安装（开发者模式加载）
+## 一、安装
+
+### 从 Chrome 网上应用店（推荐）
+
+**[▸ 长廊 Corridor · 艺术新标签页](https://chromewebstore.google.com/detail/mnllopjjkbkoeljonbgmlabijamcjlam)** —— 装完打开一个新标签页即可，之后会自动更新。
+
+### 开发者模式加载（想改源码时用）
 
 1. 打开 Chrome，地址栏输入 `chrome://extensions/` 回车
 2. 右上角打开 **开发者模式**
 3. 点击 **加载已解压的扩展程序**
-4. 选择本文件夹（`art_gallery`，即包含 `manifest.json` 的这一层）
+4. 选择 `corridor-newtab/` 文件夹（即包含 `manifest.json` 的这一层）
 5. 打开一个新标签页即可
 
 > 首次安装会自动打开一个新标签页。若新标签页没有变化，检查是否有其他扩展也在接管新标签页。
