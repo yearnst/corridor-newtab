@@ -7,8 +7,17 @@
    文案在 i18n.js 里，好让界面语言包也能把它一起译走。
    ============================================================ */
 
+import { isLocal, isAwkwardLocal, localOrigin } from './localnet.js';
+
 const S1 = (v) => String(v ?? '').trim();
 const low = (v) => S1(v).toLowerCase();
+
+/* 给本机服务放行扩展来源的办法，按系统分。文案在 i18n 里，命令本身不翻译。 */
+export const OLLAMA_CMDS = [
+  { os: 'macOS',   cmd: 'launchctl setenv OLLAMA_ORIGINS "chrome-extension://*"' },
+  { os: 'Windows', cmd: 'setx OLLAMA_ORIGINS "chrome-extension://*"' },
+  { os: 'Linux',   cmd: "OLLAMA_ORIGINS='chrome-extension://*' ollama serve" }
+];
 
 /* ---------------- 各家值得先试的型号 ----------------
    这只是**探测队列的起点**，不是结论。
@@ -123,6 +132,7 @@ export function diagnose(err, ai = {}, phase = 'fill') {
   const host = hostOf(ai.base);
   const tips = [];
   const models = [];
+  const cmds = [];
   let code = 'unknown';
 
   const addVendorModels = () => {
@@ -137,20 +147,20 @@ export function diagnose(err, ai = {}, phase = 'fill') {
   if (!status && /网络错误|failed to fetch|networkerror|load failed|err_/i.test(s)) {
     code = 'network';
     tips.push('dgNetPerm', 'dgNetCors');
-    if (vendor?.local || /^https?:\/\/(localhost|127\.0\.0\.1)/i.test(S1(ai.base))) tips.push('dgNetLocal');
+    if (vendor?.local || isLocal(ai.base)) { tips.push('dgNetLocal'); cmds.push(...OLLAMA_CMDS); }
     if (/^http:\/\//i.test(S1(ai.base))) tips.push('dgNetHttp');
-    return out(code, tips, models, vendor, host, raw);
+    return out(code, tips, models, vendor, host, raw, cmds);
   }
   if (!status && /超时|timeout|abort/i.test(s)) {
     code = 'timeout';
     tips.push('dgTimeout', 'dgTimeoutSmall');
-    return out(code, tips, models, vendor, host, raw);
+    return out(code, tips, models, vendor, host, raw, cmds);
   }
   /* —— 通了，但模型不按 JSON 回话 —— */
   if (!status && /没给出可用的\s?JSON|不是\s?JSON|没按\s?JSON/i.test(s)) {
     code = 'nojson';
     tips.push('dgJsonTemp', 'dgJsonModel');
-    return out(code, tips, models, vendor, host, raw);
+    return out(code, tips, models, vendor, host, raw, cmds);
   }
   /* —— 通了，但看不了图 —— */
   if (!status && /看不了图片/.test(s)) {
@@ -158,7 +168,7 @@ export function diagnose(err, ai = {}, phase = 'fill') {
     tips.push('dgVisionWhy');
     addVendorModels();
     tips.push('dgVisionTextOk');
-    return out(code, tips, models, vendor, host, raw);
+    return out(code, tips, models, vendor, host, raw, cmds);
   }
 
   /* —— 有状态码 —— */
@@ -194,6 +204,15 @@ export function diagnose(err, ai = {}, phase = 'fill') {
     code = 'badpath';
     tips.push('dgPathV1', 'dgPathShown');
     if (detectFmtMix(ai)) tips.push('dgFmtMix');
+  } else if (status === 403 && isLocal(ai.base)) {
+    /* 本机服务（Ollama 最典型）默认只认本机网页的来源，扩展发来的
+       chrome-extension:// 一律 403，而且响应体是空的 —— 于是界面上
+       只剩「HTTP 403 · 未知错误」。这跟密钥、模型权限都没关系。 */
+    code = 'localcors';
+    tips.push('dgLocalWhy', 'dgLocalGrant', 'dgLocalOrigins', 'dgLocalStudio');
+    if (isAwkwardLocal(ai.base)) tips.push('dgLocalAwkward');
+    if (S1(ai.key)) tips.push('dgLocalNoKey');
+    cmds.push(...OLLAMA_CMDS);
   } else if (status === 403) {
     code = 'forbidden';
     tips.push('dgForbidden', 'dgKeySameVendor');
@@ -207,7 +226,7 @@ export function diagnose(err, ai = {}, phase = 'fill') {
     tips.push('dgBadReqTry');
   }
 
-  return out(code, tips, models, vendor, host, raw);
+  return out(code, tips, models, vendor, host, raw, cmds);
 }
 
 /* 地址像 Anthropic 却选了 OpenAI 格式（或反过来）—— 这是最常见的一种「都填了但就是不通」 */
@@ -220,11 +239,12 @@ export function detectFmtMix(ai = {}) {
   return (looksAnthropic && f === 'openai') || (!looksAnthropic && f === 'anthropic' && /anthropic/.test(low(ai.model)));
 }
 
-function out(code, tips, models, vendor, host, raw) {
+function out(code, tips, models, vendor, host, raw, cmds) {
   return { code, tips: [...new Set(tips)], models: [...new Set(models)],
+           cmds: cmds || [],
            vendor: vendor ? vendor.name : '', vendorId: vendor ? vendor.id : '', host, raw };
 }
 
 /* 诊断的严重程度：错在自己这边（改配置能好）还是对面那边（等一等再来） */
-export const FIXABLE = ['novision', 'nomodel', 'badkey', 'badpath', 'badreq', 'network', 'nojson'];
+export const FIXABLE = ['novision', 'nomodel', 'badkey', 'badpath', 'badreq', 'network', 'nojson', 'localcors'];
 export const isFixable = (code) => FIXABLE.includes(code);

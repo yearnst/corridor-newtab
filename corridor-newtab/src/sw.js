@@ -2,6 +2,7 @@
 import * as S from './store.js';
 import { runDaily } from './daily.js';
 import * as AI from './ai.js';
+import * as NET from './localnet.js';
 
 const LADDER = [120, 250, 330, 500, 960, 1280, 1920, 3840];
 const url = (w, px) => `${w.img.base}/${px}px-${w.img.name}`;
@@ -18,10 +19,12 @@ async function prefetch(limit = 8) {
   const st = await S.cacheStats();
   if (st.bytes > set.cacheLimitMB * 1048576 * 0.95) return;
   const cat = await catalog();
+  const gone = new Set(await S.getGone());          // 去除过的不值得占缓存
   const target = set.quality === 'saver' ? 1280 : set.quality === 'max' ? 3840 : 1920;
   let n = 0;
   for (const w of cat) {
     if (n >= limit) break;
+    if (gone.has(w.id)) continue;
     if (set.workSafe && w.mature) continue;
     const u = url(w, pick(w, target));
     if (await S.cacheHas(u)) continue;
@@ -46,20 +49,26 @@ async function aiRun(scope = 'daily') {
   if (!AI.configured(ai)) return { done: 0, fail: 0, reason: 'off' };
   return AI.runBatch({ scope });
 }
+/* 本机模型的来源改写：接口地址一改就重铺（详见 localnet.js） */
+async function armNet() {
+  try { await NET.syncOriginRules(await S.getSettings()); } catch { }
+}
 /* 设置一改就重新对时 */
-chrome.storage.onChanged.addListener((ch, area) => { if (area === 'local' && ch.settings) armAI(); });
+chrome.storage.onChanged.addListener((ch, area) => { if (area === 'local' && ch.settings) { armAI(); armNet(); } });
+/* 用户刚给某个地址授了权，规则这时候才真正管用 —— 立刻铺一遍 */
+try { chrome.permissions?.onAdded?.addListener(() => armNet()); } catch { }
 
 chrome.runtime.onInstalled.addListener(async (d) => {
   await S.setSettings({});                     // 写入默认值
   chrome.alarms.create('corridor-prefetch', { delayInMinutes: 1, periodInMinutes: 180 });
   chrome.alarms.create('corridor-daily', { delayInMinutes: 3, periodInMinutes: 360 });
-  armAI();
+  armAI(); armNet();
   if (d.reason === 'install') chrome.tabs.create({});
 });
 chrome.runtime.onStartup.addListener(() => {
   chrome.alarms.create('corridor-prefetch', { delayInMinutes: 2, periodInMinutes: 180 });
   chrome.alarms.create('corridor-daily', { delayInMinutes: 4, periodInMinutes: 360 });
-  armAI();
+  armAI(); armNet();
 });
 chrome.alarms.onAlarm.addListener(a => {
   if (a.name === 'corridor-prefetch') prefetch();
@@ -79,4 +88,5 @@ chrome.runtime.onMessage.addListener((msg, _s, send) => {
   if (msg?.type === 'daily') { dailyThenAI(!!msg.force).then(n => send({ ok: true, added: n })); return true; }
   if (msg?.type === 'ai') { aiRun(msg.scope || 'daily').then(r => send({ ok: true, ...r })).catch(e => send({ ok: false, err: String(e) })); return true; }
   if (msg?.type === 'ai-arm') { armAI().then(() => send({ ok: true })); return true; }
+  if (msg?.type === 'net-arm') { armNet().then(() => send({ ok: true })); return true; }
 });

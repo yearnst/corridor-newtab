@@ -10,6 +10,7 @@
      不启用就完全不发；每日新作本就是公开图片，自定义图库请自行斟酌。
    ============================================================ */
 import * as S from './store.js';
+import * as NET from './localnet.js';
 import { MOVEMENTS, REGIONS, TAGS } from './i18n.js';
 
 /* 名作用的题材词表就是内置藏品那 20 个；通用图片再多一档日常题材，
@@ -204,6 +205,8 @@ const noRetryBody = (raw) => NO_DEGRADE.test(S1(raw));
 export async function ask(ai, sys, user, dataURL, signal, maxTok) {
   const req = build(ai, sys, user, dataURL, maxTok);
   if (!req.url) return { ok: false, err: '接口地址填得不对', status: 0, raw: 'bad base url' };
+  /* 本机地址：先把「来源改写」那条规则铺上，否则 Ollama 会以 403 顶回来 */
+  await NET.ensure(ai.base, S.getSettings);
   let r = await once(req, signal);
   if (!r.ok && (r.status === 400 || r.status === 422) && !noRetryBody(r.raw)) {
     const b = { ...req.body }; delete b.response_format; delete b.temperature;
@@ -670,6 +673,7 @@ export async function listModels(ai, signal) {
   const fmt = detectFmt(ai.base, ai.fmt);
   const url = modelsURL(ai.base, fmt);
   if (!url) return { ok: false, err: '接口地址填得不对', models: [] };
+  await NET.ensure(ai.base, S.getSettings);
   const key = S1(ai.key);
   const headers = fmt === 'anthropic'
     ? { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }

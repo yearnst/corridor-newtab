@@ -3,6 +3,6 @@
                   "description": "Extension name" },
   "appShort":   { "message": "Corridor",
                   "description": "Short name" },
-  "appDesc":    { "message": "Every new tab is a gallery wall. 106 public-domain masterpieces with curated notes, five ways to hang them, fully offline.",
+  "appDesc":    { "message": "Every new tab is a gallery wall. 106 public-domain masterpieces, 93 on show by default, curated notes, five layouts, fully offline.",
                   "description": "Store summary" }
 }

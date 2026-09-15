@@ -4,14 +4,14 @@
 
 **打开新标签页，看见一幅画。**
 
-[![version](https://img.shields.io/badge/version-1.19.1-1a1a1a?style=flat-square)](https://github.com/yearnst/corridor-newtab/releases)
+[![version](https://img.shields.io/badge/version-1.20.0-1a1a1a?style=flat-square)](https://github.com/yearnst/corridor-newtab/releases)
 [![license](https://img.shields.io/badge/license-MIT-1a1a1a?style=flat-square)](LICENSE)
 [![manifest](https://img.shields.io/badge/Manifest-V3-1a1a1a?style=flat-square)](corridor-newtab/manifest.json)
 [![chrome](https://img.shields.io/badge/Chrome-110+-1a1a1a?style=flat-square)](https://www.google.com/chrome/)
 [![offline](https://img.shields.io/badge/offline-yes-1a1a1a?style=flat-square)](#隐私)
 [![chrome web store](https://img.shields.io/chrome-web-store/v/mnllopjjkbkoeljonbgmlabijamcjlam?style=flat-square&label=chrome%20web%20store&color=1a1a1a)](https://chromewebstore.google.com/detail/mnllopjjkbkoeljonbgmlabijamcjlam)
 
-106 幅公有领域杰作 · 双语策展导览 · 五种呈现方式 · 装上就离线可用
+106 幅公有领域杰作（默认展出 93 幅）· 双语策展导览 · 五种呈现方式 · 装上就离线可用
 
 [安装](#安装) · [它能做什么](#它能做什么) · [完整手册](corridor-newtab/README.md) · [隐私](PRIVACY.md) · [更新记录](CHANGELOG.md) · [English](#english)
 
@@ -27,7 +27,8 @@
 
 不是一张随机壁纸——**是一幅挂好的画**：墙有颜色和材质，画有画框和卡纸留白，
 顶上有射灯，画在墙上投下影子，右下角一张展签写着标题、作者、年代、收藏地，
-再加一句为这幅画原创撰写的导览。106 幅作品，从《千里江山图》到《星月夜》。
+再加一句为这幅画原创撰写的导览。106 幅作品，从《千里江山图》到《星月夜》——办公模式默认开着，
+含裸体的 13 幅不参与轮换，所以装上先看到的是 93 幅，在设置里关掉就全都来。
 
 图片抓回来就存在本地，断网照样看。没有服务器，没有账号，没有一行统计代码。
 
@@ -172,7 +173,7 @@ zip -r -X ../corridor-newtab.zip . -x 'README.md' '.DS_Store' '*/.DS_Store' '._*
 **Open a new tab. See a painting.**
 
 Corridor turns Chrome's new tab into a wall of a museum — 106 public-domain
-masterpieces, each hung properly: a textured wall, a rendered frame, a mount,
+masterpieces (93 on show by default), each hung properly: a textured wall, a rendered frame, a mount,
 adjustable spotlights, a drop shadow, and a label in the corner carrying the
 title, artist, date, collection, and a curated note written for this project.
 

@@ -270,6 +270,25 @@ export async function toggleFav(id) {
   await area().set({ favs });
   return i < 0;             // true = 新加入
 }
+/* ---------------- 已移除 ----------------
+   收藏的反面。点了「去除」的作品不再参与轮换，藏品库里也不显示 ——
+   但只是一份 id 名单，作品本身一个字都没动：设置里随时逐幅或一键放回来。
+   所以它存的是「我不想再看见这幅」，不是「删掉这幅」。 */
+export async function getGone() { return (await area().get('gone')).gone || []; }
+export async function addGone(id) {
+  const gone = await getGone();
+  if (gone.includes(id)) return gone;
+  const next = [id, ...gone].slice(0, 4000);
+  await area().set({ gone: next });
+  return next;
+}
+export async function unGone(id) {
+  const gone = (await getGone()).filter(x => x !== id);
+  await area().set({ gone });
+  return gone;
+}
+export async function clearGone() { await area().set({ gone: [] }); return []; }
+
 export async function getHistory() { return (await area().get('history')).history || []; }
 export async function pushHistory(id) {
   let h = await getHistory();

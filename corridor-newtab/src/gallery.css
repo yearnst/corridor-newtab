@@ -725,6 +725,16 @@ select.sel{background:var(--f1);border:1px solid var(--hair);border-radius:9px;p
   transition:.18s var(--ease)}
 .dgmod:hover{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--ink);border-color:var(--accent)}
 .dgmods>i{font-style:normal;font-size:10.5px;color:var(--ink-faint)}
+/* 要照着敲的命令：一行一条，右边一个复制按钮 —— 手抄最容易抄错 */
+.dgcmds{margin-top:9px;display:flex;flex-direction:column;gap:6px}
+/* 抽屉只有三百来像素宽，命令横着放一定被截断 ——
+   系统名与「复制」并排占一行，命令整条摊在下面一行，宁可折行也别藏起来 */
+.dgcmd{display:grid;grid-template-columns:1fr auto;gap:6px 8px;align-items:center;
+  padding:8px 8px 9px 10px;border-radius:9px;border:1px solid var(--hair);background:rgba(0,0,0,.24)}
+.dgcmd>b{grid-area:1/1;align-self:center;font-weight:500;font-size:10.5px;letter-spacing:.08em;color:var(--ink-faint)}
+.dgcmd>button{grid-area:1/2;justify-self:end}
+.dgcmd>code{grid-area:2/1/3/-1;min-width:0;white-space:pre-wrap;word-break:break-all;
+  font:11.5px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--ink-dim)}
 .dgraw{margin-top:10px}
 .dgraw summary{cursor:pointer;font-size:11px;color:var(--ink-faint);list-style:none}
 .dgraw summary::-webkit-details-marker{display:none}
@@ -843,6 +853,33 @@ select.sel option{background:#1a1a1c}
   padding:11px 19px;border-radius:11px;font-size:13.5px;backdrop-filter:blur(18px);
   opacity:0;pointer-events:none;transition:.3s var(--ease);box-shadow:0 14px 40px rgba(0,0,0,.6)}
 #toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* 撤销条：移除是一步就走完的动作，所以不拦一道确认，
+   改成事后给几秒反悔的余地 —— 手一滑不会真丢东西。 */
+#undobar{position:fixed;left:50%;bottom:44px;transform:translate(-50%,14px);z-index:91;
+  display:flex;align-items:center;gap:13px;
+  background:rgba(16,16,18,.94);border:1px solid var(--hair);color:var(--ink);
+  padding:9px 10px 9px 19px;border-radius:11px;font-size:13.5px;backdrop-filter:blur(18px);
+  opacity:0;pointer-events:none;transition:.3s var(--ease);box-shadow:0 14px 40px rgba(0,0,0,.6);
+  max-width:min(92vw,560px)}
+#undobar[hidden]{display:none}
+#undobar.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+#undoTxt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-dim)}
+#undobar .bigbtn{flex:none}
+/* 已移除清单：一幅一行，右边一个放回去的按钮 */
+.gonelist{margin-top:9px;display:flex;flex-direction:column;gap:5px;
+  max-height:300px;overflow-y:auto;overscroll-behavior:contain;
+  border:1px solid var(--hair);border-radius:10px;padding:6px}
+.gonerow{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:8px;background:var(--f1)}
+.gonerow>b{font-weight:500;font-size:12.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:44%}
+.gonerow>i{flex:1;min-width:0;font-style:normal;font-size:11px;color:var(--ink-faint);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gonerow>button{flex:none}
+/* 星形亮着＝收藏，去除那个按钮不需要「亮着」的状态，它按一下就走 */
+#btnHide:hover{color:#d98c74}
+
+/* toast 与撤销条不该叠在一起 */
+body:has(#undobar.on) #toast.on{transform:translate(-50%,-56px)}
 
 /* ---------------- 载入态 ---------------- */
 #boot{position:fixed;inset:0;display:grid;place-items:center;z-index:70;background:var(--bg);
@@ -1358,15 +1395,27 @@ body[data-mode="wall"][data-walllight="1"] .seal:hover{color:#191713;background:
 .rv-head em{font-style:normal;font-size:12.5px;letter-spacing:.1em;color:var(--accent)}
 .rv-head span{font-size:12px;letter-spacing:.18em;color:var(--ink-faint);text-transform:uppercase}
 .rv-x{margin-left:auto;align-self:center}
-.rv-stage{flex:1;position:relative;display:flex;align-items:center;justify-content:center;
-  gap:clamp(16px,2.8vw,46px);padding:0 clamp(24px,5vw,72px);perspective:1400px;flex-wrap:wrap}
-/* 台面：让这几张像是刚被摊在桌上 */
-.rv-stage::after{content:"";position:absolute;left:0;right:0;bottom:0;height:38%;pointer-events:none;
+/* 画夹一次可以摊到五幅，窄窗口里它们会换行、竖幅又特别高 ——
+   所以台面自己要能滚：align-content 用 safe center，摊得下时居中，
+   摊不下时从顶上开始排，不会把第一排顶到看不见的地方去。 */
+.rv-stage{flex:1;min-height:0;position:relative;display:flex;
+  align-items:flex-start;align-content:safe center;justify-content:center;
+  gap:clamp(16px,2.8vw,46px);padding:10px clamp(24px,5vw,72px) 22px;perspective:1400px;flex-wrap:wrap;
+  overflow-y:auto;overscroll-behavior:contain;
+  scrollbar-width:thin;scrollbar-color:var(--hair-strong) transparent}
+.rv-stage::-webkit-scrollbar{width:9px}
+.rv-stage::-webkit-scrollbar-thumb{background:var(--hair-strong);border-radius:9px;border:3px solid transparent;background-clip:content-box}
+/* 空画夹那一屏只有一段话，居中更好看 */
+.rv-stage:has(.rv-empty){align-items:center;align-content:center}
+.rv-foot{position:relative;padding:10px clamp(24px,5vw,72px) 30px;font-size:11.5px;line-height:1.7;color:var(--ink-faint)}
+/* 台面：让这几张像是刚被摊在桌上。挂在页脚上而不是台面上 ——
+   台面会滚，这层光跟着滚就露馅了。 */
+.rv-foot::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:120px;pointer-events:none;
   background:linear-gradient(to top,rgba(255,246,230,.055),transparent 78%)}
-.rv-foot{padding:10px clamp(24px,5vw,72px) 30px;font-size:11.5px;line-height:1.7;color:var(--ink-faint)}
 
-/* 每一幅像刚从画夹里抽出来，落到台面上 */
-.rvcard{position:relative;flex:0 0 auto;width:min(30vw,360px);cursor:pointer;
+/* 每一幅像刚从画夹里抽出来，落到台面上。
+   宽度由画自己定：竖幅按高度收窄，横幅顶到上限，于是一排里各归各的比例。 */
+.rvcard{position:relative;flex:0 0 auto;width:auto;min-width:148px;max-width:min(30vw,360px);cursor:pointer;
   transform-origin:50% 92%;opacity:0;
   animation:rvDeal .78s cubic-bezier(.16,.9,.3,1) forwards}
 .rvcard:nth-child(1){animation-delay:.06s}
@@ -1380,13 +1429,21 @@ body[data-mode="wall"][data-walllight="1"] .seal:hover{color:#191713;background:
   100%{opacity:1;transform:translateY(0) rotate(var(--r,0deg)) scale(1)}}
 .rvcard .mat{display:block;background:#f4f1e8;padding:clamp(10px,1.2vw,18px);
   box-shadow:0 2px 6px rgba(0,0,0,.5),0 22px 48px rgba(0,0,0,.55);border-radius:1px}
-.rvcard img{display:block;width:100%;height:auto;background:#111;
+.rvcard img{display:block;width:auto;height:auto;max-width:min(30vw,360px);max-height:46vh;background:#111;
   box-shadow:0 0 0 1px rgba(0,0,0,.22) inset}
-.rvcard .cap{margin-top:11px;color:var(--ink-dim);font-size:12px;line-height:1.5}
+.rvcard .cap{margin-top:11px;color:var(--ink-dim);font-size:12px;line-height:1.5;max-width:min(30vw,360px)}
 .rvcard .cap b{display:block;font-family:var(--serif);font-style:italic;font-size:14.5px;color:var(--ink);
   font-weight:500;margin-bottom:3px}
 .rvcard:hover .mat{transform:translateY(-4px);box-shadow:0 4px 10px rgba(0,0,0,.5),0 30px 60px rgba(0,0,0,.6)}
 .rvcard .mat{transition:transform .3s var(--ease),box-shadow .3s var(--ease)}
+.rv-stage[data-n="4"] .rvcard,.rv-stage[data-n="4"] .rvcard img,.rv-stage[data-n="4"] .rvcard .cap{max-width:min(22vw,290px)}
+.rv-stage[data-n="5"] .rvcard,.rv-stage[data-n="5"] .rvcard img,.rv-stage[data-n="5"] .rvcard .cap{max-width:min(18vw,250px)}
+.rv-stage[data-n="4"] .rvcard img,.rv-stage[data-n="5"] .rvcard img{max-height:42vh}
+@media (max-width:760px){
+  .rvcard,.rvcard img,.rvcard .cap,
+  .rv-stage[data-n="4"] .rvcard,.rv-stage[data-n="4"] .rvcard img,.rv-stage[data-n="4"] .rvcard .cap,
+  .rv-stage[data-n="5"] .rvcard,.rv-stage[data-n="5"] .rvcard img,.rv-stage[data-n="5"] .rvcard .cap{max-width:min(62vw,320px)}
+}
 .rv-empty{color:var(--ink-faint);font-size:13px;line-height:1.9;text-align:center;max-width:420px}
 .rv-empty .bigbtn{margin-top:16px}
 

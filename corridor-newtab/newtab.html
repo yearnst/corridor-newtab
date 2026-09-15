@@ -34,6 +34,8 @@
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
   <symbol id="i-fit" viewBox="0 0 24 24"><path d="M8 3.6H4.8A1.2 1.2 0 003.6 4.8V8M16 3.6h3.2a1.2 1.2 0 011.2 1.2V8M8 20.4H4.8a1.2 1.2 0 01-1.2-1.2V16M16 20.4h3.2a1.2 1.2 0 001.2-1.2V16"/></symbol>
+  <symbol id="i-hide" viewBox="0 0 24 24"><path d="M3.4 12.4s3.5-6 8.6-6 8.6 6 8.6 6-3.5 6-8.6 6-8.6-6-8.6-6z"/><circle cx="12" cy="12.4" r="2.7"/><path d="M4.2 20.2L19.8 4.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M4.6 9.4h9.1a5.4 5.4 0 010 10.8H7.6"/><path d="M8.4 5.2L4.4 9.4l4 4.2"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 6.5h15M9.5 6.5V4.6h5v1.9M6.6 6.5l.9 12.4a1.2 1.2 0 001.2 1.1h6.6a1.2 1.2 0 001.2-1.1l.9-12.4"/></symbol>
 </svg>
 
@@ -121,6 +123,7 @@
     <button class="iconbtn" id="btnPlay" data-tip=""><svg><use href="#i-pause"></use></svg></button>
     <button class="iconbtn" id="btnNext" data-tip=""><svg><use href="#i-right"></use></svg></button>
     <button class="iconbtn" id="btnFav"  data-tip=""><svg><use href="#i-star"></use></svg></button>
+    <button class="iconbtn" id="btnHide" data-tip=""><svg><use href="#i-hide"></use></svg></button>
     <button class="iconbtn" id="btnZoom" data-tip=""><svg><use href="#i-zoom"></use></svg></button>
     <button class="iconbtn" id="btnInfo" data-tip=""><svg><use href="#i-info"></use></svg></button>
   </div>
@@ -220,6 +223,7 @@
 </aside>
 
 <div id="toast"></div>
+<div id="undobar" hidden><span id="undoTxt"></span><button class="bigbtn sm" id="undoBtn"></button></div>
 <div id="boot"><div class="b"><b>CORRIDOR</b><i></i></div></div>
 
 <script type="module" src="src/app.js"></script>

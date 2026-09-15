@@ -36,8 +36,13 @@ jobs:
 
       - name: manifest 权限没有被悄悄扩大
         run: |
-          # 常驻权限只允许这四个；多一个都要在 PR 里单独说明并改这份清单
-          EXPECTED='alarms downloads storage unlimitedStorage'
+          # 常驻权限只允许这五个；多一个都要在 PR 里单独说明并改这份清单。
+          # declarativeNetRequestWithHostAccess 是 v1.20.0 加的，只用于一件事：
+          # 把发往**本机地址**（localhost / 127.x / 0.0.0.0 / ::1 / *.local）的请求的
+          # Origin 头改写成那个地址自己，好让 Ollama 这类本机服务的来源检查放行。
+          # 带 WithHostAccess 后缀＝只在用户已授权的地址上生效，安装时不多一条权限提示；
+          # 规则还用 initiatorDomains 锁死在本扩展自己发出的请求上。详见 src/localnet.js。
+          EXPECTED='alarms declarativeNetRequestWithHostAccess downloads storage unlimitedStorage'
           ACTUAL=$(python3 -c "
           import json
           m=json.load(open('corridor-newtab/manifest.json'))

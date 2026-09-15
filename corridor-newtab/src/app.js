@@ -10,6 +10,7 @@ import * as AI from './ai.js';
 import * as LG from './langs.js';
 import * as TR from './translate.js';
 import * as DG from './diag.js';
+import * as NET from './localnet.js';
 import * as TN from './tone.js';
 
 const $  = (s, r = document) => r.querySelector(s);
@@ -45,7 +46,7 @@ function resolveLang(set) {
 }
 
 const A = {                       // 应用状态
-  cat: [], byId: new Map(), set: null, favs: [], hist: [],
+  cat: [], byId: new Map(), set: null, favs: [], hist: [], gone: [],
   list: [], idx: 0, cur: null, seed: 1,
   timer: null, tick: null, paused: false, layer: 'A',
   lang: 'zh', other: 'en', objUrls: new Set(), libTab: 'all', libQ: '', busy: false,
@@ -98,6 +99,25 @@ function hueKeyOf(hex) {
   return 'neutral';
 }
 function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('on'), 2100); }
+/* 事后反悔的那几秒：不拦一道确认，改成做完给一条能点回去的提示。
+   期间再移除一幅，上一条就作数了 —— 撤销只管最近这一步。 */
+function undoBar(msg, label, fn, ms = 6000) {
+  const bar = $('#undobar'), txt = $('#undoTxt'), btn = $('#undoBtn');
+  if (!bar) return;
+  clearTimeout(undoBar._t);
+  txt.textContent = msg; btn.textContent = label;
+  bar.hidden = false;
+  requestAnimationFrame(() => bar.classList.add('on'));
+  btn.onclick = async () => { undoBarHide(); try { await fn(); } catch { } };
+  undoBar._t = setTimeout(undoBarHide, ms);
+}
+function undoBarHide() {
+  const bar = $('#undobar');
+  if (!bar) return;
+  clearTimeout(undoBar._t);
+  bar.classList.remove('on');
+  setTimeout(() => { if (!bar.classList.contains('on')) bar.hidden = true; }, 320);
+}
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const S1 = (v) => String(v ?? '').trim();
 /* 作品文本按这个顺序找：当前语言 → 另一面 → 英文 → 中文。
@@ -146,6 +166,7 @@ function targetWidthFor(w, mode) {
 /* ---------------- 播放列表 ---------------- */
 /* forPlay=true 时才应用办公模式：它只负责「轮换时跳过」，不负责「藏起来不让看」 */
 function passFilters(w, f, forPlay = true) {
+  if (w._gone) return false;
   if (forPlay && A.set.workSafe && w.mature) return false;
   if (f.movements.length && !f.movements.includes(w.movement)) return false;
   if (f.regions.length && !f.regions.includes(w.region)) return false;
@@ -161,17 +182,18 @@ function passFilters(w, f, forPlay = true) {
 function buildList() {
   const f = A.set.filters;
   let pool = A.cat;
-  if (A.set.scope === 'fav') pool = A.cat.filter(w => A.favs.includes(w.id));
-  else if (A.set.scope === 'lib') pool = A.cat.filter(w => w.local);
-  else if (A.set.scope === 'daily') pool = A.cat.filter(w => w.daily);
+  if (A.set.scope === 'fav') pool = A.cat.filter(w => !w._gone && A.favs.includes(w.id));
+  else if (A.set.scope === 'lib') pool = A.cat.filter(w => !w._gone && w.local);
+  else if (A.set.scope === 'daily') pool = A.cat.filter(w => !w._gone && w.daily);
   else if (A.set.scope === 'filter') pool = A.cat.filter(w => passFilters(w, f));
-  else pool = A.cat.filter(w => !(A.set.workSafe && w.mature));
-  if (!pool.length) pool = A.cat.filter(w => !(A.set.workSafe && w.mature));
+  else pool = A.cat.filter(w => !w._gone && !(A.set.workSafe && w.mature));
+  if (!pool.length) pool = A.cat.filter(w => !w._gone && !(A.set.workSafe && w.mature));
+  if (!pool.length) pool = A.cat.filter(w => !w._gone);
   if (!pool.length) pool = A.cat;
   A.list = A.set.order === 'shuffle' ? shuffled(pool, A.seed) : pool.slice().sort((a, b) => a.ys - b.ys);
   return A.list;
 }
-const listSig = () => hashStr(JSON.stringify([A.set.scope, A.set.order, A.set.workSafe, A.set.filters, A.favs.length, A.list.length]));
+const listSig = () => hashStr(JSON.stringify([A.set.scope, A.set.order, A.set.workSafe, A.set.filters, A.favs.length, A.gone.length, A.list.length]));
 
 /* ---------------- 渲染 ---------------- */
 function revoke(u) { if (u && u.startsWith('blob:')) { URL.revokeObjectURL(u); A.objUrls.delete(u); } }
@@ -192,7 +214,18 @@ function paintMeta(w) {
   fadeSwap($('#card'), () => paintCard(w));
   fadeSwap($('#label'), () => paintLabel(w));
   updateFavBtn();
-  $('#counter').innerHTML = `<b>${String(A.idx + 1).padStart(2, '0')}</b> / ${String(A.list.length).padStart(2, '0')}`;
+  paintCounter();
+}
+const paintCounter = () => {
+  const el = $('#counter');
+  if (el) el.innerHTML = `<b>${String(A.idx + 1).padStart(2, '0')}</b> / ${String(A.list.length).padStart(2, '0')}`;
+};
+/* 播放列表长度变了（放回作品之后）：把游标重新对到当前这一幅上，
+   顺手把「第几 / 共几」刷新 —— 不然计数器会停在改变之前那个数上。 */
+function resyncIdx() {
+  const i = A.cur ? A.list.findIndex(x => x.id === A.cur.id) : -1;
+  A.idx = i >= 0 ? i : Math.min(A.idx, Math.max(0, A.list.length - 1));
+  paintCounter();
 }
 /* 环形长廊的展签：焦点作品正下方那一小块铭牌 */
 function capHTML(w) {
@@ -371,6 +404,47 @@ function updateFavBtn() {
   const on = A.favs.includes(A.cur?.id);
   $('#btnFav').classList.toggle('on', on);
   $('#btnFav').dataset.tip = on ? T('unfav') : T('fav');
+}
+
+/* ---------------- 去除与放回 ----------------
+   收藏的反面。移除只写一份 id 名单（store.js 的 gone），作品本身分毫未动：
+   轮换里不再出现，藏品库里也不列，设置里随时放回来。
+   不拦一道确认 —— 换成做完给五秒撤销，手滑不会真丢东西。 */
+function markGone(id, on) {
+  const w = A.byId.get(id);
+  if (w) w._gone = !!on;
+}
+async function hideCurrent() {
+  const w = A.cur;
+  if (!w) return;
+  if (A.cat.filter(x => !x._gone).length <= 1) { toast(T('hideLast')); return; }
+  const title = tx(w.title);
+  A.gone = await S.addGone(w.id);
+  markGone(w.id, true);
+  buildList(); applyTips();
+  /* 先把撤销条亮出来，再换画 —— 等 show() 跑完才冒出来会慢上一拍，看着像没反应 */
+  undoBar(T('hidden', { t: title }), T('undo'), async () => {
+    A.gone = await S.unGone(w.id);
+    markGone(w.id, false);
+    buildList(); resyncIdx(); applyTips();
+    if (drawerOpen()) renderDrawer();
+    await jumpTo(w.id);
+    toast(T('hideBack'));
+  });
+  /* 站在被移除那一幅的位置上，往后翻一幅；播放列表已经没有它了，
+     所以直接按当前游标取，取不到就回到头一幅 */
+  A.idx = Math.min(A.idx, Math.max(0, A.list.length - 1));
+  await show(A.list[A.idx] || A.list[0]);
+  await S.setCursor({ idx: A.idx, at: Date.now(), sig: listSig() });
+  if (drawerOpen()) renderDrawer();
+}
+/* 设置面板里逐幅放回 */
+async function unhide(id) {
+  A.gone = await S.unGone(id);
+  markGone(id, false);
+  buildList(); resyncIdx(); applyTips();
+  await S.setCursor({ idx: A.idx, at: Date.now(), sig: listSig() });
+  return A.gone;
 }
 
 /* 预取后续作品，供离线使用 */
@@ -565,12 +639,17 @@ function paintSeal() {
 async function openReveal() {
   const st = await S.getDaily();
   const fresh = st.fresh || 0;
-  const all = (st.works || []).slice();
+  /* 画夹读的是 daily 那份存储，不是 A.cat —— 去除过的得在这里也滤掉，
+     不然「不再显示」在这一扇窗口上就不作数了 */
+  const gone = new Set(A.gone || []);
+  const all = (st.works || []).filter(w => !gone.has(w.id));
   const show = fresh > 0 ? all.slice(-Math.min(fresh, 5)) : all.slice(-Math.min(5, all.length));
   const d = new Date();
   $('#rvTitle').innerHTML = `${esc(T('dailyPortfolio'))}${fresh ? ` <em>+${fresh}</em>` : ''}`;
   $('#rvDate').textContent = d.toLocaleDateString(LG.intlOf(A.lang), { day: 'numeric', month: 'long', year: 'numeric' });
   const stage = $('#rvStage');
+  stage.dataset.n = show.length || 0;
+  stage.scrollTop = 0;
   if (!show.length) {
     stage.innerHTML = `<div class="rv-empty">${esc(T('dailyEmpty'))}
       <div><button class="bigbtn pri" id="rvFetch">${esc(T('dailyNow'))}</button></div></div>`;
@@ -610,11 +689,14 @@ function openSheet(id) { closeDrawer(); $$('.sheet').forEach(s => s.classList.re
 function closeSheets() { $$('.sheet').forEach(s => s.classList.remove('open')); zoomStop(); }
 
 function libSource() {
-  if (A.libTab === 'fav') return A.favs.map(id => A.byId.get(id)).filter(Boolean);
-  if (A.libTab === 'hist') return A.hist.map(h => A.byId.get(h.id)).filter(Boolean);
-  if (A.libTab === 'daily') return A.cat.filter(w => w.daily).slice().reverse();
-  if (A.libTab === 'lib') return A.cat.filter(w => w.local);
-  return A.cat;                                   // 藏品库始终显示全部，办公模式只影响轮换
+  /* 「已移除」是唯一会让作品从藏品库里消失的东西：办公模式只影响轮换，
+     藏品库照旧全都列出来，移除了的才是真的不列。 */
+  const live = (arr) => arr.filter(w => w && !w._gone);
+  if (A.libTab === 'fav') return live(A.favs.map(id => A.byId.get(id)));
+  if (A.libTab === 'hist') return live(A.hist.map(h => A.byId.get(h.id)));
+  if (A.libTab === 'daily') return live(A.cat.filter(w => w.daily)).reverse();
+  if (A.libTab === 'lib') return live(A.cat.filter(w => w.local));
+  return live(A.cat);
 }
 function libFiltered() {
   const f = A.set.filters, q = A.libQ.trim().toLowerCase();
@@ -861,15 +943,21 @@ function pbRow(r, cur) {
 function diagHTML(d, url) {
   if (!d) return '';
   const tips = (d.tips || []).map(k => {
-    let txt = T(k, { v: d.vendor || d.host, u: url || '' });
+    let txt = T(k, { v: d.vendor || d.host, u: url || '', h: d.host || '' });
     return `<li>${esc(txt)}</li>`;
   }).join('');
+  /* 要用户去终端敲的命令：原样给出来，附一个复制按钮 —— 手抄最容易抄错 */
+  const cmds = (d.cmds || []).length ? `<div class="dgcmds">${
+    d.cmds.map(c => `<div class="dgcmd"><b>${esc(c.os)}</b><code>${esc(c.cmd)}</code>
+      <button class="bigbtn sm" data-copycmd="${esc(c.cmd)}">${esc(T('dgCopy'))}</button></div>`).join('')
+    }</div>` : '';
   const models = (d.models || []).length ? `<div class="dgmods">${
     d.models.map(m => `<button class="dgmod" data-usemodel="${esc(m)}" title="${esc(T('dgUseModel'))}">${esc(m)}</button>`).join('')
     }<i>${esc(T('dgModelNote'))}</i></div>` : '';
   return `<div class="diag" data-code="${esc(d.code)}">
     <div class="dgh"><s>!</s><b>${esc(T('dg_' + d.code))}</b></div>
     ${tips ? `<div class="dgtry">${esc(T('dgTry'))}</div><ul class="dgtips">${tips}</ul>` : ''}
+    ${cmds}
     ${models}
     ${d.raw ? `<details class="dgraw"><summary>${esc(T('dgRaw'))}</summary><pre>${esc(String(d.raw).slice(0, 700))}</pre></details>` : ''}
   </div>`;
@@ -903,6 +991,9 @@ function bindDiag(root) {
     await saveProf({ model: b.dataset.usemodel });
     A.diag = null;
     renderDrawer();
+  });
+  $$('[data-copycmd]', root || document).forEach(b => b.onclick = async () => {
+    try { await navigator.clipboard.writeText(b.dataset.copycmd); toast(T('dgCopied')); } catch { }
   });
 }
 
@@ -1566,6 +1657,7 @@ async function buildTab(tab, s) {
     const rep = (A.aiReport && A.aiReport.length) ? A.aiReport : (ais.report || []);
     const profs = ai.list || [];
     const cp = profs.find(p => p.id === ai.cur) || null;
+    const cpLocal = !!(cp && NET.isLocal(cp.base));       // 本机模型这一档要多说两句
     const P = AI.promptsOf(ai);
     const prevW = A.aiPrev === 'art' ? (dSt?.works || [])[0] : A.aiPrev === 'any' ? (lSt?.works || [])[0] : null;
     const prevTx = (ai.on && A.aiPrev) ? AI.previewPrompt(ai, A.aiPrev, prevW) : null;
@@ -1618,10 +1710,12 @@ async function buildTab(tab, s) {
           <label>${esc(T('aiFmt'))}</label>
           <div>${seg('pf.fmt', [{ v: 'auto', t: T('aiFmtAuto') }, { v: 'openai', t: 'OpenAI' }, { v: 'anthropic', t: 'Anthropic' }], cp.fmt)}</div>
           <label>${esc(T('aiBase'))}</label>
-          <div>${tin('pf.base', cp.base, 'https://api.openai.com/v1')}<i class="tint">${esc(T('aiBaseTip'))}</i></div>
+          <div>${tin('pf.base', cp.base, 'https://api.openai.com/v1')}<i class="tint">${esc(T('aiBaseTip'))}</i>
+            ${cpLocal ? `<i class="tint">${esc(T('aiLocalNote'))}</i>` : ''}</div>
           <label>${esc(T('aiKey'))}</label>
-          <div class="tinrow">${tin('pf.key', cp.key, 'sk-…', A.aiEye ? 'text' : 'password')}
+          <div class="tinrow">${tin('pf.key', cp.key, cpLocal ? T('aiKeyLocalPh') : 'sk-…', A.aiEye ? 'text' : 'password')}
             <button class="bigbtn sm" id="btnAiEye">${esc(A.aiEye ? T('aiHide') : T('aiShow'))}</button></div>
+          ${cpLocal ? `<label></label><div><i class="tint">${esc(T('aiKeyLocal'))}</i></div>` : ''}
           <label></label>
           <div>${pfChips('key', cp.keys, cp.key, maskKey)}</div>
           <label>${esc(T('aiModel'))}</label>
@@ -1700,6 +1794,9 @@ async function buildTab(tab, s) {
       dblock(T('cacheLimit'), T('evictDesc'),
         `<select class="sel" data-sel="cacheLimitMB">${[200, 400, 600, 1000, 2000].map(v => `<option value="${v}"${s.cacheLimitMB === v ? ' selected' : ''}>${v} MB</option>`).join('')}</select>`),
       fmtBytes(st.bytes), 'cache offline 缓存 离线') +
+    grp('gone', T('goneTitle'), goneBlock(),
+      A.gone.length ? String(A.gone.length) : T('goneNone'),
+      'gone hidden removed 移除 去除 隐藏 恢复') +
     grp('export', T('exportTitle'),
       `<div class="dblock"><div class="dbd">${esc(T('exportDesc'))}</div>
         <div class="dbc btnrow">
@@ -1724,6 +1821,25 @@ async function buildTab(tab, s) {
   }
   return '';
 }
+/* ---------------- 已移除的那些 ----------------
+   在设置里给它们留一个出口：右下角那个按钮点下去的东西，
+   总得有个地方能找回来，否则「不可恢复」就是骗人的。 */
+function goneBlock() {
+  const ids = A.gone || [];
+  if (!ids.length) return `<div class="dblock"><div class="dbd">${esc(T('goneEmpty'))}</div></div>`;
+  const rows = ids.slice(0, 200).map(id => {
+    const w = A.byId.get(id);
+    const name = w ? tx(w.title) : id;
+    const who = w ? [tx(w.artist), dtw(w, 'year')].filter(Boolean).join(' · ') : T('goneLost');
+    return `<div class="gonerow"><b>${esc(name)}</b><i>${esc(who)}</i>
+      <button class="bigbtn sm" data-ungone="${esc(id)}">${esc(T('goneBack'))}</button></div>`;
+  }).join('');
+  return `<div class="dblock"><div class="dbd">${esc(T('goneDesc'))}</div>
+    <div class="gonelist">${rows}</div>
+    ${ids.length > 200 ? `<div class="dbd" style="margin-top:6px">${esc(T('goneMore', { n: ids.length - 200 }))}</div>` : ''}
+    <div class="dbc btnrow"><button class="bigbtn" id="btnGoneAll">${esc(T('goneBackAll'))}</button></div></div>`;
+}
+
 /* 「每 6 小时」这种人话 */
 function schedTxt(m) {
   m = Number(m) || 0;
@@ -1910,6 +2026,7 @@ async function renderDrawer(toTop = false) {
     if (A.trAbort) { A.trAbort.abort(); A.trAbort = null; trRun.textContent = T('trRun'); return; }
     const ai = A.set.ai;
     if (!(await AI.askHost(ai.base))) { trSay(T('aiPerm')); return; }
+    try { await NET.syncOriginRules(A.set); } catch { }
     A.trAbort = new AbortController();
     trRun.textContent = T('trStop');
     const bar = $('#trBar', body), fillI = $('#trBarI', body), list = $('#trList', body);
@@ -1939,6 +2056,7 @@ async function renderDrawer(toTop = false) {
   if (trPack) trPack.onclick = async () => {
     const ai = A.set.ai;
     if (!(await AI.askHost(ai.base))) { trSay(T('aiPerm')); return; }
+    try { await NET.syncOriginRules(A.set); } catch { }
     trPack.disabled = true;
     const bar = $('#trBar', body), fillI = $('#trBarI', body);
     bar?.classList.add('on');
@@ -2032,6 +2150,21 @@ async function renderDrawer(toTop = false) {
   bindPickers(body);
   const cA = $('#btnCacheAll'); if (cA) cA.onclick = cacheAll;
   const cC = $('#btnCacheClear'); if (cC) cC.onclick = async () => { await S.cacheClear(); toast(T('done')); renderDrawer(); };
+  /* 已移除：逐幅放回，或一次全放回来 */
+  $$('[data-ungone]', body).forEach(b => b.onclick = async () => {
+    await unhide(b.dataset.ungone);
+    undoBarHide();
+    renderDrawer();
+    toast(T('hideBack'));
+  });
+  const gA = $('#btnGoneAll', body);
+  if (gA) gA.onclick = async () => {
+    A.gone = await S.clearGone();
+    A.cat.forEach(w => { w._gone = false; });
+    buildList(); resyncIdx(); applyTips(); undoBarHide(); renderDrawer();
+    await S.setCursor({ idx: A.idx, at: Date.now(), sig: listSig() });
+    toast(T('hideBack'));
+  };
   const dN = $('#btnDailyNow');
   if (dN) dN.onclick = async () => {
     dN.disabled = true; dN.textContent = T('caching');
@@ -2177,6 +2310,8 @@ function bindAI(body) {
   const grant = $('#btnAiGrant', body);
   if (grant) grant.onclick = async () => {
     const ok = await AI.askHost(A.set.ai.base);          // 必须在点击里调用
+    /* 本机地址：权限到手的这一刻才谈得上改写来源，立刻把规则铺上 */
+    if (ok) { try { await NET.syncOriginRules(A.set); } catch { } }
     say(ok ? T('aiGranted') : T('aiDenied'));
     if (ok) renderDrawer();
   };
@@ -2185,6 +2320,7 @@ function bindAI(body) {
   if (bt) bt.onclick = async () => {
     const ai = A.set.ai;
     if (!(await AI.askHost(ai.base))) { say(T('aiPerm')); return; }
+    try { await NET.syncOriginRules(A.set); } catch { }
     bt.disabled = true; say(T('aiTesting'));
     A.diag = null; $$('.diag', body).forEach(x => x.remove());
     const r = await AI.test(ai);
@@ -2224,6 +2360,7 @@ function bindAI(body) {
     if (A.pbAbort) { A.pbAbort.abort(); A.pbAbort = null; pb.textContent = T('pbRun'); return; }
     const ai = A.set.ai;
     if (!(await AI.askHost(ai.base))) { say(T('aiPerm')); return; }
+    try { await NET.syncOriginRules(A.set); } catch { }
     A.pbOpen = true; A.pbRows = [];
     A.pbAbort = new AbortController();
     pb.textContent = T('trStop');
@@ -2301,6 +2438,7 @@ function bindAI(body) {
     if (A.aiAbort) { A.aiAbort.abort(); A.aiAbort = null; run.textContent = T('aiRun'); return; }
     const ai = A.set.ai;
     if (!(await AI.askHost(ai.base))) { say(T('aiPerm')); return; }
+    try { await NET.syncOriginRules(A.set); } catch { }
     A.aiAbort = new AbortController();
     run.textContent = T('aiStop');
     A.aiReport = [];
@@ -2592,7 +2730,7 @@ function applyTips() {
   const set = (id, k) => { const e = $(id); if (e) e.dataset.tip = T(k); };
   set('#btnPrev', 'prev'); set('#btnNext', 'next'); set('#btnZoom', 'zoom');
   set('#btnInfo', 'info'); set('#btnLib', 'library'); set('#btnSet', 'settings');
-  set('#btnDl', 'download');
+  set('#btnDl', 'download'); set('#btnHide', 'hide');
   $('#btnMode').dataset.tip = T('mode') + ': ' + T('mode_' + A.set.mode);
   $('#btnMode').innerHTML = `<svg><use href="#i-m-${A.set.mode}"></use></svg>`;
   $('#libQ').placeholder = T('search');
@@ -2629,6 +2767,7 @@ function wire() {
     A.favs = await S.getFavs(); updateFavBtn(); applyTips();
     toast(added ? T('favAdded') : T('favRemoved'));
   };
+  $('#btnHide').onclick = () => hideCurrent();
   $('#btnZoom').onclick = () => A.cur && zoomOpen(A.cur);
   $('.frame-wrap').onclick = () => A.cur && zoomOpen(A.cur);
   $$('.imm-img').forEach(i => i.onclick = () => { if (A.set.mode === 'immersive') A.cur && zoomOpen(A.cur); });
@@ -2729,6 +2868,7 @@ function wire() {
       case 'c': case 'C': if (!open) { e.preventDefault(); applySetting('clock', A.set.clock === 'off' ? 'bar' : A.set.clock === 'bar' ? 'grand' : 'off'); } break;
       case 'm': case 'M': if (!open) { e.preventDefault(); $('#btnMode').click(); } break;
       case 'd': case 'D': if (A.cur) { e.preventDefault(); download(A.cur); } break;
+      case 'x': case 'X': if (!open) { e.preventDefault(); hideCurrent(); } break;
     }
   });
   ['mousemove', 'keydown', 'wheel', 'pointerdown'].forEach(ev => addEventListener(ev, armIdle, { passive: true }));
@@ -2745,8 +2885,10 @@ function wire() {
 }
 
 function buildCatalog(all) {
+  const gone = new Set(A.gone || []);
   A.cat = all.map(w => ({
     ...w,
+    _gone: gone.has(w.id),
     _hue: hueKeyOf(w.vis.accent),
     _country: (w.place?.zh || '').split(' ')[0],
     _search: [w.title.zh, w.title.en, w.artist.zh, w.artist.en, w.museum?.zh, w.museum?.en,
@@ -2821,13 +2963,13 @@ async function reloadDaily(keepView = false) {
    启动
    ============================================================ */
 async function init() {
-  const [cat, set, favs, hist, cur, daily, lib, tr, packs] = await Promise.all([
+  const [cat, set, favs, hist, cur, daily, lib, tr, packs, gone] = await Promise.all([
     fetch(rt('data/catalog.json')).then(r => r.json()),
     S.getSettings(), S.getFavs(), S.getHistory(), S.getCursor(), S.getDaily(), S.getLocalLib(),
-    S.getTr(), S.getPacks()
+    S.getTr(), S.getPacks(), S.getGone()
   ]);
   S.setLocalReader(LOCAL.readFile);
-  A.set = set; A.tr = tr || {}; [A.lang, A.other] = resolveLang(set); A.favs = favs; A.hist = hist;
+  A.set = set; A.tr = tr || {}; [A.lang, A.other] = resolveLang(set); A.favs = favs; A.hist = hist; A.gone = gone;
   /* 界面语言包：非中英的语言，文案是模型译好存在本机的，这里灌回词表 */
   for (const [c, pk] of Object.entries(packs || {})) if (c === A.lang || c === A.other) applyPack(c, pk);
   A.daily = (daily.works || []).length; A.fresh = daily.fresh || 0;

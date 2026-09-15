@@ -3,6 +3,6 @@
                   "description": "扩展名称" },
   "appShort":   { "message": "长廊 Corridor",
                   "description": "短名称，图标下方与管理页用" },
-  "appDesc":    { "message": "每一个新标签页，都是一面美术馆的墙。106 幅公有领域名画，双语导览，五种呈现方式，完全离线可用。",
+  "appDesc":    { "message": "每一个新标签页，都是一面美术馆的墙。106 幅公有领域名画，默认展出 93 幅，双语导览，五种呈现方式，完全离线可用。",
                   "description": "商店简介" }
 }
