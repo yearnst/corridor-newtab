@@ -13,6 +13,8 @@
 
 106 幅公有领域杰作（默认展出 93 幅）· 双语策展导览 · 五种呈现方式 · 装上就离线可用
 
+配置可整份导出导入 · 密钥能用口令加密
+
 [安装](#安装) · [它能做什么](#它能做什么) · [完整手册](corridor-newtab/README.md) · [隐私](PRIVACY.md) · [更新记录](CHANGELOG.md) · [English](#english)
 
 <img src="media/1-wall.png" width="760" alt="美术馆展墙模式">

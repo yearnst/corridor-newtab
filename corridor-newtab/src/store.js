@@ -289,7 +289,26 @@ export async function unGone(id) {
 }
 export async function clearGone() { await area().set({ gone: [] }); return []; }
 
+/* 整份写回 —— 备份恢复用。日常增删走上面那几个，别直接调这个 */
+export async function setFavs(list) {
+  const favs = [...new Set((Array.isArray(list) ? list : []).map(x => String(x || '').trim()).filter(Boolean))].slice(0, 4000);
+  await area().set({ favs });
+  return favs;
+}
+export async function setGone(list) {
+  const gone = [...new Set((Array.isArray(list) ? list : []).map(x => String(x || '').trim()).filter(Boolean))].slice(0, 4000);
+  await area().set({ gone });
+  return gone;
+}
+
 export async function getHistory() { return (await area().get('history')).history || []; }
+export async function setHistory(list) {
+  const history = (Array.isArray(list) ? list : [])
+    .filter(x => x && x.id).map(x => ({ id: String(x.id).slice(0, 80), at: Math.max(0, Math.round(Number(x.at) || 0)) }))
+    .slice(0, 300);
+  await area().set({ history });
+  return history;
+}
 export async function pushHistory(id) {
   let h = await getHistory();
   h = [{ id, at: Date.now() }, ...h.filter(x => x.id !== id)].slice(0, 300);
@@ -435,6 +454,12 @@ export async function setPack(lang, pack) {
   /* 语言包不小，只留最近用过的 8 种 */
   const keys = Object.entries(ps).sort((a, b) => (b[1]?.at || 0) - (a[1]?.at || 0)).slice(0, 8).map(x => x[0]);
   await area().set({ packs: Object.fromEntries(keys.map(k => [k, ps[k]])) });
+}
+export async function setPacks(obj) {
+  const ps = (obj && typeof obj === 'object') ? obj : {};
+  const keys = Object.entries(ps).sort((a, b) => (b[1]?.at || 0) - (a[1]?.at || 0)).slice(0, 8).map(x => x[0]);
+  await area().set({ packs: Object.fromEntries(keys.map(k => [k, ps[k]])) });
+  return getPacks();
 }
 export async function clearPack(lang) {
   const ps = await getPacks();

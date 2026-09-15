@@ -11,6 +11,7 @@ import * as LG from './langs.js';
 import * as TR from './translate.js';
 import * as DG from './diag.js';
 import * as NET from './localnet.js';
+import * as BK from './backup.js';
 import * as TN from './tone.js';
 
 const $  = (s, r = document) => r.querySelector(s);
@@ -47,6 +48,9 @@ function resolveLang(set) {
 
 const A = {                       // 应用状态
   cat: [], byId: new Map(), set: null, favs: [], hist: [], gone: [],
+  /* 备份面板的临时状态：勾了哪几块、密钥怎么带、选中的那份文件 —— 都不进设置 */
+  bk: { parts: { settings: true, marks: true, history: false, tr: false, packs: false, daily: false, libsrc: true },
+        keys: 'none', pass: '', file: null, sum: null, mode: 'replace', pass2: '', msg: '' },
   list: [], idx: 0, cur: null, seed: 1,
   timer: null, tick: null, paused: false, layer: 'A',
   lang: 'zh', other: 'en', objUrls: new Set(), libTab: 'all', libQ: '', busy: false,
@@ -1797,6 +1801,8 @@ async function buildTab(tab, s) {
     grp('gone', T('goneTitle'), goneBlock(),
       A.gone.length ? String(A.gone.length) : T('goneNone'),
       'gone hidden removed 移除 去除 隐藏 恢复') +
+    grp('backup', T('bkTitle'), backupBlock(),
+      T('bkHint'), 'backup restore export import 备份 恢复 导出 导入 迁移 json') +
     grp('export', T('exportTitle'),
       `<div class="dblock"><div class="dbd">${esc(T('exportDesc'))}</div>
         <div class="dbc btnrow">
@@ -1821,6 +1827,162 @@ async function buildTab(tab, s) {
   }
   return '';
 }
+/* 备份面板上的四个按钮 */
+function bindBackup(body) {
+  const b = A.bk;
+  const picked = () => BK.PARTS.filter(k => b.parts[k]);
+
+  const eye = $('#btnBkEye', body);
+  if (eye) eye.onclick = () => { A.bkEye = !A.bkEye; renderDrawer(); };
+
+  const ex = $('#btnBkExport', body);
+  if (ex) ex.onclick = async () => {
+    const parts = picked();
+    if (!parts.length) { b.msg = T('bkNothing'); renderDrawer(); return; }
+    if (b.keys === 'enc' && !S1(b.pass)) { b.msg = T('bkNeedPass'); renderDrawer(); return; }
+    ex.disabled = true;
+    try {
+      const file = await BK.collect(parts, { keys: b.keys, password: b.pass });
+      const name = BK.fileName(file);
+      await saveJSON(file, name);
+      b.msg = T('bkExported', { f: name });
+      b.pass = '';                                   // 口令用完就丢
+    } catch (e) {
+      b.msg = T('bkExportFail') + ' · ' + S1(e && e.message || e);
+    }
+    ex.disabled = false; renderDrawer();
+  };
+
+  const im = $('#btnBkImport', body), fi = $('#bkFile', body);
+  if (im && fi) {
+    im.onclick = () => fi.click();
+    fi.onchange = async () => {
+      const f = fi.files && fi.files[0];
+      if (!f) return;
+      try {
+        const txt = await f.text();
+        const json = JSON.parse(txt);
+        b.file = json; b.sum = BK.summarize(json); b.msg = ''; b.pass2 = '';
+        /* 文件里有什么就默认勾什么，勾选框跟着这份文件走 */
+        if (b.sum.ok) for (const k of BK.PARTS) b.parts[k] = b.sum.rows.some(r => r.k === k);
+      } catch {
+        b.file = null; b.sum = { ok: false, why: 'notjson' };
+      }
+      fi.value = '';
+      renderDrawer();
+    };
+  }
+
+  const drop = $('#btnBkDrop', body);
+  if (drop) drop.onclick = () => { b.file = null; b.sum = null; b.pass2 = ''; b.msg = ''; renderDrawer(); };
+
+  const ap = $('#btnBkApply', body);
+  if (ap) ap.onclick = async () => {
+    if (!b.file || !b.sum?.ok) return;
+    const parts = picked();
+    if (!parts.length) { b.msg = T('bkNothing'); renderDrawer(); return; }
+    if (b.sum.needPass && !S1(b.pass2)) { b.msg = T('bkNeedPass'); renderDrawer(); return; }
+    ap.disabled = true;
+    try {
+      const r = await BK.apply(b.file, { parts, mode: b.mode, password: b.pass2 });
+      b.file = null; b.sum = null; b.pass2 = '';
+      await afterImport(r);
+      return;
+    } catch (e) {
+      const m = S1(e && e.message || e);
+      b.msg = m === 'badpass' ? T('bkBadPass') : (T('bkImportFail') + ' · ' + m);
+    }
+    ap.disabled = false; renderDrawer();
+  };
+}
+/* 导入之后：设置、目录、播放列表全部按新的重来一遍，不用让用户自己刷新 */
+async function afterImport(r) {
+  A.set = await S.getSettings();
+  [A.lang, A.other] = resolveLang(A.set);
+  const packs = await S.getPacks();
+  for (const [c, pk] of Object.entries(packs || {})) if (c === A.lang || c === A.other) applyPack(c, pk);
+  A.tr = await S.getTr();
+  [A.favs, A.hist, A.gone] = await Promise.all([S.getFavs(), S.getHistory(), S.getGone()]);
+  document.body.dataset.mode = A.set.mode;
+  document.body.dataset.kb = A.set.kenburns ? '1' : '0';
+  document.body.dataset.ui = A.set.ui;
+  applyRoom(); applyDir();
+  await reloadDaily();
+  MODES.applyPace(A.set);
+  applyTips(); startClock(); startTimer();
+  A.bk.msg = T('bkImported', { n: r.done.length });
+  renderDrawer();
+  toast(T('bkImported', { n: r.done.length }));
+  try { await NET.syncOriginRules(A.set); } catch { }
+  try { await chrome.runtime.sendMessage({ type: 'ai-arm' }); } catch { }
+}
+/* 把一个对象存成 .json。有 downloads 权限就走它（能弹「另存为」），
+   没有就退回一个临时的 <a download> —— 选项页里也用得上。 */
+async function saveJSON(obj, name) {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  /* 先走 downloads（能弹「另存为」，备份文件值得让人自己挑地方）；
+     它被策略挡下或压根没有，就退回一个临时的 <a download>，选项页里也用得上 */
+  try {
+    if (globalThis.chrome?.downloads) {
+      const id = await chrome.downloads.download({ url, filename: name, conflictAction: 'uniquify', saveAs: true });
+      trackDownload(id, url);
+      return;
+    }
+  } catch { /* 往下退 */ }
+  try {
+    const a = document.createElement('a');
+    a.href = url; a.download = name; a.style.display = 'none';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  } catch (e) { URL.revokeObjectURL(url); throw e; }
+}
+
+/* ---------------- 备份与恢复 ----------------
+   上半截导出：勾要带走哪几块、密钥怎么处理；下半截导入：
+   先认清这份文件里有什么，再让人选覆盖还是并入，最后才落地。 */
+function backupBlock() {
+  const b = A.bk;
+  const partOpts = BK.PARTS.map(k => ({ k, t: T('bkP_' + k), note: T('bkPN_' + k) }));
+  const sum = b.sum;
+  const keyRow = `<div class="dblock">
+    <div class="dbt">${esc(T('bkKeys'))}</div>
+    <div class="dbd">${esc(T('bkKeysDesc'))}</div>
+    <div class="dbc">${seg('bk.keys', [
+      { v: 'none', t: T('bkKeysNone') }, { v: 'enc', t: T('bkKeysEnc') }, { v: 'plain', t: T('bkKeysPlain') }], b.keys)}</div>
+    ${b.keys === 'enc' ? `<div class="dbc tinrow">${tin('bk.pass', b.pass, T('bkPassPh'), A.bkEye ? 'text' : 'password')}
+      <button class="bigbtn sm" id="btnBkEye">${esc(A.bkEye ? T('aiHide') : T('aiShow'))}</button></div>
+      <div class="dbd">${esc(T('bkEncNote'))}</div>` : ''}
+    ${b.keys === 'plain' ? `<div class="bkwarn">${esc(T('bkPlainWarn'))}</div>` : ''}
+  </div>`;
+
+  const why = ['notjson', 'notours', 'newer'].includes(sum && sum.why) ? sum.why : 'notours';
+  const imp = !sum ? '' : !sum.ok
+    ? `<div class="bkwarn">${esc(T('bkBad_' + why))}</div>`
+    : `<div class="bkcard">
+        <div class="bkmeta">${esc(T('bkFrom', { v: sum.appVersion || '?', d: (sum.at || '').slice(0, 10) }))}
+          · ${esc(sum.keys === 'enc' ? T('bkHasEnc') : sum.keys === 'plain' ? T('bkHasPlain') : T('bkHasNone'))}</div>
+        <ul class="bklist">${sum.rows.map(r => `<li><b>${esc(T('bkP_' + r.k))}</b><i>${r.n}</i></li>`).join('')}</ul>
+        ${sum.needPass ? `<div class="dbc">${tin('bk.pass2', b.pass2, T('bkPassPh'), 'password')}</div>` : ''}
+        <div class="dbc">${seg('bk.mode', [{ v: 'replace', t: T('bkModeReplace') }, { v: 'merge', t: T('bkModeMerge') }], b.mode)}</div>
+        <div class="dbd">${esc(b.mode === 'replace' ? T('bkModeReplaceDesc') : T('bkModeMergeDesc'))}</div>
+        <div class="dbc btnrow"><button class="bigbtn pri" id="btnBkApply">${esc(T('bkApply'))}</button>
+          <button class="bigbtn" id="btnBkDrop">${esc(T('bkDrop'))}</button></div>
+      </div>`;
+
+  return `<div class="dblock"><div class="dbd">${esc(T('bkDesc'))}</div></div>` +
+    dctrl(T('bkPick'), chks('bk.parts', partOpts, b.parts)) +
+    keyRow +
+    `<div class="dblock"><div class="dbc btnrow">
+      <button class="bigbtn pri" id="btnBkExport">${esc(T('bkExport'))}</button>
+      <button class="bigbtn" id="btnBkImport">${esc(T('bkImport'))}</button>
+      <input type="file" id="bkFile" accept="application/json,.json" hidden>
+    </div>
+    ${b.msg ? `<div class="dbd" style="margin-top:8px">${esc(b.msg)}</div>` : ''}
+    ${imp}</div>` +
+    `<div class="dblock"><div class="dbd">${esc(T('bkNotIncluded'))}</div></div>`;
+}
+
 /* ---------------- 已移除的那些 ----------------
    在设置里给它们留一个出口：右下角那个按钮点下去的东西，
    总得有个地方能找回来，否则「不可恢复」就是骗人的。 */
@@ -1936,6 +2098,7 @@ async function renderDrawer(toTop = false) {
   $$('[data-seg] button', body).forEach(b => b.onclick = async () => {
     const k = b.closest('[data-seg]').dataset.seg;
     if (k.startsWith('pf.')) { await saveProf({ [k.slice(3)]: b.dataset.v }); renderDrawer(); return; }
+    if (k.startsWith('bk.')) { A.bk[k.slice(3)] = b.dataset.v; A.bk.msg = ''; renderDrawer(); return; }
     await applySetting(k, b.dataset.v); renderDrawer();
   });
   $$('[data-tg]', body).forEach(b => b.onclick = async (e) => {
@@ -1948,6 +2111,8 @@ async function renderDrawer(toTop = false) {
     i.onchange = async () => {
       const k = i.dataset.tin;
       if (k.startsWith('pf.')) { await saveProf({ [k.slice(3)]: i.value }); renderDrawer(); return; }
+      /* 口令只留在内存里，一个字都不进存储 */
+      if (k.startsWith('bk.')) { A.bk[k.slice(3)] = i.value; return; }
       await applySetting(k, i.value); renderDrawer();
     };
     i.onkeydown = (e) => { if (e.key === 'Enter') i.blur(); e.stopPropagation(); };
@@ -1983,6 +2148,7 @@ async function renderDrawer(toTop = false) {
   $$('[data-nunit]', body).forEach(i => i.onchange = () => readNum(i.dataset.nunit));
   $$('[data-chk] button', body).forEach(b => b.onclick = async () => {
     const g = b.closest('[data-chk]').dataset.chk, k = b.dataset.k;
+    if (g === 'bk.parts') { A.bk.parts[k] = !A.bk.parts[k]; A.bk.msg = ''; renderDrawer(); return; }
     await applySetting(g, { ...A.set[g], [k]: !A.set[g][k] }); renderDrawer();
   });
   $$('[data-sel]', body).forEach(sl => sl.onchange = async () => { await applySetting(sl.dataset.sel, sl.value); renderDrawer(); });
@@ -2150,6 +2316,7 @@ async function renderDrawer(toTop = false) {
   bindPickers(body);
   const cA = $('#btnCacheAll'); if (cA) cA.onclick = cacheAll;
   const cC = $('#btnCacheClear'); if (cC) cC.onclick = async () => { await S.cacheClear(); toast(T('done')); renderDrawer(); };
+  bindBackup(body);
   /* 已移除：逐幅放回，或一次全放回来 */
   $$('[data-ungone]', body).forEach(b => b.onclick = async () => {
     await unhide(b.dataset.ungone);
