@@ -1988,6 +1988,10 @@ async function buildTab(tab, s) {
       `<div class="about"><span class="an">长廊 CORRIDOR</span>
         ${esc(T('version'))} <b>${esc(ver)}</b><br>
         ${esc(T('author'))} <b>Charles Chern</b> · <b>@yearnst</b><br>
+        <span class="alinks">
+          <a href="https://yearnst.github.io/corridor-newtab/" target="_blank" rel="noopener noreferrer">${esc(T('siteHome'))}</a>
+          <a href="https://github.com/yearnst/corridor-newtab" target="_blank" rel="noopener noreferrer">${esc(T('siteRepo'))}</a>
+        </span>
         <span class="akbd">${esc(T('kbd'))}</span>
         <span style="display:block;margin-top:8px">${esc(T('credits'))}</span>
         <span style="display:block;margin-top:6px;opacity:.8">© ${new Date().getFullYear()} Charles Chern · MIT License</span></div>`,
@@ -2052,7 +2056,30 @@ function bindOff(body) {
   });
   const ba = $('#offBackAll', body);
   if (ba) ba.onclick = async () => {
-    A.set = await S.setSettings({ offHidden: [] });
+    A.set = await S.setSettings({ offHidden: [] });        // 只清「已移除」，永不再现那份不动
+    renderDrawer(); if (pausedOn()) paintPaused();
+  };
+  /* 永不再现：从「已移除」挪过去，或者解除 */
+  const toBlocked = async (hs) => {
+    const add = hs.filter(Boolean);
+    if (!add.length) return;
+    A.set = await S.setSettings({
+      offHidden: (A.set.offHidden || []).filter(x => !add.includes(x)),
+      offBlocked: [...new Set((A.set.offBlocked || []).concat(add))]
+    });
+    renderDrawer(); if (pausedOn()) paintPaused();
+  };
+  $$('[data-offblock]', body).forEach(b => b.onclick = () => toBlocked([b.dataset.offblock]));
+  const bl = $('#offBlockAll', body);
+  if (bl) bl.onclick = () => toBlocked([...(A.set.offHidden || [])]);
+  $$('[data-offunblock]', body).forEach(b => b.onclick = async () => {
+    const h = b.dataset.offunblock;
+    A.set = await S.setSettings({ offBlocked: (A.set.offBlocked || []).filter(x => x !== h) });
+    renderDrawer(); if (pausedOn()) paintPaused();
+  });
+  const ua = $('#offUnblockAll', body);
+  if (ua) ua.onclick = async () => {
+    A.set = await S.setSettings({ offBlocked: [] });
     renderDrawer(); if (pausedOn()) paintPaused();
   };
 }
@@ -2175,6 +2202,7 @@ async function offBlock(s) {
   const [granted, tabsOk] = await Promise.all([PAUSE.hasTop(), PAUSE.hasTabs()]);
   const links = Array.isArray(s.offLinks) ? s.offLinks : [];
   const hidden = Array.isArray(s.offHidden) ? s.offHidden : [];
+  const blocked = Array.isArray(s.offBlocked) ? s.offBlocked : [];
   const rows = links.map((x, i) => `<div class="offrow">
       <b>${esc(x.name || PAUSE.hostOf(x.url))}</b><i>${esc(x.url)}</i>
       <button class="bigbtn sm" data-offdel="${i}">${esc(T('offDel'))}</button></div>`).join('');
@@ -2221,10 +2249,21 @@ async function offBlock(s) {
       <div class="dbd">${esc(T('offHiddenDesc'))}</div>
       ${hidden.length ? `<div class="offlist">${hidden.map(h => `<div class="offrow">
         <b>${esc(h)}</b><i></i>
-        <button class="bigbtn sm" data-offback="${esc(h)}">${esc(T('offBack'))}</button></div>`).join('')}</div>
-        <div class="dbc btnrow"><button class="bigbtn sm" id="offBackAll">${esc(T('offBackAll'))}</button></div>`
+        <button class="bigbtn sm" data-offback="${esc(h)}">${esc(T('offBack'))}</button>
+        <button class="offrx" data-offblock="${esc(h)}" title="${esc(T('offBlockOne'))}"
+          aria-label="${esc(T('offBlockOne'))}">&#215;</button></div>`).join('')}</div>
+        <div class="dbc btnrow"><button class="bigbtn sm" id="offBackAll">${esc(T('offBackAll'))}</button>
+          <button class="bigbtn sm" id="offBlockAll">${esc(T('offBlockAll'))}</button></div>`
         : `<div class="dbd" style="opacity:.6">${esc(T('offHiddenNone'))}</div>`}
-    </div>`;
+    </div>` +
+    (blocked.length ? `<div class="dblock">
+      <div class="dbt">${esc(T('offBlocked'))}</div>
+      <div class="dbd">${esc(T('offBlockedDesc'))}</div>
+      <div class="offlist">${blocked.map(h => `<div class="offrow">
+        <b>${esc(h)}</b><i></i>
+        <button class="bigbtn sm" data-offunblock="${esc(h)}">${esc(T('offUnblock'))}</button></div>`).join('')}</div>
+      <div class="dbc btnrow"><button class="bigbtn sm" id="offUnblockAll">${esc(T('offUnblockAll'))}</button></div>
+    </div>` : '');
 }
 
 /* ---------------- 备份与恢复 ----------------
@@ -3040,7 +3079,7 @@ async function applySetting(key, val) {
   }
   A.set = await S.setSettings({ [key]: val });
   /* 暂歇那一组：改完只重画那一屏 —— 展厅还睡着，别去叫醒它 */
-  if (['offStyle', 'offTagSkin', 'offPaper', 'offTop', 'offTabs', 'offN', 'offLinks', 'offHidden'].includes(key)) { if (pausedOn()) await paintPaused(); return; }
+  if (['offStyle', 'offTagSkin', 'offPaper', 'offTop', 'offTabs', 'offN', 'offLinks', 'offHidden', 'offBlocked'].includes(key)) { if (pausedOn()) await paintPaused(); return; }
   if (key === 'off') { await paintPaused();
     if (!val) { A.painted = null; await show(A.list[A.idx] || A.list[0]); MODES.setPaused(A.paused); startTimer(); armIdle(); }
     return; }

@@ -984,6 +984,30 @@ body[data-off="1"] #stage{filter:none}
   border-color:rgba(255,255,255,.34);background:rgba(255,255,255,.08)}
 .offn-grid .offitem.sel>b,.offi-list .offitem.sel>b{color:var(--accent)}
 
+/* ---- 分组小标题：两处自动来源都有内容时才出现 ----
+   展签墙里它是一条占满整行的分隔（flex 布局里 100% 宽自然把后面挤到下一行）。 */
+.off-gh{font:400 10px/1 var(--sans);letter-spacing:.3em;text-transform:uppercase;
+  color:rgba(255,255,255,.34);display:flex;align-items:center;gap:12px;user-select:none}
+.off-gh::after{content:"";flex:1;height:1px;background:rgba(255,255,255,.12)}
+/* 展签墙分组：整个容器改成竖着摞，每组自己一段（小标题 + 一排签） */
+.off-tags.grouped{flex-direction:column;align-items:center;gap:clamp(14px,2vw,22px)}
+.off-grp{display:flex;flex-direction:column;align-items:center;
+  gap:clamp(9px,1.2vw,14px);width:min(1020px,92vw)}
+.off-row{display:flex;flex-wrap:wrap;justify-content:center;
+  gap:clamp(12px,2vw,26px);width:100%}
+/* 墙上那条是居中的分节线（两边各一道细线）——
+   签是居中摆的，标题贴左会跟下面那排对不上；告示与索引是名录，贴左才像目录 */
+.off-tags .off-gh{width:100%;justify-content:center}
+.off-tags .off-gh::before{content:"";flex:1;height:1px;background:rgba(255,255,255,.12)}
+body[data-off="1"][data-walllight="1"] .off-tags .off-gh::before{background:rgba(0,0,0,.14)}
+.offn-grid .off-gh{grid-column:1/-1;margin:14px 0 2px}
+.offn-grid .off-gh:first-child,.offi-list .off-gh:first-child{margin-top:0}
+.offi-list .off-gh{margin:16px 0 4px}
+body[data-off="1"][data-walllight="1"] .off-gh{color:rgba(0,0,0,.42)}
+body[data-off="1"][data-walllight="1"] .off-gh::after{background:rgba(0,0,0,.14)}
+body[data-offpaper="light"] .off-gh{color:rgba(0,0,0,.42)}
+body[data-offpaper="light"] .off-gh::after{background:rgba(0,0,0,.14)}
+
 .offtools{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;
   align-items:center;justify-content:center}
 .offlink{border:0;background:none;padding:4px 8px;cursor:pointer;
@@ -1137,6 +1161,11 @@ body[data-off="1"][data-offpaper="light"]:not([data-offstyle="tag"]) #btnPause.o
   font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .offrow>button{flex:none}
+/* 「已移除」每行末尾那个 ×：把这个站点挪进「永不再现」 */
+.offrx{flex:none;width:22px;height:22px;border-radius:50%;border:0;padding:0;
+  background:transparent;color:var(--ink-faint);font:400 15px/1 var(--sans);
+  cursor:pointer;display:grid;place-items:center;transition:.16s var(--ease)}
+.offrx:hover{background:var(--f2);color:var(--ink)}
 .offadd{display:grid;grid-template-columns:1fr 1.4fr auto;gap:7px;align-items:center}
 @media (max-width:640px){
   .offn-grid{grid-template-columns:1fr}
@@ -1497,6 +1526,11 @@ body.dsearching .dtabof{display:inline-block}
 .about{margin-top:14px;padding-top:0;font-size:11.5px;line-height:1.85;color:var(--ink-faint)}
 .about .an{font-family:var(--serif);font-size:14px;letter-spacing:.14em;color:var(--ink-dim);display:block;margin-bottom:5px}
 .about b{color:var(--ink-dim);font-weight:600}
+.alinks{display:flex;flex-wrap:wrap;gap:8px;margin:7px 0 2px}
+.alinks a{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;
+  border:1px solid var(--hair-strong);color:var(--ink-dim);text-decoration:none;
+  font-size:11px;letter-spacing:.06em;transition:.18s var(--ease)}
+.alinks a:hover{border-color:var(--accent);color:var(--accent)}
 .drawer-hint{font-size:11.5px;line-height:1.7;color:var(--ink-faint);padding:2px 0 10px}
 .drawer-hint em{font-style:normal;color:var(--accent)}
 

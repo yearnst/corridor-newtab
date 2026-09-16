@@ -16,8 +16,11 @@
    同一套做法：安装与更新都不多一条警告，老用户不会因为这次更新被停用。
    一个都没授权就只显示自己钉的那几个。
 
-   哪一条都能从墙上摘掉：摘掉的是站点（按域名记），记在 offHidden 里，
-   设置里随时放回。自己钉的那几条摘掉＝直接从 offLinks 里删。
+   哪一条都能从墙上摘掉：摘掉的是站点（按域名记）。自己钉的那几条摘掉＝直接从
+   offLinks 里删；自动来的进两份名单之一：
+     · offHidden  已移除 —— 随手摘的，设置里一条条放回或「全部放回」
+     · offBlocked 永不再现 —— 明说了不想再看见的。**「全部放回」碰不到它**，
+       这正是它跟上面那份的区别：常摘常放的归前者，一辈子不想见的归后者。
 
    两件刻意不做的事：
      · 不取图标。topSites 只给站点名与网址；要图标就得再加 favicon 权限
@@ -122,7 +125,10 @@ export const keyOf = (w) => w.src === 'pin' ? w.url : w.host;
 
 export async function collect(set) {
   const n = Math.min(24, Math.max(1, Math.round(Number(set?.offN) || 8)));
-  const hidden = new Set(Array.isArray(set?.offHidden) ? set.offHidden : []);
+  const hidden = new Set([
+    ...(Array.isArray(set?.offHidden) ? set.offHidden : []),
+    ...(Array.isArray(set?.offBlocked) ? set.offBlocked : [])
+  ]);
   const raw = (Array.isArray(set?.offLinks) ? set.offLinks : [])
     .map(x => ({ url: S1(x?.url), title: S1(x?.name), src: 'pin' }))
     .filter(x => /^https?:\/\//i.test(x.url));
@@ -220,6 +226,24 @@ const item = (w, i, inner, T, tidy, vars = '') =>
       : `<button class="offx" data-del="${esc(w.key)}" title="${esc(T('offRemove'))}" aria-label="${esc(T('offRemove'))}">&#215;</button>`) +
     `</a>`;
 
+/* ---------------- 分组 ----------------
+   两处自动来源同时**都有内容**时，一面墙上混着三种来路的签会看不出所以然，
+   所以按来路分三组，每组一个很轻的小标题。只有一处有内容时不分 ——
+   一个光杆标题比不分组更碍眼。
+
+   注意：分组只管**怎么摆**。哪几条入选仍然由 collect() 里那轮
+   「两处轮流取」决定，不然按组排就等于回到「一处排满另一处露不了面」。 */
+const SRC_ORDER = ['pin', 'top', 'tab'];
+export function grouped(list) {
+  return ['top', 'tab'].every(k => list.some(w => w.src === k));
+}
+/* 返回 [{src, items:[{w, i}]}, ...]，i 是全局序号 —— 编号与彩签的色相都按整面墙连着算 */
+export function groupsOf(list) {
+  return SRC_ORDER
+    .map(src => ({ src, items: list.map((w, i) => ({ w, i })).filter(x => x.w.src === src) }))
+    .filter(g => g.items.length);
+}
+
 /* 标签页那一路：同站开了好几个就在域名后面缀上数目 */
 const sub = (w) => w.src === 'tab' && w.n > 1 ? `${w.host} · ${w.n}` : w.host;
 
@@ -251,6 +275,12 @@ export function render(list, style, T, skin = 'plain', tidy = false) {
   if (!list.length) return '';
   const n = list.length;
   const hasTab = list.some(w => w.src === 'tab');
+  const gs = grouped(list);
+  const head = (src) => gs ? `<div class="off-gh" data-src="${src}">${esc(T('offSrc_' + src))}</div>` : '';
+  /* 不分组时就是一组（没有标题），分组时按来路摊开 —— 两条路走同一段渲染代码 */
+  const blocks = (one) => (gs ? groupsOf(list) : [{ src: '', items: list.map((w, i) => ({ w, i })) }])
+    .map(g => head(g.src) + g.items.map(({ w, i }) => one(w, i)).join('')).join('');
+
   if (style === 'notice') {
     return `<div class="off-notice">
       <div class="offn-head">
@@ -259,8 +289,8 @@ export function render(list, style, T, skin = 'plain', tidy = false) {
         <div class="offn-rule"></div>
         <p class="offn-t">${esc(T('offSub'))}</p>
       </div>
-      <div class="offn-grid">${list.map((w, i) => item(w, i,
-        `<s>${no2(i)}</s><b>${esc(w.name)}</b><i>${esc(sub(w))}</i>`, T, tidy)).join('')}</div>
+      <div class="offn-grid">${blocks((w, i) => item(w, i,
+        `<s>${no2(i)}</s><b>${esc(w.name)}</b><i>${esc(sub(w))}</i>`, T, tidy))}</div>
       <div class="offadd-slot">${addTile(T, tidy)}</div>
       ${tools(T, tidy, hasTab)}
     </div>`;
@@ -268,16 +298,25 @@ export function render(list, style, T, skin = 'plain', tidy = false) {
   if (style === 'index') {
     return `<div class="off-index">
       <div class="offi-head"><b>${esc(T('offIndexTitle'))}</b><span>${esc(T('offIndexEn'))}</span></div>
-      <div class="offi-list">${list.map((w, i) => item(w, i,
-        `<b>${esc(w.name)}</b><span class="offi-dots"></span><i>${esc(sub(w))}</i>`, T, tidy)).join('')}</div>
+      <div class="offi-list">${blocks((w, i) => item(w, i,
+        `<b>${esc(w.name)}</b><span class="offi-dots"></span><i>${esc(sub(w))}</i>`, T, tidy))}</div>
       <div class="offadd-slot">${addTile(T, tidy)}</div>
       ${tools(T, tidy, hasTab)}
     </div>`;
   }
   /* 默认：展签墙。彩签那一皮的配色逐张算好，写成行内变量 */
-  return `<div class="off-tags" data-skin="${esc(skin)}">${list.map((w, i) => item(w, i,
-    `<s>${no2(i)}</s><b>${esc(w.name)}</b><i>${esc(sub(w))}</i>`, T, tidy, skinVars(i, n, skin))).join('')}
-    ${addTile(T, tidy)}</div>
+  const tile = (w, i) => item(w, i,
+    `<s>${no2(i)}</s><b>${esc(w.name)}</b><i>${esc(sub(w))}</i>`, T, tidy, skinVars(i, n, skin));
+  /* 分组时每组自己一段：小标题 + 一排签。
+     不这么分而只在同一个 flex 容器里插「占满整行」的标题，标题的宽度一受限
+     后面的签就会挤回同一行 —— 截图里一眼看得出来。 */
+  const body = gs
+    ? groupsOf(list).map(g => `<section class="off-grp">
+        <div class="off-gh" data-src="${g.src}">${esc(T('offSrc_' + g.src))}</div>
+        <div class="off-row">${g.items.map(({ w, i }) => tile(w, i)).join('')}</div>
+      </section>`).join('') + `<div class="off-row">${addTile(T, tidy)}</div>`
+    : list.map((w, i) => tile(w, i)).join('') + addTile(T, tidy);
+  return `<div class="off-tags${gs ? ' grouped' : ''}" data-skin="${esc(skin)}">${body}</div>
     <div class="off-cap">${esc(T('offSub2'))}</div>
     ${tools(T, tidy, hasTab)}`;
 }

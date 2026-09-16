@@ -61,7 +61,8 @@ export const DEFAULTS = {
   offTabs: true,              // 是否合并当前打开的标签页（要 tabs 可选权限）
   offN: 8,                    // 自动来的那批最多显示几个（自己钉的不受限）
   offLinks: [],               // 自己钉的：[{ name, url }]
-  offHidden: [],              // 从墙上摘掉的站点（按域名），设置里能放回
+  offHidden: [],              // 随手摘掉的站点（按域名），设置里能放回
+  offBlocked: [],             // 永不再现：明说了不想再看见的，「全部放回」碰不到它
   workSafe: true,
   scrollPan: true,
   cacheLimitMB: 400,
@@ -180,8 +181,11 @@ export async function getSettings() {
   s.offTop = s.offTop === undefined ? true : !!s.offTop;
   s.offTabs = s.offTabs === undefined ? true : !!s.offTabs;
   s.offN = Math.min(24, Math.max(1, Math.round(Number(s.offN) || 8)));
-  s.offHidden = (Array.isArray(s.offHidden) ? s.offHidden : [])
+  const hosts = (v) => (Array.isArray(v) ? v : [])
     .map(x => String(x || '').trim().toLowerCase()).filter(Boolean).slice(0, 200);
+  s.offBlocked = hosts(s.offBlocked);
+  /* 一个站点不该同时在两份名单里 —— 永不再现说了算 */
+  s.offHidden = hosts(s.offHidden).filter(h => !s.offBlocked.includes(h));
   s.offLinks = (Array.isArray(s.offLinks) ? s.offLinks : []).slice(0, 24)
     .map(x => ({ name: String(x?.name || '').trim().slice(0, 40),
                  url: String(x?.url || '').trim().slice(0, 500) }))

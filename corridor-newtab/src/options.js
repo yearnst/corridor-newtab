@@ -134,6 +134,10 @@ async function render() {
      <div class="about"><span class="an">长廊 CORRIDOR</span>
        ${esc(T('version'))} <b>${esc(ver)}</b><br>
        ${esc(T('author'))} <b>Charles Chern</b> · <b>@yearnst</b><br>
+       <span class="alinks">
+         <a href="https://yearnst.github.io/corridor-newtab/" target="_blank" rel="noopener noreferrer">${esc(T('siteHome'))}</a>
+         <a href="https://github.com/yearnst/corridor-newtab" target="_blank" rel="noopener noreferrer">${esc(T('siteRepo'))}</a>
+       </span>
        <span style="display:block;margin-top:8px">${esc(T('credits'))}</span>
        <span style="display:block;margin-top:6px;opacity:.8">© ${new Date().getFullYear()} Charles Chern · MIT License</span></div>`;
 
