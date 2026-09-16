@@ -54,6 +54,9 @@ export const DEFAULTS = {
   off: false,
   offStyle: 'tag',            // tag 展签墙 | notice 闭馆告示 | index 目录索引
   offTagSkin: 'plain',        // 展签的皮：plain 简约（奶油纸）| color 彩签（左右渐变的色卡）
+  /* 闭馆告示与目录索引不复用展墙，自己铺底 —— 深浅在这里选。
+     auto＝跟着设置面板那个日/月走（展签墙不用它，它的底色就是墙）。 */
+  offPaper: 'auto',           // auto | light | dark
   offTop: true,               // 是否合并 Chrome 的常访问榜（要 topSites 可选权限）
   offN: 8,                    // 最多显示几个
   offLinks: [],               // 自己钉的：[{ name, url }]
@@ -171,6 +174,7 @@ export async function getSettings() {
   s.off = !!s.off;
   if (!['tag', 'notice', 'index'].includes(s.offStyle)) s.offStyle = 'tag';
   if (!['plain', 'color'].includes(s.offTagSkin)) s.offTagSkin = 'plain';
+  if (!['auto', 'light', 'dark'].includes(s.offPaper)) s.offPaper = 'auto';
   s.offTop = s.offTop === undefined ? true : !!s.offTop;
   s.offN = Math.min(24, Math.max(1, Math.round(Number(s.offN) || 8)));
   s.offLinks = (Array.isArray(s.offLinks) ? s.offLinks : []).slice(0, 24)

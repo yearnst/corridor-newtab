@@ -476,6 +476,9 @@ async function paintPaused() {
   const style = PAUSE.styleOf(A.set);
   wrap.dataset.style = style;
   document.body.dataset.offstyle = style;      // 告示与索引那两种要把墙也撤掉
+  /* 底色：auto 跟着设置面板那个日/月走 */
+  document.body.dataset.offpaper =
+    A.set.offPaper === 'auto' ? (A.set.ui === 'light' ? 'light' : 'dark') : A.set.offPaper;
   /* 主色平时跟着当前那幅画走，暂歇时没有画 —— 把它交还给长廊自己的金色，
      不然这一屏会顶着上一幅画的颜色，看着莫名其妙 */
   for (const k of ['--accent', '--accent-lt', '--accent-raw']) document.documentElement.style.removeProperty(k);
@@ -2090,6 +2093,8 @@ async function offBlock(s) {
       { v: 'tag', t: T('offStyleTag') }, { v: 'notice', t: T('offStyleNotice') }, { v: 'index', t: T('offStyleIndex') }], s.offStyle)) +
     (s.offStyle === 'tag' ? dblock(T('offSkin'), T('offSkinDesc'), seg('offTagSkin', [
       { v: 'plain', t: T('offSkinPlain') }, { v: 'color', t: T('offSkinColor') }], s.offTagSkin)) : '') +
+    (s.offStyle === 'tag' ? '' : dblock(T('offPaper'), T('offPaperDesc'), seg('offPaper', [
+      { v: 'auto', t: T('offPaperAuto') }, { v: 'light', t: T('offPaperLight') }, { v: 'dark', t: T('offPaperDark') }], s.offPaper))) +
     `<div class="dblock">
       <div class="dbt">${esc(T('offTop'))}</div>
       <div class="dbd">${esc(granted ? T('offTopOn') : T('offTopOff'))}</div>
@@ -2926,10 +2931,11 @@ async function applySetting(key, val) {
   }
   A.set = await S.setSettings({ [key]: val });
   /* 暂歇那一组：改完只重画那一屏 —— 展厅还睡着，别去叫醒它 */
-  if (['offStyle', 'offTagSkin', 'offTop', 'offN', 'offLinks'].includes(key)) { if (pausedOn()) await paintPaused(); return; }
+  if (['offStyle', 'offTagSkin', 'offPaper', 'offTop', 'offN', 'offLinks'].includes(key)) { if (pausedOn()) await paintPaused(); return; }
   if (key === 'off') { await paintPaused();
     if (!val) { A.painted = null; await show(A.list[A.idx] || A.list[0]); MODES.setPaused(A.paused); startTimer(); armIdle(); }
     return; }
+  if (key === 'ui' && pausedOn()) await paintPaused();
   if (key === 'ai') { try { chrome.runtime.sendMessage({ type: 'ai-arm' }); } catch { } }
   [A.lang, A.other] = resolveLang(A.set);
   document.body.dataset.mode = A.set.mode;
@@ -3204,7 +3210,7 @@ function wire() {
     const open = $$('.sheet.open').length > 0;
     /* 暂歇时画廊那套快捷键没有对象可操作，只留设置、关闭面板与开关本身 */
     if (pausedOn() && !['Escape', 's', 'S'].includes(e.key)) {
-      if (e.key === 'p' || e.key === 'P') { e.preventDefault(); togglePause(); }
+      if (e.key === 'q' || e.key === 'Q') { e.preventDefault(); togglePause(); }
       return;
     }
     switch (e.key) {
@@ -3224,7 +3230,7 @@ function wire() {
       case 'm': case 'M': if (!open) { e.preventDefault(); $('#btnMode').click(); } break;
       case 'd': case 'D': if (A.cur) { e.preventDefault(); download(A.cur); } break;
       case 'x': case 'X': if (!open) { e.preventDefault(); hideCurrent(); } break;
-      case 'p': case 'P': if (!open) { e.preventDefault(); togglePause(); } break;
+      case 'q': case 'Q': if (!open) { e.preventDefault(); togglePause(); } break;
     }
   });
   ['mousemove', 'keydown', 'wheel', 'pointerdown'].forEach(ev => addEventListener(ev, armIdle, { passive: true }));
