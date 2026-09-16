@@ -466,6 +466,9 @@ async function paintPaused() {
   wrap.hidden = !on;
   updatePauseBtn();
   if (!on) { box.innerHTML = ''; MODES.setPaused(A.paused); startTimer(); return; }
+  /* 启动遮罩平时是 show() 画完第一幅时撤掉的；一打开就处于暂歇时根本不会走到
+     show()，不在这儿撤一次，整页就一直盖着那层「CORRIDOR」。 */
+  $('#boot').classList.add('gone');
 
   /* 暂歇时停掉轮换与各模式的动画：不展画就别在后台空转 */
   MODES.stopLoops(); MODES.setPaused(true);
@@ -477,7 +480,7 @@ async function paintPaused() {
      不然这一屏会顶着上一幅画的颜色，看着莫名其妙 */
   for (const k of ['--accent', '--accent-lt', '--accent-raw']) document.documentElement.style.removeProperty(k);
   const [list, granted] = await Promise.all([PAUSE.collect(A.set), PAUSE.hasTop()]);
-  box.innerHTML = list.length ? PAUSE.render(list, PAUSE.styleOf(A.set), T)
+  box.innerHTML = list.length ? PAUSE.render(list, style, T, PAUSE.skinOf(A.set))
                               : PAUSE.renderEmpty(granted, T);
   bindPaused(box);
 }
@@ -491,6 +494,39 @@ function bindPaused(box) {
   };
   const cfg = $('#offCfg', box);
   if (cfg) cfg.onclick = () => { A.dtab = 'show'; A.fold.off = false; openDrawer(); renderDrawer(true); };
+
+  /* 墙上那张「＋」：就地展开一个小表单，钉完立刻重画 */
+  const tile = $('#offPin', box), form = $('#offPinForm', box);
+  if (tile && form) {
+    tile.onclick = () => { tile.hidden = true; form.hidden = false; $('#offPinName', box)?.focus(); };
+    const close = () => { form.hidden = true; tile.hidden = false; };
+    $('#offPinCancel', box).onclick = close;
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const name0 = S1($('#offPinName', box).value);
+      let url = S1($('#offPinUrl', box).value);
+      if (!url) { toast(T('offNeedUrl')); return; }
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+      let host = '';
+      try { host = new URL(url).host; } catch { }
+      if (!host) { toast(T('offBadUrl')); return; }
+      const links = (A.set.offLinks || []).concat([{ name: name0 || host.replace(/^www\./i, ''), url }]).slice(0, 24);
+      A.set = await S.setSettings({ offLinks: links });
+      await paintPaused();
+      if (drawerOpen()) renderDrawer();
+    };
+    /* 表单里的按键别漏到画廊快捷键上去 */
+    form.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Escape') { e.preventDefault(); close(); } };
+  }
+  /* 自己钉的那几张，指上去右上角有个 × */
+  $$('[data-unpin]', box).forEach(b => b.onclick = async (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const url = b.dataset.unpin;
+    const links = (A.set.offLinks || []).filter(x => x.url !== url);
+    A.set = await S.setSettings({ offLinks: links });
+    await paintPaused();
+    if (drawerOpen()) renderDrawer();
+  });
 }
 function updatePauseBtn() {
   const b = $('#btnPause'); if (!b) return;
@@ -2052,6 +2088,8 @@ async function offBlock(s) {
   return `<div class="dblock"><div class="dbd">${esc(T('offDesc'))}</div></div>` +
     dblock(T('offStyle'), T('offStyleDesc'), seg('offStyle', [
       { v: 'tag', t: T('offStyleTag') }, { v: 'notice', t: T('offStyleNotice') }, { v: 'index', t: T('offStyleIndex') }], s.offStyle)) +
+    (s.offStyle === 'tag' ? dblock(T('offSkin'), T('offSkinDesc'), seg('offTagSkin', [
+      { v: 'plain', t: T('offSkinPlain') }, { v: 'color', t: T('offSkinColor') }], s.offTagSkin)) : '') +
     `<div class="dblock">
       <div class="dbt">${esc(T('offTop'))}</div>
       <div class="dbd">${esc(granted ? T('offTopOn') : T('offTopOff'))}</div>
@@ -2062,7 +2100,7 @@ async function offBlock(s) {
       </div>
       <div class="dbd" style="margin-top:7px;opacity:.75">${esc(T('offTopNote'))}</div>
     </div>` +
-    dblock(T('offN'), '', numSel('offN', s.offN, [4, 6, 8, 10, 12].map(v => ({ v, t: String(v) })), null, 1, 24, T('offUnit'))) +
+    dblock(T('offN'), T('offNDesc'), numSel('offN', s.offN, [4, 6, 8, 10, 12].map(v => ({ v, t: String(v) })), null, 1, 24, T('offUnit'))) +
     `<div class="dblock">
       <div class="dbt">${esc(T('offPinned'))}</div>
       <div class="dbd">${esc(T('offPinnedDesc'))}</div>
@@ -2888,7 +2926,7 @@ async function applySetting(key, val) {
   }
   A.set = await S.setSettings({ [key]: val });
   /* 暂歇那一组：改完只重画那一屏 —— 展厅还睡着，别去叫醒它 */
-  if (['offStyle', 'offTop', 'offN'].includes(key)) { if (pausedOn()) await paintPaused(); return; }
+  if (['offStyle', 'offTagSkin', 'offTop', 'offN', 'offLinks'].includes(key)) { if (pausedOn()) await paintPaused(); return; }
   if (key === 'off') { await paintPaused();
     if (!val) { A.painted = null; await show(A.list[A.idx] || A.list[0]); MODES.setPaused(A.paused); startTimer(); armIdle(); }
     return; }

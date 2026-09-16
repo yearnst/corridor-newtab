@@ -941,6 +941,54 @@ body[data-off="1"] #stage{filter:none}
 .off-tags .offitem>i{display:block;font-style:normal;font-size:10px;color:#6a645a;
   font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* —— 彩签：一排签从左到右铺成一柄色卡扇面 ——
+   配色逐张由 pause.js 算好，以 --c1/--c2/--ink/--num/--dim 写在行内。
+   （为什么不用 oklch：它要 Chrome 111，这个扩展的底线是 110。） */
+.off-tags[data-skin="color"] .offitem{
+  background:linear-gradient(100deg,var(--c1),var(--c2));
+  color:var(--ink);
+  box-shadow:0 2px 5px rgba(0,0,0,.34),0 16px 34px rgba(0,0,0,.4)}
+.off-tags[data-skin="color"] .offitem>s{color:var(--num)}
+.off-tags[data-skin="color"] .offitem>b{color:var(--ink)}
+.off-tags[data-skin="color"] .offitem>i{color:var(--dim)}
+.off-tags[data-skin="color"] .offitem:hover{
+  box-shadow:0 4px 9px rgba(0,0,0,.34),0 24px 48px rgba(0,0,0,.48)}
+
+/* 自己钉的那张，指上去右上角一个 × */
+.offx{position:absolute;top:4px;right:4px;width:19px;height:19px;border-radius:50%;
+  border:0;background:rgba(0,0,0,.07);color:rgba(0,0,0,.42);
+  font:400 14px/1 var(--sans);cursor:pointer;opacity:0;transition:.18s var(--ease);
+  display:grid;place-items:center;padding:0}
+.off-tags .offitem{position:relative}
+.off-tags .offitem:hover .offx,.offx:focus-visible{opacity:1}
+.offx:hover{background:rgba(0,0,0,.16);color:rgba(0,0,0,.72)}
+.offn-grid .offitem,.offi-list .offitem{position:relative}
+.offn-grid .offx,.offi-list .offx{background:rgba(255,255,255,.08);color:var(--ink-faint);top:50%;right:0;transform:translateY(-50%)}
+.offn-grid .offitem:hover .offx,.offi-list .offitem:hover .offx{opacity:1}
+.offn-grid .offx:hover,.offi-list .offx:hover{background:rgba(255,255,255,.16);color:var(--ink)}
+
+/* 墙上那张「＋」：手动钉一个站点不必再翻设置 */
+.offadd-tile{display:grid;place-items:center;gap:6px;align-content:center;
+  min-width:148px;min-height:86px;padding:13px 16px;border-radius:1.5px;
+  border:1px dashed rgba(255,255,255,.26);background:rgba(255,255,255,.04);
+  color:rgba(255,255,255,.5);cursor:pointer;transition:.22s var(--ease)}
+.offadd-tile:hover{border-color:rgba(255,255,255,.5);color:rgba(255,255,255,.8);
+  background:rgba(255,255,255,.08)}
+.offadd-tile>s{text-decoration:none;font:300 20px/1 var(--sans)}
+.offadd-tile>b{font-weight:400;font-size:11.5px;letter-spacing:.1em}
+body[data-off="1"][data-walllight="1"] .offadd-tile{border-color:rgba(0,0,0,.24);color:rgba(0,0,0,.5);background:rgba(0,0,0,.04)}
+body[data-off="1"][data-walllight="1"] .offadd-tile:hover{border-color:rgba(0,0,0,.42);color:rgba(0,0,0,.76)}
+.offadd-form{display:flex;flex-direction:column;gap:7px;min-width:230px;
+  padding:13px 14px 14px;border-radius:3px;
+  background:rgba(16,16,18,.92);border:1px solid var(--hair-strong);backdrop-filter:blur(18px)}
+.offadd-form[hidden]{display:none}
+.offadd-form .tin{width:100%}
+.offadd-row{display:flex;gap:7px}
+/* 告示与索引那两种：「＋」另起一行，居中 */
+.offadd-slot{margin-top:26px;display:flex;justify-content:center;gap:10px}
+.off-index .offadd-slot,.off-notice .offadd-slot{margin-top:22px}
+.offadd-slot .offadd-tile{min-height:0;padding:9px 18px;grid-auto-flow:column}
+
 .off-cap{margin-top:34px;text-align:center;font-size:10.5px;letter-spacing:.3em;
   color:rgba(255,255,255,.42);text-transform:uppercase}
 body[data-off="1"][data-walllight="1"] .off-cap{color:rgba(0,0,0,.42)}
