@@ -58,8 +58,10 @@ export const DEFAULTS = {
      auto＝跟着设置面板那个日/月走（展签墙不用它，它的底色就是墙）。 */
   offPaper: 'auto',           // auto | light | dark
   offTop: true,               // 是否合并 Chrome 的常访问榜（要 topSites 可选权限）
-  offN: 8,                    // 最多显示几个
+  offTabs: true,              // 是否合并当前打开的标签页（要 tabs 可选权限）
+  offN: 8,                    // 自动来的那批最多显示几个（自己钉的不受限）
   offLinks: [],               // 自己钉的：[{ name, url }]
+  offHidden: [],              // 从墙上摘掉的站点（按域名），设置里能放回
   workSafe: true,
   scrollPan: true,
   cacheLimitMB: 400,
@@ -176,7 +178,10 @@ export async function getSettings() {
   if (!['plain', 'color'].includes(s.offTagSkin)) s.offTagSkin = 'plain';
   if (!['auto', 'light', 'dark'].includes(s.offPaper)) s.offPaper = 'auto';
   s.offTop = s.offTop === undefined ? true : !!s.offTop;
+  s.offTabs = s.offTabs === undefined ? true : !!s.offTabs;
   s.offN = Math.min(24, Math.max(1, Math.round(Number(s.offN) || 8)));
+  s.offHidden = (Array.isArray(s.offHidden) ? s.offHidden : [])
+    .map(x => String(x || '').trim().toLowerCase()).filter(Boolean).slice(0, 200);
   s.offLinks = (Array.isArray(s.offLinks) ? s.offLinks : []).slice(0, 24)
     .map(x => ({ name: String(x?.name || '').trim().slice(0, 40),
                  url: String(x?.url || '').trim().slice(0, 500) }))

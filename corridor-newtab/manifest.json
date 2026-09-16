@@ -18,9 +18,7 @@
     "https://commons.wikimedia.org/*",
     "https://www.wikidata.org/*"
   ],
-  "optional_permissions": [
-    "topSites"
-  ],
+  "optional_permissions": ["topSites", "tabs"],
   "optional_host_permissions": [
     "https://*/*",
     "http://*/*"

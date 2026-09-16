@@ -6,11 +6,18 @@
    所以「临时关闭」的诚实做法是：这一页还是长廊的，只是不展画了，
    改成一块安静的落脚地 —— 上面是你常去的那几个站点。
 
-   站点从哪来，两处合流：
+   站点从哪来，三处合流：
      · 自己钉的（offLinks）—— 存在本机，零权限，想放什么放什么
-     · Chrome 算出来的常访问（chrome.topSites）—— 要权限，所以做成**可选权限**，
-       第一次开启时才申请。跟 AI 接口地址是同一套做法：安装与更新都不多一条警告，
-       老用户不会因为这次更新被停用。没授权就只显示自己钉的那几个。
+     · Chrome 算出来的常访问（chrome.topSites）
+     · 当前 profile 里打开着的标签页（chrome.tabs）—— 按站点汇总，几个标签页
+       同属一个站就并成一条，标签页多的排前面
+
+   后两处都要权限，所以都做成**可选权限**，第一次开启时才申请。跟 AI 接口地址是
+   同一套做法：安装与更新都不多一条警告，老用户不会因为这次更新被停用。
+   一个都没授权就只显示自己钉的那几个。
+
+   哪一条都能从墙上摘掉：摘掉的是站点（按域名记），记在 offHidden 里，
+   设置里随时放回。自己钉的那几条摘掉＝直接从 offLinks 里删。
 
    两件刻意不做的事：
      · 不取图标。topSites 只给站点名与网址；要图标就得再加 favicon 权限
@@ -34,6 +41,18 @@ export async function askTop() {                 // 必须在用户点击里调�
 export async function dropTop() {
   if (!globalThis.chrome?.permissions) return false;
   try { return await chrome.permissions.remove({ permissions: ['topSites'] }); } catch { return false; }
+}
+export async function hasTabs() {
+  if (!globalThis.chrome?.permissions) return false;
+  try { return await chrome.permissions.contains({ permissions: ['tabs'] }); } catch { return false; }
+}
+export async function askTabs() {                // 同样必须在用户点击里调用
+  if (!globalThis.chrome?.permissions) return false;
+  try { return await chrome.permissions.request({ permissions: ['tabs'] }); } catch { return false; }
+}
+export async function dropTabs() {
+  if (!globalThis.chrome?.permissions) return false;
+  try { return await chrome.permissions.remove({ permissions: ['tabs'] }); } catch { return false; }
 }
 
 /* ---------------- 取站点 ---------------- */
@@ -66,33 +85,77 @@ async function topSites() {
   } catch { return []; }
 }
 
-/* 自己钉的在前，Chrome 那张榜在后，按域名去重。
+/* 打开着的标签页，按站点汇总：同一个域名的几个标签页并成一条，
+   开得多的排前面。一条只占一张签 —— 十二个知乎标签页不该把整面墙占满。
+   url 取法：只开了一个就指向那一个页面（更有用），开了好几个就指向站点首页。 */
+export async function openTabs() {
+  if (!globalThis.chrome?.tabs?.query) return [];
+  let list = [];
+  try { list = await chrome.tabs.query({}); } catch { return []; }
+  const by = new Map();
+  for (const t of (Array.isArray(list) ? list : [])) {
+    const url = S1(t?.url);
+    if (!/^https?:\/\//i.test(url)) continue;         // chrome:// 与扩展页不算
+    const h = hostOf(url);
+    if (!h) continue;
+    let g = by.get(h);
+    /* 站点首页要用原样的 origin：hostOf 去掉的那个 www. 只用来归类与显示，
+       真拿去拼网址的话，有些站点的裸域根本不开门。 */
+    if (!g) { let origin = ''; try { origin = new URL(url).origin; } catch { }
+      g = { host: h, origin, url, title: S1(t?.title), n: 0, ids: [] }; by.set(h, g); }
+    g.n++;
+    if (typeof t?.id === 'number') g.ids.push(t.id);
+    if (!g.title) g.title = S1(t?.title);
+  }
+  return [...by.values()]
+    .sort((a, b) => b.n - a.n)
+    .map(g => ({
+      url: g.n > 1 ? (g.origin ? g.origin + '/' : g.url) : g.url,
+      title: g.n > 1 ? (niceName(g.title, g.url) || g.host) : g.title,
+      n: g.n, ids: g.ids
+    }));
+}
+
+/* 自己钉的在前，两处自动来的在后，按域名去重。
    去重按域名而不是完整网址：同一个站点的两条路径没必要占两张签。 */
+export const keyOf = (w) => w.src === 'pin' ? w.url : w.host;
+
 export async function collect(set) {
   const n = Math.min(24, Math.max(1, Math.round(Number(set?.offN) || 8)));
+  const hidden = new Set(Array.isArray(set?.offHidden) ? set.offHidden : []);
   const raw = (Array.isArray(set?.offLinks) ? set.offLinks : [])
-    .map(x => ({ url: S1(x?.url), title: S1(x?.name), pin: true }))
+    .map(x => ({ url: S1(x?.url), title: S1(x?.name), src: 'pin' }))
     .filter(x => /^https?:\/\//i.test(x.url));
-  const auto = (set?.offTop === false) ? [] : await topSites();
+  const [top, tabs] = await Promise.all([
+    set?.offTop === false ? [] : topSites(),
+    set?.offTabs === false ? [] : openTabs()
+  ]);
   const seen = new Set();
-  const take = (x) => {
+  const take = (x, src) => {
     const h = hostOf(x.url);
-    const k = h + (x.pin ? '|' + x.url : '');     // 自己钉的允许同域多条
-    if (!h || (seen.has(h) && !x.pin) || seen.has(k)) return null;
+    const pin = src === 'pin';
+    const k = h + (pin ? '|' + x.url : '');       // 自己钉的允许同域多条
+    if (!h || (!pin && hidden.has(h))) return null;
+    if (seen.has(k) || (!pin && seen.has(h))) return null;
     seen.add(k); seen.add(h);
-    return { url: x.url, host: h, name: niceName(x.title, x.url), pin: !!x.pin };
+    const it = { url: x.url, host: h, name: niceName(x.title, x.url), src, pin };
+    if (src === 'tab') { it.n = x.n || 1; it.ids = x.ids || []; }
+    it.key = keyOf(it);
+    return it;
   };
-  /* 自己钉的一定会显示 —— 「最多显示几个」削的是 Chrome 那张榜。
+  /* 自己钉的一定会显示 —— 「最多显示几个」削的是自动来的那批。
      不这样的话，钉满之后再从墙上钉一个，会看着像没反应。 */
-  const pinned = raw.map(take).filter(Boolean).slice(0, 24);
+  const pinned = raw.map(x => take(x, 'pin')).filter(Boolean).slice(0, 24);
   const room = Math.max(0, n - pinned.length);
+  /* 两处自动来源轮流取，谁也不饿着：只按顺序排的话，常访问榜一满
+     标签页那一路就永远露不了面。 */
   const rest = [];
-  for (const x of auto) {
-    if (rest.length >= room) break;
-    const it = take(x);
-    if (it) rest.push(it);
+  let i = 0, j = 0;
+  while (rest.length < room && (i < top.length || j < tabs.length)) {
+    if (i < top.length) { const it = take(top[i++], 'top'); if (it) { rest.push(it); if (rest.length >= room) break; } }
+    if (j < tabs.length) { const it = take(tabs[j++], 'tab'); if (it) rest.push(it); }
   }
-  return pinned.concat(rest);
+  return pinned.concat(rest.slice(0, room));
 }
 
 /* ---------------- 展签的两种皮 ----------------
@@ -144,15 +207,26 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<'
 const no2 = (i) => String(i + 1).padStart(2, '0');
 
 /* 每一条都是 <a>：中键、Cmd 点击、右键「在新标签页打开」全都照常管用，
-   这是拿 <div> + onclick 换不来的。 */
-const item = (w, i, inner, vars = '') =>
+   这是拿 <div> + onclick 换不来的。
+
+   每一条右上角（告示与索引里是右侧）一个 × —— 自己钉的那几条是从名单里删掉，
+   自动来的是记进「已移除」，下次不再露面。整理模式下 × 让位给勾选框。 */
+const item = (w, i, inner, T, tidy, vars = '') =>
   `<a class="offitem${w.pin ? ' pinned' : ''}" href="${esc(w.url)}" data-i="${i}"
-      title="${esc(w.url)}"${vars}>${inner}${
-    w.pin ? `<button class="offx" data-unpin="${esc(w.url)}" title="移除" aria-label="移除">&#215;</button>` : ''}</a>`;
+      data-k="${esc(w.key)}" data-src="${esc(w.src)}"${w.ids && w.ids.length ? ` data-ids="${esc(w.ids.join(','))}"` : ''}
+      title="${esc(w.url)}"${vars}>${inner}` +
+    (tidy
+      ? `<span class="offck" aria-hidden="true"></span>`
+      : `<button class="offx" data-del="${esc(w.key)}" title="${esc(T('offRemove'))}" aria-label="${esc(T('offRemove'))}">&#215;</button>`) +
+    `</a>`;
+
+/* 标签页那一路：同站开了好几个就在域名后面缀上数目 */
+const sub = (w) => w.src === 'tab' && w.n > 1 ? `${w.host} · ${w.n}` : w.host;
 
 /* 墙上那张「＋」：手动钉一个站点不必再翻设置。
-   点一下就地展开成一个小表单 —— 这一屏本来就是给「顺手」用的。 */
-const addTile = (T) => `<button class="offadd-tile" id="offPin">
+   点一下就地展开成一个小表单 —— 这一屏本来就是给「顺手」用的。
+   整理的时候它让开，免得跟勾选框抢地方。 */
+const addTile = (T, tidy) => tidy ? '' : `<button class="offadd-tile" id="offPin">
     <s>＋</s><b>${esc(T('offPinHere'))}</b></button>
   <form class="offadd-form" id="offPinForm" hidden>
     <input class="tin" id="offPinName" placeholder="${esc(T('offNamePh'))}" spellcheck="false" autocomplete="off">
@@ -163,9 +237,20 @@ const addTile = (T) => `<button class="offadd-tile" id="offPin">
     </div>
   </form>`;
 
-export function render(list, style, T, skin = 'plain') {
+/* 不整理的时候只留一个很轻的「整理」；进了整理模式才摊开那一条工具栏。
+   墙面平时是干净的，这一点比少点一次更要紧。 */
+const tools = (T, tidy, hasTab) => `<div class="offtools">` + (tidy
+  ? `<span class="offbar-n" id="offSelN">${esc(T('offSelNone'))}</span>
+     <button class="bigbtn sm" id="offSelAll">${esc(T('offSelAll'))}</button>
+     <button class="bigbtn sm pri" id="offDelSel" disabled>${esc(T('offDelSel'))}</button>` +
+    (hasTab ? `<button class="bigbtn sm" id="offCloseSel" disabled>${esc(T('offCloseSel'))}</button>` : '') +
+    `<button class="bigbtn sm" id="offTidyDone">${esc(T('offTidyDone'))}</button>`
+  : `<button class="offlink" id="offTidy">${esc(T('offTidy'))}</button>`) + `</div>`;
+
+export function render(list, style, T, skin = 'plain', tidy = false) {
   if (!list.length) return '';
   const n = list.length;
+  const hasTab = list.some(w => w.src === 'tab');
   if (style === 'notice') {
     return `<div class="off-notice">
       <div class="offn-head">
@@ -175,23 +260,26 @@ export function render(list, style, T, skin = 'plain') {
         <p class="offn-t">${esc(T('offSub'))}</p>
       </div>
       <div class="offn-grid">${list.map((w, i) => item(w, i,
-        `<s>${no2(i)}</s><b>${esc(w.name)}</b><i>${esc(w.host)}</i>`)).join('')}</div>
-      <div class="offadd-slot">${addTile(T)}</div>
+        `<s>${no2(i)}</s><b>${esc(w.name)}</b><i>${esc(sub(w))}</i>`, T, tidy)).join('')}</div>
+      <div class="offadd-slot">${addTile(T, tidy)}</div>
+      ${tools(T, tidy, hasTab)}
     </div>`;
   }
   if (style === 'index') {
     return `<div class="off-index">
       <div class="offi-head"><b>${esc(T('offIndexTitle'))}</b><span>${esc(T('offIndexEn'))}</span></div>
       <div class="offi-list">${list.map((w, i) => item(w, i,
-        `<b>${esc(w.name)}</b><span class="offi-dots"></span><i>${esc(w.host)}</i>`)).join('')}</div>
-      <div class="offadd-slot">${addTile(T)}</div>
+        `<b>${esc(w.name)}</b><span class="offi-dots"></span><i>${esc(sub(w))}</i>`, T, tidy)).join('')}</div>
+      <div class="offadd-slot">${addTile(T, tidy)}</div>
+      ${tools(T, tidy, hasTab)}
     </div>`;
   }
   /* 默认：展签墙。彩签那一皮的配色逐张算好，写成行内变量 */
   return `<div class="off-tags" data-skin="${esc(skin)}">${list.map((w, i) => item(w, i,
-    `<s>${no2(i)}</s><b>${esc(w.name)}</b><i>${esc(w.host)}</i>`, skinVars(i, n, skin))).join('')}
-    ${addTile(T)}</div>
-    <div class="off-cap">${esc(T('offSub2'))}</div>`;
+    `<s>${no2(i)}</s><b>${esc(w.name)}</b><i>${esc(sub(w))}</i>`, T, tidy, skinVars(i, n, skin))).join('')}
+    ${addTile(T, tidy)}</div>
+    <div class="off-cap">${esc(T('offSub2'))}</div>
+    ${tools(T, tidy, hasTab)}`;
 }
 
 /* 一条都没有时的那一屏：别空着，告诉用户下一步点哪儿 */
@@ -205,6 +293,6 @@ export function renderEmpty(granted, T) {
       ${granted ? '' : `<button class="bigbtn pri" id="offAsk">${esc(T('offAsk'))}</button>`}
       <button class="bigbtn" id="offCfg">${esc(T('offCfg'))}</button>
     </div>
-    <div class="offadd-slot">${addTile(T)}</div>
+    <div class="offadd-slot">${addTile(T, false)}</div>
   </div>`;
 }

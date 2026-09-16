@@ -61,7 +61,9 @@ const A = {                       // 应用状态
   fold: { aiprompt: true, chrome: true }, dq: '', labFlip: false,
   tr: {}, trAbort: null, trStat: null, diag: null, langNew: '',
   pbAbort: null, pbRows: null, pbOpen: false,
-  libSrcs: [], libOpen: '', libAbort: null
+  libSrcs: [], libOpen: '', libAbort: null,
+  /* 暂歇「整理」的临时状态：当前那一屏的清单、是否在整理、勾中了哪几条 —— 都不进设置 */
+  offList: [], offTidy: false, offSel: new Set()
 };
 const T = (k, v) => t(A.lang, k, v);
 const dt = (v) => A.lang === 'zh' ? String(v ?? '') : enDate(v);   // 年代/生卒/尺寸的中文限定词
@@ -483,9 +485,35 @@ async function paintPaused() {
      不然这一屏会顶着上一幅画的颜色，看着莫名其妙 */
   for (const k of ['--accent', '--accent-lt', '--accent-raw']) document.documentElement.style.removeProperty(k);
   const [list, granted] = await Promise.all([PAUSE.collect(A.set), PAUSE.hasTop()]);
-  box.innerHTML = list.length ? PAUSE.render(list, style, T, PAUSE.skinOf(A.set))
+  A.offList = list;
+  if (!list.length) A.offTidy = false;
+  /* 勾中的那几条可能已经被删掉了（比如刚关掉的标签页）—— 别留在选区里 */
+  const keys = new Set(list.map(w => w.key));
+  A.offSel = new Set([...A.offSel].filter(k => keys.has(k)));
+  box.innerHTML = list.length ? PAUSE.render(list, style, T, PAUSE.skinOf(A.set), A.offTidy)
                               : PAUSE.renderEmpty(granted, T);
   bindPaused(box);
+}
+/* 摘掉一条：自己钉的是从名单里删，自动来的是记进「已移除」（按域名） */
+async function offRemove(keys) {
+  const sel = (A.offList || []).filter(w => keys.includes(w.key));
+  if (!sel.length) return;
+  const links = (A.set.offLinks || []).filter(x => !sel.some(w => w.pin && w.url === x.url));
+  const hid = new Set(A.set.offHidden || []);
+  sel.filter(w => !w.pin).forEach(w => hid.add(w.host));
+  A.set = await S.setSettings({ offLinks: links, offHidden: [...hid] });
+  A.offSel = new Set();
+  await paintPaused();
+  if (drawerOpen()) renderDrawer();
+}
+const offSelTabIds = () => (A.offList || [])
+  .filter(w => w.src === 'tab' && A.offSel.has(w.key))
+  .flatMap(w => w.ids || []);
+function offSyncBar(box) {
+  const n = A.offSel.size;
+  const lab = $('#offSelN', box); if (lab) lab.textContent = n ? T('offSelN', { n }) : T('offSelNone');
+  const del = $('#offDelSel', box); if (del) del.disabled = !n;
+  const cl = $('#offCloseSel', box); if (cl) cl.disabled = !offSelTabIds().length;
 }
 function bindPaused(box) {
   const ask = $('#offAsk', box);
@@ -521,15 +549,50 @@ function bindPaused(box) {
     /* 表单里的按键别漏到画廊快捷键上去 */
     form.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Escape') { e.preventDefault(); close(); } };
   }
-  /* 自己钉的那几张，指上去右上角有个 × */
-  $$('[data-unpin]', box).forEach(b => b.onclick = async (e) => {
+  /* 每一张指上去右上角都有个 × —— 点了这一条就不再出现，后面的顺移上来 */
+  $$('[data-del]', box).forEach(b => b.onclick = async (e) => {
     e.preventDefault(); e.stopPropagation();
-    const url = b.dataset.unpin;
-    const links = (A.set.offLinks || []).filter(x => x.url !== url);
-    A.set = await S.setSettings({ offLinks: links });
-    await paintPaused();
-    if (drawerOpen()) renderDrawer();
+    await offRemove([b.dataset.del]);
   });
+
+  /* ---- 整理模式 ---- */
+  const tid = $('#offTidy', box);
+  if (tid) tid.onclick = async () => { A.offTidy = true; A.offSel = new Set(); await paintPaused(); };
+  const done = $('#offTidyDone', box);
+  if (done) done.onclick = async () => { A.offTidy = false; A.offSel = new Set(); await paintPaused(); };
+
+  if (A.offTidy) {
+    const items = $$('.offitem', box);
+    /* 整理的时候点一张是勾选，不是跳转 —— 正在挑要删哪几个，别把人带走 */
+    items.forEach(a => a.onclick = (e) => {
+      e.preventDefault();
+      const k = a.dataset.k;
+      if (A.offSel.has(k)) A.offSel.delete(k); else A.offSel.add(k);
+      a.classList.toggle('sel', A.offSel.has(k));
+      offSyncBar(box);
+    });
+    items.forEach(a => a.classList.toggle('sel', A.offSel.has(a.dataset.k)));
+    const all = $('#offSelAll', box);
+    if (all) all.onclick = () => {
+      const every = items.length > 0 && items.every(a => A.offSel.has(a.dataset.k));
+      A.offSel = new Set(every ? [] : items.map(a => a.dataset.k));   // 全选过了就再点一次全不选
+      items.forEach(a => a.classList.toggle('sel', A.offSel.has(a.dataset.k)));
+      offSyncBar(box);
+    };
+    const del = $('#offDelSel', box);
+    if (del) del.onclick = async () => { await offRemove([...A.offSel]); };
+    /* 关掉标签页是另一回事，所以给的是另一个按钮：× 只管墙面，这个才动浏览器 */
+    const cl = $('#offCloseSel', box);
+    if (cl) cl.onclick = async () => {
+      const ids = offSelTabIds();
+      if (!ids.length) return;
+      try { await chrome.tabs.remove(ids); } catch { }
+      toast(T('offClosed', { n: ids.length }));
+      A.offSel = new Set();
+      await paintPaused();
+    };
+    offSyncBar(box);
+  }
 }
 function updatePauseBtn() {
   const b = $('#btnPause'); if (!b) return;
@@ -540,6 +603,7 @@ function updatePauseBtn() {
 }
 async function togglePause(force) {
   const next = force === undefined ? !pausedOn() : !!force;
+  if (!next) { A.offTidy = false; A.offSel = new Set(); }   // 回到展出就把整理收了
   A.set = await S.setSettings({ off: next });
   await paintPaused();
   if (!next) {                                          // 回到展出：重新起画
@@ -1966,6 +2030,31 @@ function bindOff(body) {
     A.set = await S.setSettings({ offLinks: links });
     renderDrawer(); if (pausedOn()) paintPaused();
   });
+  /* 标签页那一路的授权，跟常访问榜同一套 */
+  const tg = $('#offTabGrant', body);
+  if (tg) tg.onclick = async () => {                     // 必须在点击里调用
+    const ok = await PAUSE.askTabs();
+    if (ok) { A.set = await S.setSettings({ offTabs: true }); toast(T('offGranted')); }
+    else toast(T('offTabsDenied'));
+    renderDrawer(); if (pausedOn()) paintPaused();
+  };
+  const td = $('#offTabDrop', body);
+  if (td) td.onclick = async () => {
+    await PAUSE.dropTabs();
+    toast(T('offDropped'));
+    renderDrawer(); if (pausedOn()) paintPaused();
+  };
+  /* 已移除的站点：一条条放回，或者一次清空名单 */
+  $$('[data-offback]', body).forEach(b => b.onclick = async () => {
+    const h = b.dataset.offback;
+    A.set = await S.setSettings({ offHidden: (A.set.offHidden || []).filter(x => x !== h) });
+    renderDrawer(); if (pausedOn()) paintPaused();
+  });
+  const ba = $('#offBackAll', body);
+  if (ba) ba.onclick = async () => {
+    A.set = await S.setSettings({ offHidden: [] });
+    renderDrawer(); if (pausedOn()) paintPaused();
+  };
 }
 
 /* 备份面板上的四个按钮 */
@@ -2083,8 +2172,9 @@ async function saveJSON(obj, name) {
    开关本身挂在组标题上（跟顶栏那个按钮同一个设置），
    下面是这一屏长什么样、站点从哪来、自己钉哪几个。 */
 async function offBlock(s) {
-  const granted = await PAUSE.hasTop();
+  const [granted, tabsOk] = await Promise.all([PAUSE.hasTop(), PAUSE.hasTabs()]);
   const links = Array.isArray(s.offLinks) ? s.offLinks : [];
+  const hidden = Array.isArray(s.offHidden) ? s.offHidden : [];
   const rows = links.map((x, i) => `<div class="offrow">
       <b>${esc(x.name || PAUSE.hostOf(x.url))}</b><i>${esc(x.url)}</i>
       <button class="bigbtn sm" data-offdel="${i}">${esc(T('offDel'))}</button></div>`).join('');
@@ -2104,6 +2194,16 @@ async function offBlock(s) {
           : `<button class="bigbtn pri" id="offGrant">${esc(T('offAsk'))}</button>`}
       </div>
       <div class="dbd" style="margin-top:7px;opacity:.75">${esc(T('offTopNote'))}</div>
+    </div>
+    <div class="dblock">
+      <div class="dbt">${esc(T('offTabs'))}</div>
+      <div class="dbd">${esc(tabsOk ? T('offTabsOn') : T('offTabsOff'))}</div>
+      <div class="dbc btnrow">
+        ${tabsOk
+          ? `${toggle('offTabs', s.offTabs)}<button class="bigbtn sm" id="offTabDrop">${esc(T('offDropPerm'))}</button>`
+          : `<button class="bigbtn pri" id="offTabGrant">${esc(T('offTabsAsk'))}</button>`}
+      </div>
+      <div class="dbd" style="margin-top:7px;opacity:.75">${esc(T('offTabsNote'))}</div>
     </div>` +
     dblock(T('offN'), T('offNDesc'), numSel('offN', s.offN, [4, 6, 8, 10, 12].map(v => ({ v, t: String(v) })), null, 1, 24, T('offUnit'))) +
     `<div class="dblock">
@@ -2115,6 +2215,15 @@ async function offBlock(s) {
         <input class="tin" id="offUrl" placeholder="https://example.com" spellcheck="false" autocomplete="off">
         <button class="bigbtn sm pri" id="offAdd">${esc(T('offAddBtn'))}</button>
       </div>
+    </div>
+    <div class="dblock">
+      <div class="dbt">${esc(T('offHidden'))}</div>
+      <div class="dbd">${esc(T('offHiddenDesc'))}</div>
+      ${hidden.length ? `<div class="offlist">${hidden.map(h => `<div class="offrow">
+        <b>${esc(h)}</b><i></i>
+        <button class="bigbtn sm" data-offback="${esc(h)}">${esc(T('offBack'))}</button></div>`).join('')}</div>
+        <div class="dbc btnrow"><button class="bigbtn sm" id="offBackAll">${esc(T('offBackAll'))}</button></div>`
+        : `<div class="dbd" style="opacity:.6">${esc(T('offHiddenNone'))}</div>`}
     </div>`;
 }
 
@@ -2931,7 +3040,7 @@ async function applySetting(key, val) {
   }
   A.set = await S.setSettings({ [key]: val });
   /* 暂歇那一组：改完只重画那一屏 —— 展厅还睡着，别去叫醒它 */
-  if (['offStyle', 'offTagSkin', 'offPaper', 'offTop', 'offN', 'offLinks'].includes(key)) { if (pausedOn()) await paintPaused(); return; }
+  if (['offStyle', 'offTagSkin', 'offPaper', 'offTop', 'offTabs', 'offN', 'offLinks', 'offHidden'].includes(key)) { if (pausedOn()) await paintPaused(); return; }
   if (key === 'off') { await paintPaused();
     if (!val) { A.painted = null; await show(A.list[A.idx] || A.list[0]); MODES.setPaused(A.paused); startTimer(); armIdle(); }
     return; }

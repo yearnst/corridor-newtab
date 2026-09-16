@@ -58,11 +58,13 @@ jobs:
       - name: 可选权限没有被悄悄扩大
         run: |
           # 可选权限装上时不弹警告、不停用老用户，正因为温和才更要盯住：
-          # topSites 是「暂歇」那一屏用来读 Chrome 常访问榜的，用户第一次开启时才申请。
+          # topSites 与 tabs 都是「暂歇」那一屏的站点来源 —— 一个读 Chrome 的常访问榜，
+          # 一个读当前 profile 打开着的标签页（只取标题与网址，按站点汇总）。
+          # 两个都只在用户点「授权」时才申请，面板里随时能撤回。
           python3 - <<'PY'
           import json, sys
           m = json.load(open('corridor-newtab/manifest.json'))
-          want = ["topSites"]
+          want = ["topSites", "tabs"]
           got = m.get("optional_permissions", [])
           if sorted(got) != sorted(want):
               print(f"::error::optional_permissions 变了：{sorted(got)}（期望 {sorted(want)}）")
