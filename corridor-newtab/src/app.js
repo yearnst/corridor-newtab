@@ -12,6 +12,7 @@ import * as TR from './translate.js';
 import * as DG from './diag.js';
 import * as NET from './localnet.js';
 import * as BK from './backup.js';
+import * as PAUSE from './pause.js';
 import * as TN from './tone.js';
 
 const $  = (s, r = document) => r.querySelector(s);
@@ -449,6 +450,65 @@ async function unhide(id) {
   buildList(); resyncIdx(); applyTips();
   await S.setCursor({ idx: A.idx, at: Date.now(), sig: listSig() });
   return A.gone;
+}
+
+/* ---------------- 暂歇 ----------------
+   扩展接管了新标签页就没法让位给 Chrome 原来那一页（覆盖是全有或全无），
+   所以「临时关闭」的诚实做法是：这一页还是长廊的，只是不展画，
+   改成一块安静的落脚地。状态存在设置里，跨标签页同步，一直到再点一次。 */
+function pausedOn() { return !!A.set.off; }
+
+async function paintPaused() {
+  const wrap = $('#paused'), box = $('#offIn');
+  if (!wrap || !box) return;
+  const on = pausedOn();
+  document.body.dataset.off = on ? '1' : '0';
+  wrap.hidden = !on;
+  updatePauseBtn();
+  if (!on) { box.innerHTML = ''; MODES.setPaused(A.paused); startTimer(); return; }
+
+  /* 暂歇时停掉轮换与各模式的动画：不展画就别在后台空转 */
+  MODES.stopLoops(); MODES.setPaused(true);
+  clearInterval(A.timer); A.timer = null;               // 不展画就别在后台空转
+  const style = PAUSE.styleOf(A.set);
+  wrap.dataset.style = style;
+  document.body.dataset.offstyle = style;      // 告示与索引那两种要把墙也撤掉
+  /* 主色平时跟着当前那幅画走，暂歇时没有画 —— 把它交还给长廊自己的金色，
+     不然这一屏会顶着上一幅画的颜色，看着莫名其妙 */
+  for (const k of ['--accent', '--accent-lt', '--accent-raw']) document.documentElement.style.removeProperty(k);
+  const [list, granted] = await Promise.all([PAUSE.collect(A.set), PAUSE.hasTop()]);
+  box.innerHTML = list.length ? PAUSE.render(list, PAUSE.styleOf(A.set), T)
+                              : PAUSE.renderEmpty(granted, T);
+  bindPaused(box);
+}
+function bindPaused(box) {
+  const ask = $('#offAsk', box);
+  if (ask) ask.onclick = async () => {                 // 必须在点击里调用
+    const ok = await PAUSE.askTop();
+    if (ok) { await S.setSettings({ offTop: true }); A.set = await S.getSettings(); }
+    else toast(T('offDenied'));
+    await paintPaused();
+  };
+  const cfg = $('#offCfg', box);
+  if (cfg) cfg.onclick = () => { A.dtab = 'show'; A.fold.off = false; openDrawer(); renderDrawer(true); };
+}
+function updatePauseBtn() {
+  const b = $('#btnPause'); if (!b) return;
+  const on = pausedOn();
+  b.classList.toggle('on', on);
+  b.setAttribute('aria-pressed', String(on));
+  b.dataset.tip = on ? T('offResume') : T('offPause');
+}
+async function togglePause(force) {
+  const next = force === undefined ? !pausedOn() : !!force;
+  A.set = await S.setSettings({ off: next });
+  await paintPaused();
+  if (!next) {                                          // 回到展出：重新起画
+    A.painted = null;
+    await show(A.list[A.idx] || A.list[0]);
+    MODES.setPaused(A.paused); startTimer(); armIdle();
+  }
+  if (drawerOpen()) renderDrawer();
 }
 
 /* 预取后续作品，供离线使用 */
@@ -1602,7 +1662,12 @@ async function buildTab(tab, s) {
       dctrl(T('filmStyleDesc'), seg('film', FILMS.map(f => ({ v: f.k, t: T('film_' + f.k) })), s.film)) +
       dinline(T('filmEdge'), T('filmEdgeDesc'), toggle('filmEdge', s.filmEdge)) +
       dblock(T('filmRun'), '', seg('filmRun', [{ v: 'glide', t: T('filmGlide') }, { v: 'step', t: T('filmStep') }], s.filmRun)),
-      T('film_' + s.film), 'film 胶卷 胶片', '', ['film']);
+      T('film_' + s.film), 'film 胶卷 胶片', '', ['film']) +
+
+    grp('off', T('offTitleSet'), await offBlock(s),
+      s.off ? T('offOn') : T('offOff'),
+      'pause off shortcuts topsites 暂歇 关闭 常访问 快捷方式 站点',
+      toggle('off', s.off));
   }
 
   if (tab === 'room') {
@@ -1827,6 +1892,43 @@ async function buildTab(tab, s) {
   }
   return '';
 }
+/* 暂歇那一组：授权、撤权、加一条快捷方式、删一条 */
+function bindOff(body) {
+  const g = $('#offGrant', body);
+  if (g) g.onclick = async () => {                       // 必须在点击里调用
+    const ok = await PAUSE.askTop();
+    if (ok) { A.set = await S.setSettings({ offTop: true }); toast(T('offGranted')); }
+    else toast(T('offDenied'));
+    renderDrawer(); if (pausedOn()) paintPaused();
+  };
+  const d = $('#offDrop', body);
+  if (d) d.onclick = async () => {
+    await PAUSE.dropTop();
+    toast(T('offDropped'));
+    renderDrawer(); if (pausedOn()) paintPaused();
+  };
+  const add = $('#offAdd', body);
+  if (add) add.onclick = async () => {
+    const nameEl = $('#offName', body), urlEl = $('#offUrl', body);
+    let url = S1(urlEl && urlEl.value);
+    if (!url) { toast(T('offNeedUrl')); return; }
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;       // 少打一个 https:// 是常事
+    let host = '';
+    try { host = new URL(url).host; } catch { }
+    if (!host) { toast(T('offBadUrl')); return; }
+    const name = S1(nameEl && nameEl.value) || host.replace(/^www\./i, '');
+    const links = (A.set.offLinks || []).concat([{ name, url }]).slice(0, 24);
+    A.set = await S.setSettings({ offLinks: links });
+    renderDrawer(); if (pausedOn()) paintPaused();
+  };
+  $$('[data-offdel]', body).forEach(b => b.onclick = async () => {
+    const i = Number(b.dataset.offdel);
+    const links = (A.set.offLinks || []).filter((_, j) => j !== i);
+    A.set = await S.setSettings({ offLinks: links });
+    renderDrawer(); if (pausedOn()) paintPaused();
+  });
+}
+
 /* 备份面板上的四个按钮 */
 function bindBackup(body) {
   const b = A.bk;
@@ -1936,6 +2038,41 @@ async function saveJSON(obj, name) {
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   } catch (e) { URL.revokeObjectURL(url); throw e; }
+}
+
+/* ---------------- 暂歇那一组 ----------------
+   开关本身挂在组标题上（跟顶栏那个按钮同一个设置），
+   下面是这一屏长什么样、站点从哪来、自己钉哪几个。 */
+async function offBlock(s) {
+  const granted = await PAUSE.hasTop();
+  const links = Array.isArray(s.offLinks) ? s.offLinks : [];
+  const rows = links.map((x, i) => `<div class="offrow">
+      <b>${esc(x.name || PAUSE.hostOf(x.url))}</b><i>${esc(x.url)}</i>
+      <button class="bigbtn sm" data-offdel="${i}">${esc(T('offDel'))}</button></div>`).join('');
+  return `<div class="dblock"><div class="dbd">${esc(T('offDesc'))}</div></div>` +
+    dblock(T('offStyle'), T('offStyleDesc'), seg('offStyle', [
+      { v: 'tag', t: T('offStyleTag') }, { v: 'notice', t: T('offStyleNotice') }, { v: 'index', t: T('offStyleIndex') }], s.offStyle)) +
+    `<div class="dblock">
+      <div class="dbt">${esc(T('offTop'))}</div>
+      <div class="dbd">${esc(granted ? T('offTopOn') : T('offTopOff'))}</div>
+      <div class="dbc btnrow">
+        ${granted
+          ? `${toggle('offTop', s.offTop)}<button class="bigbtn sm" id="offDrop">${esc(T('offDropPerm'))}</button>`
+          : `<button class="bigbtn pri" id="offGrant">${esc(T('offAsk'))}</button>`}
+      </div>
+      <div class="dbd" style="margin-top:7px;opacity:.75">${esc(T('offTopNote'))}</div>
+    </div>` +
+    dblock(T('offN'), '', numSel('offN', s.offN, [4, 6, 8, 10, 12].map(v => ({ v, t: String(v) })), null, 1, 24, T('offUnit'))) +
+    `<div class="dblock">
+      <div class="dbt">${esc(T('offPinned'))}</div>
+      <div class="dbd">${esc(T('offPinnedDesc'))}</div>
+      ${rows ? `<div class="offlist">${rows}</div>` : ''}
+      <div class="dbc offadd">
+        <input class="tin" id="offName" placeholder="${esc(T('offNamePh'))}" spellcheck="false" autocomplete="off">
+        <input class="tin" id="offUrl" placeholder="https://example.com" spellcheck="false" autocomplete="off">
+        <button class="bigbtn sm pri" id="offAdd">${esc(T('offAddBtn'))}</button>
+      </div>
+    </div>`;
 }
 
 /* ---------------- 备份与恢复 ----------------
@@ -2317,6 +2454,7 @@ async function renderDrawer(toTop = false) {
   const cA = $('#btnCacheAll'); if (cA) cA.onclick = cacheAll;
   const cC = $('#btnCacheClear'); if (cC) cC.onclick = async () => { await S.cacheClear(); toast(T('done')); renderDrawer(); };
   bindBackup(body);
+  bindOff(body);
   /* 已移除：逐幅放回，或一次全放回来 */
   $$('[data-ungone]', body).forEach(b => b.onclick = async () => {
     await unhide(b.dataset.ungone);
@@ -2729,7 +2867,7 @@ const AI_BOOL = ['on', 'forDaily', 'forLocal', 'auto', 'over', 'note', 'split'];
 async function applySetting(key, val) {
   /* src.<来源 id>.<字段> 走的不是设置，而是图库那份存储 */
   if (String(key).startsWith('src.')) return applySrc(key, val);
-  if (['kenburns', 'autohide', 'workSafe', 'scrollPan', 'newTabAdvance', 'dailyNew', 'localLib', 'filmEdge'].includes(key)) val = !!val;
+  if (['kenburns', 'autohide', 'workSafe', 'scrollPan', 'newTabAdvance', 'dailyNew', 'localLib', 'filmEdge', 'off', 'offTop'].includes(key)) val = !!val;
   if (['intervalMs', 'cacheLimitMB', 'matScale', 'carouselMs', 'filmMs', 'wallSat', 'wallTemp'].includes(key)) val = Number(val);
   /* 嵌套设置（ai.base 这种）写成一层层的补丁，交给 setSettings 深合并 */
   if (String(key).includes('.')) {
@@ -2749,6 +2887,11 @@ async function applySetting(key, val) {
     return;
   }
   A.set = await S.setSettings({ [key]: val });
+  /* 暂歇那一组：改完只重画那一屏 —— 展厅还睡着，别去叫醒它 */
+  if (['offStyle', 'offTop', 'offN'].includes(key)) { if (pausedOn()) await paintPaused(); return; }
+  if (key === 'off') { await paintPaused();
+    if (!val) { A.painted = null; await show(A.list[A.idx] || A.list[0]); MODES.setPaused(A.paused); startTimer(); armIdle(); }
+    return; }
   if (key === 'ai') { try { chrome.runtime.sendMessage({ type: 'ai-arm' }); } catch { } }
   [A.lang, A.other] = resolveLang(A.set);
   document.body.dataset.mode = A.set.mode;
@@ -2898,6 +3041,7 @@ function applyTips() {
   set('#btnPrev', 'prev'); set('#btnNext', 'next'); set('#btnZoom', 'zoom');
   set('#btnInfo', 'info'); set('#btnLib', 'library'); set('#btnSet', 'settings');
   set('#btnDl', 'download'); set('#btnHide', 'hide');
+  updatePauseBtn();
   $('#btnMode').dataset.tip = T('mode') + ': ' + T('mode_' + A.set.mode);
   $('#btnMode').innerHTML = `<svg><use href="#i-m-${A.set.mode}"></use></svg>`;
   $('#libQ').placeholder = T('search');
@@ -2935,6 +3079,7 @@ function wire() {
     toast(added ? T('favAdded') : T('favRemoved'));
   };
   $('#btnHide').onclick = () => hideCurrent();
+  $('#btnPause').onclick = () => togglePause();
   $('#btnZoom').onclick = () => A.cur && zoomOpen(A.cur);
   $('.frame-wrap').onclick = () => A.cur && zoomOpen(A.cur);
   $$('.imm-img').forEach(i => i.onclick = () => { if (A.set.mode === 'immersive') A.cur && zoomOpen(A.cur); });
@@ -3019,6 +3164,11 @@ function wire() {
       return;
     }
     const open = $$('.sheet.open').length > 0;
+    /* 暂歇时画廊那套快捷键没有对象可操作，只留设置、关闭面板与开关本身 */
+    if (pausedOn() && !['Escape', 's', 'S'].includes(e.key)) {
+      if (e.key === 'p' || e.key === 'P') { e.preventDefault(); togglePause(); }
+      return;
+    }
     switch (e.key) {
       case 'ArrowRight': case 'j': if (!Z.on) { e.preventDefault(); go(1); } break;
       case 'ArrowLeft': case 'k': if (!Z.on) { e.preventDefault(); go(-1); } break;
@@ -3036,6 +3186,7 @@ function wire() {
       case 'm': case 'M': if (!open) { e.preventDefault(); $('#btnMode').click(); } break;
       case 'd': case 'D': if (A.cur) { e.preventDefault(); download(A.cur); } break;
       case 'x': case 'X': if (!open) { e.preventDefault(); hideCurrent(); } break;
+      case 'p': case 'P': if (!open) { e.preventDefault(); togglePause(); } break;
     }
   });
   ['mousemove', 'keydown', 'wheel', 'pointerdown'].forEach(ev => addEventListener(ev, armIdle, { passive: true }));
@@ -3174,7 +3325,8 @@ async function init() {
   });
   MODES.applyPace(A.set);
   wire(); applyTips(); startClock(); startTimer(); armIdle(); paintSeal();
-  await show(A.list[A.idx]);
+  if (pausedOn()) await paintPaused();                 // 暂歇：连第一幅都不用画
+  else await show(A.list[A.idx]);
 
   if (!A.set.seenFirstRun) { setTimeout(() => toast(T('firstRun')), 900); S.setSettings({ seenFirstRun: true }); }
   if (!navigator.onLine) toast(T('offline'));

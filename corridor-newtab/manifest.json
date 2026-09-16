@@ -3,7 +3,7 @@
   "default_locale": "zh_CN",
   "name": "__MSG_appName__",
   "short_name": "__MSG_appShort__",
-  "version": "1.20.0",
+  "version": "1.21.0",
   "description": "__MSG_appDesc__",
   "minimum_chrome_version": "110",
   "permissions": [
@@ -17,6 +17,9 @@
     "https://upload.wikimedia.org/*",
     "https://commons.wikimedia.org/*",
     "https://www.wikidata.org/*"
+  ],
+  "optional_permissions": [
+    "topSites"
   ],
   "optional_host_permissions": [
     "https://*/*",

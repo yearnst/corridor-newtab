@@ -49,6 +49,13 @@ export const DEFAULTS = {
   filmEdge: true,             // 片边字与格号
   filmRun: 'step',            // glide 连续走带 | step 逐格（默认逐格：走完就停住，画面不飘）
   clock: 'bar',               // off | bar | grand
+  /* 暂歇：临时把长廊关掉，这一页改成常去的那几个站点。
+     off 存在设置里，于是跨标签页同步、重启浏览器也还是关着 —— 直到再点一次。 */
+  off: false,
+  offStyle: 'tag',            // tag 展签墙 | notice 闭馆告示 | index 目录索引
+  offTop: true,               // 是否合并 Chrome 的常访问榜（要 topSites 可选权限）
+  offN: 8,                    // 最多显示几个
+  offLinks: [],               // 自己钉的：[{ name, url }]
   workSafe: true,
   scrollPan: true,
   cacheLimitMB: 400,
@@ -159,6 +166,15 @@ export async function getSettings() {
   s.lamp.n = clampN(s.lamp.n, 0, 4, 1);
   if (typeof s.mat === 'boolean') { s.matStyle = s.mat ? 'auto' : 'none'; delete s.mat; }
   if (!['off', 'bar', 'grand'].includes(s.clock)) s.clock = 'off';
+  /* 暂歇 */
+  s.off = !!s.off;
+  if (!['tag', 'notice', 'index'].includes(s.offStyle)) s.offStyle = 'tag';
+  s.offTop = s.offTop === undefined ? true : !!s.offTop;
+  s.offN = Math.min(24, Math.max(1, Math.round(Number(s.offN) || 8)));
+  s.offLinks = (Array.isArray(s.offLinks) ? s.offLinks : []).slice(0, 24)
+    .map(x => ({ name: String(x?.name || '').trim().slice(0, 40),
+                 url: String(x?.url || '').trim().slice(0, 500) }))
+    .filter(x => /^https?:\/\//i.test(x.url));
   if (!s.hideParts || typeof s.hideParts !== 'object') s.hideParts = { ...DEFAULTS.hideParts };
   const hp = s.hideParts;
   /* 老版本只有 chrome / info / look / palette 四项，拆开落到细项上 */

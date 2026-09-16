@@ -4,7 +4,7 @@
 
 **打开新标签页，看见一幅画。**
 
-[![version](https://img.shields.io/badge/version-1.20.0-1a1a1a?style=flat-square)](https://github.com/yearnst/corridor-newtab/releases)
+[![version](https://img.shields.io/badge/version-1.21.0-1a1a1a?style=flat-square)](https://github.com/yearnst/corridor-newtab/releases)
 [![license](https://img.shields.io/badge/license-MIT-1a1a1a?style=flat-square)](LICENSE)
 [![manifest](https://img.shields.io/badge/Manifest-V3-1a1a1a?style=flat-square)](corridor-newtab/manifest.json)
 [![chrome](https://img.shields.io/badge/Chrome-110+-1a1a1a?style=flat-square)](https://www.google.com/chrome/)
@@ -13,7 +13,7 @@
 
 106 幅公有领域杰作（默认展出 93 幅）· 双语策展导览 · 五种呈现方式 · 装上就离线可用
 
-配置可整份导出导入 · 密钥能用口令加密
+配置可整份导出导入 · 密钥能用口令加密 · 一键暂歇换成常去的站点
 
 [安装](#安装) · [它能做什么](#它能做什么) · [完整手册](corridor-newtab/README.md) · [隐私](PRIVACY.md) · [更新记录](CHANGELOG.md) · [English](#english)
 

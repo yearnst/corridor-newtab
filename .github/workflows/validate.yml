@@ -55,6 +55,21 @@ jobs:
             exit 1
           }
 
+      - name: 可选权限没有被悄悄扩大
+        run: |
+          # 可选权限装上时不弹警告、不停用老用户，正因为温和才更要盯住：
+          # topSites 是「暂歇」那一屏用来读 Chrome 常访问榜的，用户第一次开启时才申请。
+          python3 - <<'PY'
+          import json, sys
+          m = json.load(open('corridor-newtab/manifest.json'))
+          want = ["topSites"]
+          got = m.get("optional_permissions", [])
+          if sorted(got) != sorted(want):
+              print(f"::error::optional_permissions 变了：{sorted(got)}（期望 {sorted(want)}）")
+              sys.exit(1)
+          print("optional_permissions 正常")
+          PY
+
       - name: host 权限仍限于三个维基媒体域名
         run: |
           python3 - <<'PY'
