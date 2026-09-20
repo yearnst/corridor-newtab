@@ -23,7 +23,7 @@ export const DEFAULTS = {
   order: 'shuffle',           // shuffle | sequential
   scope: 'all',               // all | fav | filter
   quality: 'auto',            // auto | saver | high | max
-  fit: 'smart',               // smart | cover | contain  沉浸式画面适配
+  fit: 'cover',               // smart | cover | contain  沉浸式画面适配（默认铺满屏幕）
   frame: 'ebony',             // laurel|salon|baroque|rococo|ebony|walnut|oak|boxblack|thingold|float|none
   wall: 'terracotta',         // 墙面颜色（custom = 用下面这个自定义色）
   wallCustom: '#8A4B36',      // 自定义色板
@@ -45,7 +45,7 @@ export const DEFAULTS = {
   /* 勾选＝静止几秒后淡出。分得细一点，每一项对应画面上一处实实在在的东西 */
   hideParts: { chrome: true, clock: false, counter: true,
                title: false, artist: false, meta: false, museum: false,
-               look: true, palette: true },
+               look: false, palette: false },
   carouselMs: 15000,          // 环形长廊每格停留；0 = 不自动转
   filmMs: 3000,               // 胶卷走带节拍（默认 3 秒一格）；0 = 停带
   film: 'positive',         // 胶片风格
