@@ -27,6 +27,9 @@ export const DEFAULTS = {
   frame: 'ebony',             // laurel|salon|baroque|rococo|ebony|walnut|oak|boxblack|thingold|float|none
   wall: 'terracotta',         // 墙面颜色（custom = 用下面这个自定义色）
   wallCustom: '#8A4B36',      // 自定义色板
+  /* 今日画夹的底色：wall 跟着展墙走（默认）| dark 原来那块深色 | custom 单独挑一个 */
+  rvWall: 'wall',
+  rvWallCustom: '#2A2622',
   wallSat: 100,               // 墙色饱和度 0–200%
   wallTemp: 0,                // 墙色色温 -100 冷 … +100 暖
   tex: 'velvet',              // 墙面纹理
@@ -61,7 +64,8 @@ export const DEFAULTS = {
   offTabs: true,              // 是否合并当前打开的标签页（要 tabs 可选权限）
   offN: 8,                    // 自动来的那批最多显示几个（自己钉的不受限）
   offLinks: [],               // 自己钉的：[{ name, url }]
-  offHidden: [],              // 随手摘掉的站点（按域名），设置里能放回
+  offHidden: [],              // 随手摘掉的：[{ h 域名, r 当时名次, n 当时几个标签页, at }]
+  offOrder: [],               // 手动拖出来的顺序（存的是签的 key）
   offBlocked: [],             // 永不再现：明说了不想再看见的，「全部放回」碰不到它
   workSafe: true,
   scrollPan: true,
@@ -163,6 +167,8 @@ export async function getSettings() {
     return /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : d;
   };
   s.wallCustom = HEX(s.wallCustom, '#8a4b36');
+  if (!['wall', 'dark', 'custom'].includes(s.rvWall)) s.rvWall = 'wall';
+  s.rvWallCustom = HEX(s.rvWallCustom, '#2a2622');
   const clampN = (v, lo, hi, d) => { v = Math.round(Number(v)); return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
   s.wallSat = clampN(s.wallSat, 0, 200, 100);
   s.wallTemp = clampN(s.wallTemp, -100, 100, 0);
@@ -184,8 +190,17 @@ export async function getSettings() {
   const hosts = (v) => (Array.isArray(v) ? v : [])
     .map(x => String(x || '').trim().toLowerCase()).filter(Boolean).slice(0, 200);
   s.offBlocked = hosts(s.offBlocked);
-  /* 一个站点不该同时在两份名单里 —— 永不再现说了算 */
-  s.offHidden = hosts(s.offHidden).filter(h => !s.offBlocked.includes(h));
+  /* 已移除那份存的是对象，老版本存的是纯域名字符串，这里一并归一化。
+     一个站点不该同时在两份名单里 —— 永不再现说了算。 */
+  s.offHidden = (Array.isArray(s.offHidden) ? s.offHidden : []).map(x => {
+    if (typeof x === 'string') return { h: x.trim().toLowerCase(), r: null, n: null, at: 0 };
+    if (!x || !x.h) return null;
+    return { h: String(x.h).trim().toLowerCase(),
+             r: Number.isFinite(x.r) ? x.r : null, n: Number.isFinite(x.n) ? x.n : null,
+             src: x.src || '', at: Number(x.at) || 0 };
+  }).filter(x => x && x.h && !s.offBlocked.includes(x.h)).slice(0, 200);
+  s.offOrder = (Array.isArray(s.offOrder) ? s.offOrder : [])
+    .map(x => String(x || '').trim()).filter(Boolean).slice(0, 64);
   s.offLinks = (Array.isArray(s.offLinks) ? s.offLinks : []).slice(0, 24)
     .map(x => ({ name: String(x?.name || '').trim().slice(0, 40),
                  url: String(x?.url || '').trim().slice(0, 500) }))

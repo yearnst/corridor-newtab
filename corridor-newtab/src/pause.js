@@ -18,9 +18,11 @@
 
    哪一条都能从墙上摘掉：摘掉的是站点（按域名记）。自己钉的那几条摘掉＝直接从
    offLinks 里删；自动来的进两份名单之一：
-     · offHidden  已移除 —— 随手摘的，设置里一条条放回或「全部放回」
-     · offBlocked 永不再现 —— 明说了不想再看见的。**「全部放回」碰不到它**，
-       这正是它跟上面那份的区别：常摘常放的归前者，一辈子不想见的归后者。
+     · offHidden  已移除 —— 随手摘的。摘的时候记下它当时的名次与标签页数，
+       等它排得更靠前、或者标签页开得更多，就自己回来。设置里也能手动放回。
+     · offBlocked 永不再现 —— 明说了不想再看见的，只能手动解除。
+
+   签还能拖着换位置，顺序记在 offOrder 里（分组时只在组内换）。
 
    两件刻意不做的事：
      · 不取图标。topSites 只给站点名与网址；要图标就得再加 favicon 权限
@@ -123,12 +125,25 @@ export async function openTabs() {
    去重按域名而不是完整网址：同一个站点的两条路径没必要占两张签。 */
 export const keyOf = (w) => w.src === 'pin' ? w.url : w.host;
 
+/* 「已移除」是暂时的：摘的时候记下它当时的两个信号 —— 在常访问榜上的名次 r、
+   开着几个标签页 n。后来排得更靠前，或者标签页开得更多，就说明它又重要了，
+   自己回来。r / n 为 null 表示当时没有这个信号（或者是老版本存的），
+   那一路就不会自动回来，只能在设置里手动放回。 */
+const hidMap = (set) => {
+  const m = new Map();
+  for (const x of (Array.isArray(set?.offHidden) ? set.offHidden : [])) {
+    if (typeof x === 'string') m.set(x, { h: x, r: null, n: null });     // 老版本只存了域名
+    else if (x && x.h) m.set(x.h, { h: x.h, r: x.r ?? null, n: x.n ?? null, src: x.src });
+  }
+  return m;
+};
+const backAgain = (e, r, n) =>
+  (e.r != null && r != null && r < e.r) || (e.n != null && n > e.n);
+
 export async function collect(set) {
   const n = Math.min(24, Math.max(1, Math.round(Number(set?.offN) || 8)));
-  const hidden = new Set([
-    ...(Array.isArray(set?.offHidden) ? set.offHidden : []),
-    ...(Array.isArray(set?.offBlocked) ? set.offBlocked : [])
-  ]);
+  const blocked = new Set(Array.isArray(set?.offBlocked) ? set.offBlocked : []);
+  const hid = hidMap(set);
   const raw = (Array.isArray(set?.offLinks) ? set.offLinks : [])
     .map(x => ({ url: S1(x?.url), title: S1(x?.name), src: 'pin' }))
     .filter(x => /^https?:\/\//i.test(x.url));
@@ -136,16 +151,27 @@ export async function collect(set) {
     set?.offTop === false ? [] : topSites(),
     set?.offTabs === false ? [] : openTabs()
   ]);
+  /* 两个信号：现在排第几、现在开着几个 */
+  const rankOf = new Map(top.map((x, i) => [hostOf(x.url), i]));
+  const tabsOf = new Map(tabs.map(x => [hostOf(x.url), x.n || 1]));
   const seen = new Set();
   const take = (x, src) => {
     const h = hostOf(x.url);
     const pin = src === 'pin';
     const k = h + (pin ? '|' + x.url : '');       // 自己钉的允许同域多条
-    if (!h || (!pin && hidden.has(h))) return null;
+    if (!h) return null;
+    if (!pin) {
+      if (blocked.has(h)) return null;
+      const e = hid.get(h);
+      if (e && !backAgain(e, rankOf.has(h) ? rankOf.get(h) : null, tabsOf.get(h) || 0)) return null;
+    }
     if (seen.has(k) || (!pin && seen.has(h))) return null;
     seen.add(k); seen.add(h);
     const it = { url: x.url, host: h, name: niceName(x.title, x.url), src, pin };
     if (src === 'tab') { it.n = x.n || 1; it.ids = x.ids || []; }
+    /* 摘掉它的时候要记下这两个数，所以每一条都带着 */
+    it.r = rankOf.has(h) ? rankOf.get(h) : null;
+    it.tabs = tabsOf.get(h) || 0;
     it.key = keyOf(it);
     return it;
   };
@@ -161,7 +187,17 @@ export async function collect(set) {
     if (i < top.length) { const it = take(top[i++], 'top'); if (it) { rest.push(it); if (rest.length >= room) break; } }
     if (j < tabs.length) { const it = take(tabs[j++], 'tab'); if (it) rest.push(it); }
   }
-  return pinned.concat(rest.slice(0, room));
+  const out = pinned.concat(rest.slice(0, room));
+  /* 手动拖过的顺序压在自动顺序之上；没拖过的按原样排在后面。
+     分组是按 src 分的，所以这一次排序同时管住了「组内顺序」。 */
+  const ord = Array.isArray(set?.offOrder) ? set.offOrder : [];
+  if (ord.length) {
+    const at = (w) => { const k = ord.indexOf(w.key); return k < 0 ? Infinity : k; };
+    out.forEach((w, k) => { w._i = k; });
+    out.sort((a, b) => at(a) - at(b) || a._i - b._i);
+    out.forEach(w => { delete w._i; });
+  }
+  return out;
 }
 
 /* ---------------- 展签的两种皮 ----------------
@@ -218,7 +254,7 @@ const no2 = (i) => String(i + 1).padStart(2, '0');
    每一条右上角（告示与索引里是右侧）一个 × —— 自己钉的那几条是从名单里删掉，
    自动来的是记进「已移除」，下次不再露面。整理模式下 × 让位给勾选框。 */
 const item = (w, i, inner, T, tidy, vars = '') =>
-  `<a class="offitem${w.pin ? ' pinned' : ''}" href="${esc(w.url)}" data-i="${i}"
+  `<a class="offitem${w.pin ? ' pinned' : ''}" href="${esc(w.url)}" data-i="${i}" draggable="true"
       data-k="${esc(w.key)}" data-src="${esc(w.src)}"${w.ids && w.ids.length ? ` data-ids="${esc(w.ids.join(','))}"` : ''}
       title="${esc(w.url)}"${vars}>${inner}` +
     (tidy
@@ -269,7 +305,8 @@ const tools = (T, tidy, hasTab) => `<div class="offtools">` + (tidy
      <button class="bigbtn sm pri" id="offDelSel" disabled>${esc(T('offDelSel'))}</button>` +
     (hasTab ? `<button class="bigbtn sm" id="offCloseSel" disabled>${esc(T('offCloseSel'))}</button>` : '') +
     `<button class="bigbtn sm" id="offTidyDone">${esc(T('offTidyDone'))}</button>`
-  : `<button class="offlink" id="offTidy">${esc(T('offTidy'))}</button>`) + `</div>`;
+  : `<span class="offbar-n drag">${esc(T('offDragHint'))}</span>
+     <button class="offlink" id="offTidy">${esc(T('offTidy'))}</button>`) + `</div>`;
 
 export function render(list, style, T, skin = 'plain', tidy = false) {
   if (!list.length) return '';

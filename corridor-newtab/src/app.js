@@ -63,7 +63,8 @@ const A = {                       // 应用状态
   pbAbort: null, pbRows: null, pbOpen: false,
   libSrcs: [], libOpen: '', libAbort: null,
   /* 暂歇「整理」的临时状态：当前那一屏的清单、是否在整理、勾中了哪几条 —— 都不进设置 */
-  offList: [], offTidy: false, offSel: new Set()
+  offList: [], offTidy: false, offSel: new Set(),
+  infoAlt: false        // 详情页翻到另一种语言（只管这一页，不改全局语言）
 };
 const T = (k, v) => t(A.lang, k, v);
 const dt = (v) => A.lang === 'zh' ? String(v ?? '') : enDate(v);   // 年代/生卒/尺寸的中文限定词
@@ -123,7 +124,11 @@ function undoBarHide() {
   if (!bar) return;
   clearTimeout(undoBar._t);
   bar.classList.remove('on');
-  setTimeout(() => { if (!bar.classList.contains('on')) bar.hidden = true; }, 320);
+  setTimeout(() => {
+    if (bar.classList.contains('on')) return;
+    if (bar.contains(document.activeElement)) document.activeElement.blur();   // 焦点别跟着被藏起来
+    bar.hidden = true;
+  }, 320);
 }
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const S1 = (v) => String(v ?? '').trim();
@@ -465,6 +470,9 @@ async function paintPaused() {
   if (!wrap || !box) return;
   const on = pausedOn();
   document.body.dataset.off = on ? '1' : '0';
+  /* 回到展出时这一层要藏起来，焦点如果还停在里面（比如刚点完「完成」），
+     先收回来，不然它会跟着被藏进去 */
+  if (!on && wrap.contains(document.activeElement)) document.activeElement.blur();
   wrap.hidden = !on;
   updatePauseBtn();
   if (!on) { box.innerHTML = ''; MODES.setPaused(A.paused); startTimer(); return; }
@@ -487,6 +495,13 @@ async function paintPaused() {
   const [list, granted] = await Promise.all([PAUSE.collect(A.set), PAUSE.hasTop()]);
   A.offList = list;
   if (!list.length) A.offTidy = false;
+  /* 自己回来的那几条，把「已移除」里的记录也一并清掉，
+     免得设置里留着一串早就不作数的名字 */
+  const revived = (A.set.offHidden || []).filter(e => list.some(w => w.host === e.h));
+  if (revived.length) {
+    A.set = await S.setSettings({ offHidden: (A.set.offHidden || []).filter(e => !revived.includes(e)) });
+    if (drawerOpen()) renderDrawer();
+  }
   /* 勾中的那几条可能已经被删掉了（比如刚关掉的标签页）—— 别留在选区里 */
   const keys = new Set(list.map(w => w.key));
   A.offSel = new Set([...A.offSel].filter(k => keys.has(k)));
@@ -494,14 +509,20 @@ async function paintPaused() {
                               : PAUSE.renderEmpty(granted, T);
   bindPaused(box);
 }
-/* 摘掉一条：自己钉的是从名单里删，自动来的是记进「已移除」（按域名） */
+/* 摘掉一条：自己钉的是从名单里删；自动来的记进「已移除」，
+   同时记下它此刻的两个信号（常访问榜名次 r、开着几个标签页 n）——
+   往后它排得更靠前或标签页开得更多，就自己回来。 */
 async function offRemove(keys) {
   const sel = (A.offList || []).filter(w => keys.includes(w.key));
   if (!sel.length) return;
   const links = (A.set.offLinks || []).filter(x => !sel.some(w => w.pin && w.url === x.url));
-  const hid = new Set(A.set.offHidden || []);
-  sel.filter(w => !w.pin).forEach(w => hid.add(w.host));
-  A.set = await S.setSettings({ offLinks: links, offHidden: [...hid] });
+  const hid = (A.set.offHidden || []).slice();
+  for (const w of sel.filter(x => !x.pin)) {
+    const i = hid.findIndex(x => x.h === w.host);
+    const e = { h: w.host, r: w.r ?? null, n: w.tabs ?? 0, src: w.src, at: Date.now() };
+    if (i >= 0) hid[i] = e; else hid.push(e);
+  }
+  A.set = await S.setSettings({ offLinks: links, offHidden: hid });
   A.offSel = new Set();
   await paintPaused();
   if (drawerOpen()) renderDrawer();
@@ -530,7 +551,11 @@ function bindPaused(box) {
   const tile = $('#offPin', box), form = $('#offPinForm', box);
   if (tile && form) {
     tile.onclick = () => { tile.hidden = true; form.hidden = false; $('#offPinName', box)?.focus(); };
-    const close = () => { form.hidden = true; tile.hidden = false; };
+    const close = () => {
+      /* 同理：焦点留在要藏起来的表单里，浏览器会把它丢回 body */
+      if (form.contains(document.activeElement)) tile.focus({ preventScroll: true });
+      form.hidden = true; tile.hidden = false;
+    };
     $('#offPinCancel', box).onclick = close;
     form.onsubmit = async (e) => {
       e.preventDefault();
@@ -549,6 +574,7 @@ function bindPaused(box) {
     /* 表单里的按键别漏到画廊快捷键上去 */
     form.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Escape') { e.preventDefault(); close(); } };
   }
+  bindOffDrag(box);
   /* 每一张指上去右上角都有个 × —— 点了这一条就不再出现，后面的顺移上来 */
   $$('[data-del]', box).forEach(b => b.onclick = async (e) => {
     e.preventDefault(); e.stopPropagation();
@@ -594,6 +620,45 @@ function bindPaused(box) {
     offSyncBar(box);
   }
 }
+/* 签可以拖着换位置。拖的时候直接搬 DOM，松手再把当前的 DOM 顺序存进 offOrder ——
+   比先算索引再重画简单，看到的就是最后的结果。
+   分组时只许在同一组里换：跨组拖出来的顺序没法用「按来路分组」表示。 */
+function bindOffDrag(box) {
+  const items = () => $$('.offitem', box);
+  let src = null;
+  const grouped = !!$('.off-gh', box);
+  items().forEach(a => {
+    a.ondragstart = (e) => {
+      src = a;
+      a.classList.add('dragging');
+      try { e.dataTransfer.setData('text/plain', a.dataset.k || ''); } catch { }
+      e.dataTransfer.effectAllowed = 'move';
+    };
+    a.ondragend = async () => {
+      a.classList.remove('dragging');
+      $$('.offitem', box).forEach(x => x.classList.remove('dropzone'));
+      if (!src) return;
+      src = null;
+      const order = items().map(x => x.dataset.k).filter(Boolean);
+      A.set = await S.setSettings({ offOrder: order });
+      await paintPaused();
+    };
+    a.ondragover = (e) => {
+      if (!src || src === a) return;
+      if (grouped && a.dataset.src !== src.dataset.src) return;   // 不许跨组
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const r = a.getBoundingClientRect();
+      /* 展签墙是横着排的，看左右；告示与索引是竖的，看上下 */
+      const after = r.width > r.height * 1.4
+        ? (e.clientX - r.left) > r.width / 2
+        : (e.clientY - r.top) > r.height / 2;
+      a.parentNode.insertBefore(src, after ? a.nextSibling : a);
+    };
+    a.ondrop = (e) => { e.preventDefault(); };
+  });
+}
+
 function updatePauseBtn() {
   const b = $('#btnPause'); if (!b) return;
   const on = pausedOn();
@@ -702,7 +767,24 @@ function tintWall(s) {
   b.style.setProperty('--wall', hex);
   b.dataset.walllight = TN.isLight(hex) ? '1' : '0';
   b.dataset.texown = texBase(s.tex || 'none') ? '1' : '0';
+  tintReveal(s);                    // 画夹跟随时，墙色一变它也得跟着变
   return hex;
+}
+
+/* 今日画夹那块底：跟随展墙 / 原来那块深色 / 单独挑一个。
+   画夹是一张摊开的桌面，所以上深下浅反过来 —— 上面那一端提亮一点。
+   底色浅的时候，标题与说明文字要跟着翻，不然白底白字。 */
+const RV_DARK = '#1C1A17';
+function tintReveal(s) {
+  const b = document.body;
+  const base = s.rvWall === 'dark' ? RV_DARK
+    : s.rvWall === 'custom' ? TN.normHex(s.rvWallCustom, '#2a2622')
+    : wallHexOf(s);
+  const light = TN.isLight(base);
+  b.style.setProperty('--rvwall-a', TN.mix(base, light ? '#ffffff' : '#000000', light ? .22 : .10));
+  b.style.setProperty('--rvwall-b', TN.mix(base, light ? '#000000' : '#000000', light ? .06 : .34));
+  b.dataset.rvlight = light ? '1' : '0';
+  return base;
 }
 
 const LAMP_N = '#fff6e2', LAMP_W = '#ffd79b', LAMP_C = '#e6efff';
@@ -891,8 +973,10 @@ function renderFilters() {
     const sample = h.key === 'neutral' ? 'linear-gradient(135deg,#111,#eee)' : `hsl(${h.h ? (h.h[0] + ((h.h[1] - h.h[0] + 360) % 360) / 2) % 360 : 0} 62% 52%)`;
     return `<button class="chip hue${f.hues.includes(h.key) ? ' on' : ''}" data-kind="hues" data-k="${h.key}"><i style="background:${sample}"></i>${esc(lx(h, A.lang))}<span class="n">${hu.get(h.key)}</span></button>`;
   }).join('');
-  const coDict = Object.fromEntries([...co.keys()].map(k => [k, { zh: k, en: COUNTRIES[k] || k }]));
-  const coOrder = [...co.entries()].sort((a, b) => b[1] - a[1]).map(x => x[0]);
+  const coDict = Object.fromEntries([...co.keys()].map(k =>
+    [k, k === 'other' ? { zh: T('countryOther'), en: T('countryOther') } : { zh: k, en: COUNTRIES[k] || k }]));
+  /* 按数量排，「其他」不管多少都压到最后 */
+  const coOrder = [...co.entries()].sort((a, b) => (a[0] === 'other') - (b[0] === 'other') || b[1] - a[1]).map(x => x[0]);
   const group = (lab, html) => html.trim() ? `<div class="grouplab">${esc(lab)}</div><div class="chipset">${html}</div>` : '';
   box.innerHTML =
     group(T('movement'), chips(MOVEMENTS, mv, f.movements, 'movements', Object.keys(MOVEMENTS))) +
@@ -942,33 +1026,43 @@ function lazyLoad(root) { $$('img.real', root).forEach(i => io.observe(i)); }
 function gacUrl(w) {
   return 'https://artsandculture.google.com/search?q=' + encodeURIComponent(w.title.en + ' ' + w.artist.en);
 }
+/* 详情页可以整页翻到另一种语言：作品文本、字段名、年代写法都跟着走。
+   只影响这一页 —— 关掉再打开还是母语，全局语言不动。 */
 function renderInfo(w) {
-  $('#infoHead').textContent = T('info');
-  const note = tx(w.note).split('\n\n').map(p => `<p>${esc(p)}</p>`).join('');
+  const L = A.infoAlt ? A.other : A.lang;
+  const TL = (k, v) => t(L, k, v);
+  const g = (o) => pickL(o, L);
+  const gdt = (k) => S1(w?.tr?.[L]?.[k]) || (L === 'zh' ? S1(w?.[k]) : enDate(w?.[k]));
+  const gnum = (v) => L === 'zh' ? String(v ?? '') : enDate(v);
+  $('#infoHead').textContent = TL('info');
+  const lb = $('#btnLang');
+  if (lb) { lb.dataset.tip = TL('infoLang'); lb.classList.toggle('on', !!A.infoAlt); }
+  $('#infoBody').dir = LG.dirOf(L);
+  const note = g(w.note).split('\n\n').map(p => `<p>${esc(p)}</p>`).join('');
   const M = (k, v) => v ? `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>` : '';
   $('#infoBody').innerHTML = `
     <div class="info-hero">
       <img src="${esc(w.vis.lqip || '')}" data-hero="${esc(imgUrl(w, w.img.sizes.includes(500) ? 500 : w.img.sizes.at(-1)))}" alt="">
       <div class="info-meta">
-        <h3>${esc(tx(w.title))}${(() => { const o = pickL(w.title, A.other); return o && o !== tx(w.title) ? `<em>${esc(o)}</em>` : ''; })()}</h3>
+        <h3>${esc(g(w.title))}${(() => { const o = pickAlt(w.title, L === A.lang ? A.other : A.lang, g(w.title)); return o && o !== g(w.title) ? `<em>${esc(o)}</em>` : ''; })()}</h3>
         <div class="metarow">
-          ${M(T('artist'), tx(w.artist) + (w.life ? '  ' + dtw(w, 'life') : ''))}
-          ${M(T('era'), dtw(w, 'year'))}
-          ${M(T('movement'), label(MOVEMENTS, w.movement, A.lang))}
+          ${M(TL('artist'), g(w.artist) + (w.life ? '  ' + gdt('life') : ''))}
+          ${M(TL('era'), gdt('year'))}
+          ${M(TL('movement'), label(MOVEMENTS, w.movement, L))}
         </div>
         <div class="metarow">
-          ${M(T('medium'), tx(w.medium))}
-          ${M(T('dimensions'), dt(w.dims))}
-          ${M(T('museum'), tx(w.museum) + sep() + tx(w.place))}
+          ${M(TL('medium'), g(w.medium))}
+          ${M(TL('dimensions'), gnum(w.dims))}
+          ${M(TL('museum'), g(w.museum) + (LG.isCJK(L) ? '，' : ', ') + g(w.place))}
         </div>
       </div>
     </div>
-    <div class="lookbox" style="margin:0 0 24px"><b>${esc(T('look'))}</b><span>${esc(tx(w.look))}</span></div>
+    <div class="lookbox" style="margin:0 0 24px"><b>${esc(TL('look'))}</b><span>${esc(g(w.look))}</span></div>
     <div class="prose">${note}</div>
     <div class="srcline">
-      ${esc(T('source'))}: <a href="${esc(w.src.page)}" target="_blank" rel="noopener">${esc(T('viewOnCommons'))}</a>
-      · ${esc(T('licence'))}: ${esc(w.src.licence)}
-      · <a href="${esc(gacUrl(w))}" target="_blank" rel="noopener">${esc(T('viewOnGac'))}</a>
+      ${esc(TL('source'))}: <a href="${esc(w.src.page)}" target="_blank" rel="noopener">${esc(TL('viewOnCommons'))}</a>
+      · ${esc(TL('licence'))}: ${esc(w.src.licence)}
+      · <a href="${esc(gacUrl(w))}" target="_blank" rel="noopener">${esc(TL('viewOnGac'))}</a>
       <br>${esc(w.img.w)} × ${esc(w.img.h)} px
     </div>`;
   const hero = $('#infoBody img[data-hero]');
@@ -1192,8 +1286,14 @@ function openDrawer(tab) {
 }
 function closeDrawer() {
   if (!document.body.classList.contains('drawer-open')) return;
+  const d = $('#drawer');
+  /* 焦点还停在抽屉里的时候不能直接 aria-hidden：浏览器会拒绝这次隐藏，
+     并在扩展的错误页里留一条警告（点抽屉右上角那个 × 关闭时必然撞上，
+     因为焦点正在那颗按钮上）。先把焦点交还给打开它的那颗按钮 ——
+     既消掉警告，也是键盘用户该去的地方。 */
+  if (d.contains(document.activeElement)) $('#btnSet')?.focus({ preventScroll: true });
   document.body.classList.remove('drawer-open');
-  $('#drawer').setAttribute('aria-hidden', 'true');
+  d.setAttribute('aria-hidden', 'true');
   $('#btnSet').classList.remove('on');
   A.hover = null; applyRoom(); armIdle();
   setTimeout(refit, 560);
@@ -1849,6 +1949,16 @@ async function buildTab(tab, s) {
       `<div class="dblock"><div class="dbd">${esc(T('dailyDesc'))}</div></div>` +
       dblock(T('dailyN'), T('dailyNDesc'), numSel('dailyN', s.dailyN,
         [1, 2, 3, 5, 8].map(v => ({ v, t: String(v) })), null, 1, 12, T('aiWorks'))) +
+      dblock(T('rvWall'), T('rvWallDesc'), seg('rvWall', [
+        { v: 'wall', t: T('rvWallFollow') }, { v: 'dark', t: T('rvWallDark') }, { v: 'custom', t: T('rvWallPick') }], s.rvWall) +
+        (s.rvWall === 'custom' ? `<div class="dotrow wcust rvcust">
+          ${WALLS.map(w => `<button class="wdot" data-rvpick="${esc(w.c)}" style="background:${esc(w.c)}"
+            title="${esc(lx(w, A.lang))}" aria-label="${esc(lx(w, A.lang))}"></button>`).join('')}
+          <label class="wpick" title="${esc(T('wallCustomDesc'))}">
+            <input type="color" data-rvcolor value="${esc(TN.normHex(s.rvWallCustom, '#2a2622'))}" aria-label="${esc(T('rvWallPick'))}"></label>
+          <input class="whex" type="text" data-rvhex value="${esc(TN.normHex(s.rvWallCustom, '#2a2622').toUpperCase())}"
+            maxlength="7" spellcheck="false" autocapitalize="off" aria-label="${esc(T('rvWallPick'))}">
+        </div>` : '')) +
       `<div class="dblock">
         <div class="dbc btnrow">
           <button class="bigbtn pri" id="btnDailyNow"${s.dailyNew ? '' : ' disabled'}>${esc(T('dailyNow'))}</button>
@@ -2051,7 +2161,7 @@ function bindOff(body) {
   /* 已移除的站点：一条条放回，或者一次清空名单 */
   $$('[data-offback]', body).forEach(b => b.onclick = async () => {
     const h = b.dataset.offback;
-    A.set = await S.setSettings({ offHidden: (A.set.offHidden || []).filter(x => x !== h) });
+    A.set = await S.setSettings({ offHidden: (A.set.offHidden || []).filter(x => x.h !== h) });
     renderDrawer(); if (pausedOn()) paintPaused();
   });
   const ba = $('#offBackAll', body);
@@ -2060,18 +2170,14 @@ function bindOff(body) {
     renderDrawer(); if (pausedOn()) paintPaused();
   };
   /* 永不再现：从「已移除」挪过去，或者解除 */
-  const toBlocked = async (hs) => {
-    const add = hs.filter(Boolean);
-    if (!add.length) return;
+  $$('[data-offblock]', body).forEach(b => b.onclick = async () => {
+    const h = b.dataset.offblock;
     A.set = await S.setSettings({
-      offHidden: (A.set.offHidden || []).filter(x => !add.includes(x)),
-      offBlocked: [...new Set((A.set.offBlocked || []).concat(add))]
+      offHidden: (A.set.offHidden || []).filter(x => x.h !== h),
+      offBlocked: [...new Set((A.set.offBlocked || []).concat([h]))]
     });
     renderDrawer(); if (pausedOn()) paintPaused();
-  };
-  $$('[data-offblock]', body).forEach(b => b.onclick = () => toBlocked([b.dataset.offblock]));
-  const bl = $('#offBlockAll', body);
-  if (bl) bl.onclick = () => toBlocked([...(A.set.offHidden || [])]);
+  });
   $$('[data-offunblock]', body).forEach(b => b.onclick = async () => {
     const h = b.dataset.offunblock;
     A.set = await S.setSettings({ offBlocked: (A.set.offBlocked || []).filter(x => x !== h) });
@@ -2247,13 +2353,12 @@ async function offBlock(s) {
     <div class="dblock">
       <div class="dbt">${esc(T('offHidden'))}</div>
       <div class="dbd">${esc(T('offHiddenDesc'))}</div>
-      ${hidden.length ? `<div class="offlist">${hidden.map(h => `<div class="offrow">
-        <b>${esc(h)}</b><i></i>
-        <button class="bigbtn sm" data-offback="${esc(h)}">${esc(T('offBack'))}</button>
-        <button class="offrx" data-offblock="${esc(h)}" title="${esc(T('offBlockOne'))}"
+      ${hidden.length ? `<div class="offlist">${hidden.map(e => `<div class="offrow">
+        <b>${esc(e.h)}</b><i>${esc(e.r != null ? T('offHidRank', { n: e.r + 1 }) : e.n ? T('offHidTabs', { n: e.n }) : '')}</i>
+        <button class="bigbtn sm" data-offback="${esc(e.h)}">${esc(T('offBack'))}</button>
+        <button class="offrx" data-offblock="${esc(e.h)}" title="${esc(T('offBlockOne'))}"
           aria-label="${esc(T('offBlockOne'))}">&#215;</button></div>`).join('')}</div>
-        <div class="dbc btnrow"><button class="bigbtn sm" id="offBackAll">${esc(T('offBackAll'))}</button>
-          <button class="bigbtn sm" id="offBlockAll">${esc(T('offBlockAll'))}</button></div>`
+        <div class="dbc btnrow"><button class="bigbtn sm" id="offBackAll">${esc(T('offBackAll'))}</button></div>`
         : `<div class="dbd" style="opacity:.6">${esc(T('offHiddenNone'))}</div>`}
     </div>` +
     (blocked.length ? `<div class="dblock">
@@ -2640,6 +2745,24 @@ async function renderDrawer(toTop = false) {
   if (wh) {
     wh.onchange = () => setCustom(wh.value, true);
     wh.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); wh.blur(); } };
+  }
+  /* 画夹底色那一行：色卡点一下就填进去，色盘与色号也是同一条路 */
+  {
+    const rc = $('[data-rvcolor]', body), rh = $('[data-rvhex]', body);
+    const setRv = async (hex, commit) => {
+      const v = TN.normHex(hex, '');
+      if (!v) return;
+      if (rc) rc.value = v;
+      if (rh && document.activeElement !== rh) rh.value = v.toUpperCase();
+      if (commit) { await applySetting('rvWallCustom', v); renderDrawer(); }
+      else { A.set.rvWallCustom = v; tintReveal(A.set); }
+    };
+    $$('[data-rvpick]', body).forEach(b => b.onclick = () => setRv(b.dataset.rvpick, true));
+    if (rc) { rc.oninput = () => setRv(rc.value, false); rc.onchange = () => setRv(rc.value, true); }
+    if (rh) {
+      rh.onchange = () => setRv(rh.value, true);
+      rh.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); rh.blur(); } };
+    }
   }
   bindPickers(body);
   const cA = $('#btnCacheAll'); if (cA) cA.onclick = cacheAll;
@@ -3079,10 +3202,11 @@ async function applySetting(key, val) {
   }
   A.set = await S.setSettings({ [key]: val });
   /* 暂歇那一组：改完只重画那一屏 —— 展厅还睡着，别去叫醒它 */
-  if (['offStyle', 'offTagSkin', 'offPaper', 'offTop', 'offTabs', 'offN', 'offLinks', 'offHidden', 'offBlocked'].includes(key)) { if (pausedOn()) await paintPaused(); return; }
+  if (['offStyle', 'offTagSkin', 'offPaper', 'offTop', 'offTabs', 'offN', 'offLinks', 'offHidden', 'offBlocked', 'offOrder'].includes(key)) { if (pausedOn()) await paintPaused(); return; }
   if (key === 'off') { await paintPaused();
     if (!val) { A.painted = null; await show(A.list[A.idx] || A.list[0]); MODES.setPaused(A.paused); startTimer(); armIdle(); }
     return; }
+  if (['rvWall', 'rvWallCustom'].includes(key)) { tintReveal(A.set); return; }
   if (key === 'ui' && pausedOn()) await paintPaused();
   if (key === 'ai') { try { chrome.runtime.sendMessage({ type: 'ai-arm' }); } catch { } }
   [A.lang, A.other] = resolveLang(A.set);
@@ -3232,7 +3356,9 @@ function applyTips() {
   const set = (id, k) => { const e = $(id); if (e) e.dataset.tip = T(k); };
   set('#btnPrev', 'prev'); set('#btnNext', 'next'); set('#btnZoom', 'zoom');
   set('#btnInfo', 'info'); set('#btnLib', 'library'); set('#btnSet', 'settings');
-  set('#btnDl', 'download'); set('#btnHide', 'hide');
+  set('#btnDl', 'download'); set('#btnHide', 'hide'); set('#btnLang', 'infoLang');
+  /* 快捷键那颗按钮的提示就是整行键位说明，所以直接取 kbd */
+  { const e = $('#btnKeys'); if (e) e.dataset.tip = T('kbd'); }
   updatePauseBtn();
   $('#btnMode').dataset.tip = T('mode') + ': ' + T('mode_' + A.set.mode);
   $('#btnMode').innerHTML = `<svg><use href="#i-m-${A.set.mode}"></use></svg>`;
@@ -3275,7 +3401,8 @@ function wire() {
   $('#btnZoom').onclick = () => A.cur && zoomOpen(A.cur);
   $('.frame-wrap').onclick = () => A.cur && zoomOpen(A.cur);
   $$('.imm-img').forEach(i => i.onclick = () => { if (A.set.mode === 'immersive') A.cur && zoomOpen(A.cur); });
-  $('#btnInfo').onclick = () => { if (!A.cur) return; renderInfo(A.cur); openSheet('#infoSheet'); };
+  $('#btnInfo').onclick = () => { if (!A.cur) return; A.infoAlt = false; renderInfo(A.cur); openSheet('#infoSheet'); };
+  $('#btnLang').onclick = () => { if (!A.cur) return; A.infoAlt = !A.infoAlt; renderInfo(A.cur); };
   $('#btnDl').onclick = () => A.cur && download(A.cur);
   $('#zDl').onclick = () => A.cur && download(A.cur);
   $('#btnLib').onclick = () => { renderFilters(); renderGrid(); openSheet('#libSheet'); $('#libQ').focus(); };
@@ -3394,17 +3521,40 @@ function wire() {
   addEventListener('beforeunload', () => A.objUrls.forEach(u => URL.revokeObjectURL(u)));
 }
 
+/* 内置目录的 place.zh 写成「国家 城市」，取第一段就是国家。
+   但每日新作与自定义图库的 place 是模型填的，常常是「法国（西线战场）」
+   甚至「布洛涅林苑的湖上，巴黎」这种整句。所以这里要先裁再查：
+   裁到第一个括号或逗号之前，查得到就用字典里的中英双名，
+   查不到再从英文地点里认一次国家，还认不出就归到「其他」。
+   不这么做，英文界面上会冒出几个中文筛选项。 */
+const CO_EN = Object.fromEntries(Object.entries(COUNTRIES).map(([zh, en]) => [en.toLowerCase(), zh]));
+function countryKey(place) {
+  const zh = String(place?.zh || '').trim();
+  const head = zh.split(/[\s（(，,、·]/)[0].trim();
+  if (COUNTRIES[head]) return head;
+  const en = String(place?.en || '').trim();
+  if (en) {
+    /* 英文地点常写成「Paris, France」，从后往前找更容易命中国家 */
+    const parts = en.split(/[,(（]/).map(x => x.trim().toLowerCase()).filter(Boolean).reverse();
+    for (const seg of parts) if (CO_EN[seg]) return CO_EN[seg];
+  }
+  return zh || en ? 'other' : '';
+}
+
 function buildCatalog(all) {
   const gone = new Set(A.gone || []);
-  A.cat = all.map(w => ({
-    ...w,
-    _gone: gone.has(w.id),
-    _hue: hueKeyOf(w.vis.accent),
-    _country: (w.place?.zh || '').split(' ')[0],
-    _search: [w.title.zh, w.title.en, w.artist.zh, w.artist.en, w.museum?.zh, w.museum?.en,
-              w.place?.zh, w.place?.en, w.year, label(MOVEMENTS, w.movement, 'zh'), label(MOVEMENTS, w.movement, 'en'),
-              ...(w.tags || []), COUNTRIES[(w.place?.zh || '').split(' ')[0]] || ''].filter(Boolean).join(' ').toLowerCase()
-  }));
+  A.cat = all.map(w => {
+    const ck = countryKey(w.place);
+    return {
+      ...w,
+      _gone: gone.has(w.id),
+      _hue: hueKeyOf(w.vis.accent),
+      _country: ck,
+      _search: [w.title.zh, w.title.en, w.artist.zh, w.artist.en, w.museum?.zh, w.museum?.en,
+                w.place?.zh, w.place?.en, w.year, label(MOVEMENTS, w.movement, 'zh'), label(MOVEMENTS, w.movement, 'en'),
+                ...(w.tags || []), COUNTRIES[ck] || ''].filter(Boolean).join(' ').toLowerCase()
+    };
+  });
   A.byId = new Map(A.cat.map(w => [w.id, w]));
 }
 

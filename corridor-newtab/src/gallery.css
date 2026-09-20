@@ -411,6 +411,10 @@ body.idle{cursor:none}
   opacity:0;pointer-events:none;transition:.18s var(--ease);border:1px solid var(--hair);backdrop-filter:blur(8px)
 }
 .iconbtn[data-tip]:hover::after{opacity:1;transform:translateX(-50%) translateY(0)}
+/* 快捷键那一行太长，单行提示会横穿整个屏幕 —— 这一颗允许换行 */
+.iconbtn.wide-tip[data-tip]::after{white-space:normal;width:max-content;max-width:min(430px,78vw);line-height:1.75;text-align:left}
+/* 详情页那颗语言按钮：翻过去的时候亮着，跟收藏那颗一个意思 */
+#btnLang.on{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
 /* 底部控制条紧贴屏幕下沿，提示挂在按钮下面会被屏幕边缘切掉 —— 改成往上冒。 */
 #dock .iconbtn[data-tip]::after{
   top:auto;bottom:calc(100% + 9px);transform:translateX(-50%) translateY(4px)}
@@ -1015,6 +1019,14 @@ body[data-offpaper="light"] .off-gh::after{background:rgba(0,0,0,.14)}
   color:rgba(255,255,255,.46);transition:.18s var(--ease)}
 .offlink:hover{color:rgba(255,255,255,.72)}
 .offbar-n{font-size:11.5px;letter-spacing:.08em;color:rgba(255,255,255,.62);min-width:52px;text-align:right}
+.offbar-n.drag{min-width:0;color:rgba(255,255,255,.3);letter-spacing:.14em}
+body[data-off="1"][data-walllight="1"] .offbar-n.drag{color:rgba(0,0,0,.34)}
+body[data-offpaper="light"] .offbar-n.drag{color:rgba(0,0,0,.34)}
+/* 拖着的那一张压住其余的，也提示它正被拿起来 */
+.offitem{cursor:pointer}
+.offitem.dragging{opacity:.45}
+.off-tags .offitem.dragging{transform:rotate(0deg) scale(1.03) !important;
+  box-shadow:0 8px 18px rgba(0,0,0,.45),0 26px 52px rgba(0,0,0,.5)}
 body[data-off="1"][data-walllight="1"] .offbar-n{color:rgba(0,0,0,.6)}
 .offtools .bigbtn[disabled]{opacity:.4;cursor:default;pointer-events:none}
 body[data-off="1"][data-walllight="1"] .offlink{color:rgba(0,0,0,.4)}
@@ -1712,8 +1724,27 @@ body[data-mode="masonry"] #btnInfo{display:none}
 body[data-mode="wall"][data-walllight="1"] .seal{color:#4a463f;border-color:rgba(0,0,0,.16);background:rgba(0,0,0,.04)}
 body[data-mode="wall"][data-walllight="1"] .seal:hover{color:#191713;background:rgba(0,0,0,.09)}
 
+/* 画夹那块底由 JS 算好两个停靠色写进 --rvwall-a/b：跟随展墙、深色、单独挑
+   都在这一处收口。上端亮、下端沉，像一张摊开的桌面。 */
 #revealSheet .rv{position:absolute;inset:0;display:flex;flex-direction:column;
-  background:radial-gradient(120% 90% at 50% 0%,rgba(28,26,23,.97),rgba(8,8,9,.985))}
+  background:radial-gradient(120% 90% at 50% 0%,var(--rvwall-a,#1c1a17),var(--rvwall-b,#08080a))}
+/* 底色浅的时候，字与卡纸的阴影都要翻过来，不然白底白字 */
+body[data-rvlight="1"] .rv-head b,
+body[data-rvlight="1"] .rvcard .cap b{color:#221f1b}
+body[data-rvlight="1"] .rv-head span,
+body[data-rvlight="1"] .rvcard .cap,
+body[data-rvlight="1"] .rv-foot,
+body[data-rvlight="1"] .rv-empty{color:#6c6459}
+body[data-rvlight="1"] .rv-head em{color:#8a6a15}
+body[data-rvlight="1"] .rvcard .mat{box-shadow:0 2px 5px rgba(0,0,0,.16),0 18px 38px rgba(0,0,0,.20)}
+body[data-rvlight="1"] .rvcard:hover .mat{box-shadow:0 4px 9px rgba(0,0,0,.18),0 26px 52px rgba(0,0,0,.26)}
+body[data-rvlight="1"] .rv-foot::before{background:linear-gradient(to top,rgba(0,0,0,.05),transparent 78%)}
+body[data-rvlight="1"] .rv-stage{scrollbar-color:rgba(0,0,0,.22) transparent}
+body[data-rvlight="1"] .rv-stage::-webkit-scrollbar-thumb{background:rgba(0,0,0,.22)}
+body[data-rvlight="1"] #revealSheet .iconbtn{color:#4a443c;border-color:rgba(0,0,0,.16)}
+body[data-rvlight="1"] #revealSheet .iconbtn:hover{color:#1a1714;background:rgba(0,0,0,.07)}
+/* 单独挑颜色那一行：色卡挤在一排，后面跟着色盘与色号 */
+.dotrow.rvcust{margin-top:9px}
 .rv-head{display:flex;align-items:baseline;gap:14px;padding:30px clamp(24px,5vw,72px) 6px}
 .rv-head b{font-family:var(--serif);font-size:clamp(21px,2.5vw,30px);letter-spacing:.07em;color:var(--ink)}
 .rv-head em{font-style:normal;font-size:12.5px;letter-spacing:.1em;color:var(--accent)}
