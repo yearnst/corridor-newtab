@@ -1752,10 +1752,11 @@ body[data-rvlight="1"] #revealSheet .iconbtn:hover{color:#1a1714;background:rgba
 .rv-x{margin-left:auto;align-self:center}
 /* 画夹一次可以摊到五幅，窄窗口里它们会换行、竖幅又特别高 ——
    所以台面自己要能滚：align-content 用 safe center，摊得下时居中，
-   摊不下时从顶上开始排，不会把第一排顶到看不见的地方去。 */
+   摊不下时从顶上开始排，不会把第一排顶到看不见的地方去。
+   左右的缝比上下宽：相邻两张一左一右地斜着，顶角会往一块儿凑，缝窄了就碰上。 */
 .rv-stage{flex:1;min-height:0;position:relative;display:flex;
   align-items:flex-start;align-content:safe center;justify-content:center;
-  gap:clamp(16px,2.8vw,46px);padding:10px clamp(24px,5vw,72px) 22px;perspective:1400px;flex-wrap:wrap;
+  gap:clamp(16px,2.8vw,46px) clamp(28px,4vw,72px);padding:10px clamp(24px,5vw,72px) 22px;perspective:1400px;flex-wrap:wrap;
   overflow-y:auto;overscroll-behavior:contain;
   scrollbar-width:thin;scrollbar-color:var(--hair-strong) transparent}
 .rv-stage::-webkit-scrollbar{width:9px}
@@ -1769,8 +1770,11 @@ body[data-rvlight="1"] #revealSheet .iconbtn:hover{color:#1a1714;background:rgba
   background:linear-gradient(to top,rgba(255,246,230,.055),transparent 78%)}
 
 /* 每一幅像刚从画夹里抽出来，落到台面上。
-   宽度由画自己定：竖幅按高度收窄，横幅顶到上限，于是一排里各归各的比例。 */
-.rvcard{position:relative;flex:0 0 auto;width:auto;min-width:148px;max-width:min(30vw,360px);cursor:pointer;
+   宽度由画自己定：竖幅按高度收窄，横幅顶到上限，于是一排里各归各的比例。
+   卡片是 <figure>，浏览器默认给它 margin:1em 40px。左右那 40px 不在设计里 ——
+   三张卡平白多占 240px，1280 宽的窗口就摊不下三幅；上下那 1em 留着，
+   转了角的卡片，顶角靠它才不会被台面的上沿裁掉。 */
+.rvcard{position:relative;flex:0 0 auto;width:auto;min-width:148px;max-width:min(30vw,360px);margin-inline:0;cursor:pointer;
   transform-origin:50% 92%;opacity:0;
   animation:rvDeal .78s cubic-bezier(.16,.9,.3,1) forwards}
 .rvcard:nth-child(1){animation-delay:.06s}
@@ -1795,12 +1799,15 @@ body[data-rvlight="1"] #revealSheet .iconbtn:hover{color:#1a1714;background:rgba
   font-weight:500;margin-bottom:3px}
 .rvcard:hover .mat{transform:translateY(-4px);box-shadow:0 4px 10px rgba(0,0,0,.5),0 30px 60px rgba(0,0,0,.6)}
 .rvcard .mat{transition:transform .3s var(--ease),box-shadow .3s var(--ease)}
-/* 摊得多就各自收窄一点。上限只写在卡片上 —— 画与展签都跟着卡片走 */
+/* 摊得多就各自收窄一点。上限只写在卡片上 —— 画与展签都跟着卡片走。
+   三幅收到 27vw：三张横幅加两道缝正好是台面的宽，1280 宽也摆得进一排 */
+.rv-stage[data-n="3"] .rvcard{max-width:min(27vw,360px)}
 .rv-stage[data-n="4"] .rvcard{max-width:min(22vw,290px)}
 .rv-stage[data-n="5"] .rvcard{max-width:min(18vw,250px)}
 .rv-stage[data-n="4"] .rvcard img,.rv-stage[data-n="5"] .rvcard img{max-height:42vh}
 @media (max-width:760px){
   .rvcard,
+  .rv-stage[data-n="3"] .rvcard,
   .rv-stage[data-n="4"] .rvcard,
   .rv-stage[data-n="5"] .rvcard{max-width:min(62vw,320px)}
 }
