@@ -10,7 +10,7 @@
 [![offline](https://img.shields.io/badge/offline-yes-1a1a1a?style=flat-square)](#隐私)
 
 一幅画作，一份记忆。<br>
-一款墙色，一种心情。<br>
+一款墙色，一个心情。<br>
 一束灯光，一种氛围。
 
 [安装](#安装) · [它能做什么](#它能做什么) · [完整手册](corridor-newtab/README.md) · [隐私](PRIVACY.md) · [更新记录](CHANGELOG.md) · [English](#english)
