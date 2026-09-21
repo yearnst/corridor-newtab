@@ -1,69 +1,72 @@
-name: 🐛 报告一个问题
-description: 显示不对、点了没反应、控制台报错
+name: 🐛 Report a problem · 报告一个问题
+description: Something looks wrong, a click does nothing, or the console shows an error · 显示不对、点了没反应、控制台报错
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        谢谢你花时间报告。填得越具体，修得越快。
+        Thanks for taking the time to report this. The more specific you are, the faster it gets fixed. English or Chinese are both fine.
+        谢谢你花时间报告。填得越具体，修得越快。中英文都可以。
   - type: input
     id: version
     attributes:
-      label: 长廊的版本号
-      description: 在 `chrome://extensions/` 里看，或设置面板底部
+      label: Corridor version · 长廊的版本号
+      description: See `chrome://extensions/`, or the bottom of the settings panel · 在 `chrome://extensions/` 里看，或设置面板底部
       placeholder: "1.19.0"
     validations:
       required: true
   - type: input
     id: browser
     attributes:
-      label: 浏览器与系统
-      description: 地址栏输入 chrome://version，把前两行贴过来
+      label: Browser and OS · 浏览器与系统
+      description: Type chrome://version in the address bar and paste the first two lines · 地址栏输入 chrome://version，把前两行贴过来
       placeholder: "Chrome 141.0.7390.55 · macOS 15.6"
     validations:
       required: true
   - type: dropdown
     id: mode
     attributes:
-      label: 哪种呈现方式下出现的
+      label: Where did it happen? · 哪种呈现方式下出现的
       options:
-        - 美术馆展墙
-        - 沉浸式
-        - 瀑布流
-        - 环形长廊
-        - 胶卷
-        - 设置面板
-        - 藏品库
-        - 与呈现方式无关
+        - Gallery Wall · 美术馆展墙
+        - Immersive · 沉浸式
+        - Masonry · 瀑布流
+        - Circular Gallery · 环形长廊
+        - Filmstrip · 胶卷
+        - Pause Gallery · 暂歇
+        - Today's Selection · 今日画夹
+        - Settings panel · 设置面板
+        - Library · 藏品库
+        - Not tied to a mode · 与呈现方式无关
     validations:
       required: true
   - type: textarea
     id: what
     attributes:
-      label: 发生了什么
-      description: 你做了什么、看见了什么、期望看见什么
+      label: What happened · 发生了什么
+      description: What you did, what you saw, and what you expected to see · 你做了什么、看见了什么、期望看见什么
       placeholder: |
-        1. 打开新标签页
-        2. 按 M 切到胶卷
-        3. 中间那格是空白的
-        期望：应该显示当前这幅画
+        1. Open a new tab
+        2. Press M to switch to Filmstrip
+        3. The middle frame is blank
+        Expected: it should show the current painting
     validations:
       required: true
   - type: textarea
     id: console
     attributes:
-      label: 控制台有报错吗
-      description: 在新标签页上右键 → 检查 → Console，把红色的贴过来
+      label: Any errors in the console? · 控制台有报错吗
+      description: On the new tab page, right-click → Inspect → Console, and paste whatever is in red · 在新标签页上右键 → 检查 → Console，把红色的贴过来
       render: text
   - type: textarea
     id: screenshot
     attributes:
-      label: 截图
-      description: 直接把图拖进这个框
+      label: Screenshot · 截图
+      description: Drag the image straight into this box · 直接把图拖进这个框
   - type: checkboxes
     id: checks
     attributes:
-      label: 排除一下
+      label: Quick checks · 排除一下
       options:
-        - label: 我确认没有装别的也接管新标签页的扩展
-        - label: 我已经升级到最新版，问题还在
+        - label: No other extension that also takes over the new tab page is installed · 我确认没有装别的也接管新标签页的扩展
+        - label: I've updated to the latest version and the problem is still there · 我已经升级到最新版，问题还在

@@ -1,4 +1,4 @@
-name: 校验
+name: Validate
 
 on:
   push:
@@ -8,71 +8,71 @@ on:
 
 jobs:
   validate:
-    name: 静态自检
+    name: Static checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: 读取版本号
+      - name: Read the version
         id: ver
         run: |
           V=$(sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' corridor-newtab/manifest.json | head -1)
           echo "version=$V" >> "$GITHUB_OUTPUT"
-          echo "manifest 版本号：$V"
+          echo "manifest version: $V"
 
-      - name: 静态自检（JSON、图标、CSP、eval）
+      - name: Static checks (JSON, icons, CSP, eval)
         run: |
           python3 -m json.tool corridor-newtab/manifest.json > /dev/null
           python3 -m json.tool corridor-newtab/data/catalog.json > /dev/null
           for L in corridor-newtab/_locales/*/messages.json; do python3 -m json.tool "$L" > /dev/null; done
-          for S in 16 32 48 128; do test -f "corridor-newtab/icons/$S.png" || { echo "::error::缺 icons/$S.png"; exit 1; }; done
+          for S in 16 32 48 128; do test -f "corridor-newtab/icons/$S.png" || { echo "::error::icons/$S.png is missing"; exit 1; }; done
           if grep -rnE '(^|[^a-zA-Z.])eval\(|new Function\(' corridor-newtab/src; then
-            echo "::error::源码里出现了 eval / new Function"; exit 1
+            echo "::error::eval / new Function found in the source"; exit 1
           fi
           grep -q "script-src 'self'" corridor-newtab/manifest.json || {
-            echo "::error::CSP 里的 script-src 不是 'self'"; exit 1
+            echo "::error::script-src in the CSP is not 'self'"; exit 1
           }
-          echo "自检通过"
+          echo "Checks passed"
 
-      - name: manifest 权限没有被悄悄扩大
+      - name: manifest permissions have not quietly grown
         run: |
-          # 常驻权限只允许这五个；多一个都要在 PR 里单独说明并改这份清单。
-          # declarativeNetRequestWithHostAccess 是 v1.20.0 加的，只用于一件事：
-          # 把发往**本机地址**（localhost / 127.x / 0.0.0.0 / ::1 / *.local）的请求的
-          # Origin 头改写成那个地址自己，好让 Ollama 这类本机服务的来源检查放行。
-          # 带 WithHostAccess 后缀＝只在用户已授权的地址上生效，安装时不多一条权限提示；
-          # 规则还用 initiatorDomains 锁死在本扩展自己发出的请求上。详见 src/localnet.js。
+          # Only these five permanent permissions are allowed; any addition has to be explained in the PR and added to this list.
+          # declarativeNetRequestWithHostAccess was added in v1.20.0 and is used for one thing only:
+          # rewriting the Origin header of requests sent to **local addresses** (localhost / 127.x / 0.0.0.0 / ::1 / *.local)
+          # to that address itself, so that local services such as Ollama pass their origin check.
+          # The WithHostAccess suffix means it only takes effect on addresses the user has granted, with no extra prompt at install;
+          # the rule is also locked to this extension's own requests with initiatorDomains. See src/localnet.js.
           EXPECTED='alarms declarativeNetRequestWithHostAccess downloads storage unlimitedStorage'
           ACTUAL=$(python3 -c "
           import json
           m=json.load(open('corridor-newtab/manifest.json'))
           print(' '.join(sorted(m.get('permissions',[]))))
           ")
-          echo "期望：$EXPECTED"
-          echo "实际：$ACTUAL"
+          echo "Expected: $EXPECTED"
+          echo "Actual:   $ACTUAL"
           [ "$ACTUAL" = "$EXPECTED" ] || {
-            echo "::error::常驻权限变了。这会直接影响 Chrome Web Store 审核，请在 PR 里说明原因并更新本检查。"
+            echo "::error::The permanent permissions changed. This directly affects Chrome Web Store review; explain why in the PR and update this check."
             exit 1
           }
 
-      - name: 可选权限没有被悄悄扩大
+      - name: Optional permissions have not quietly grown
         run: |
-          # 可选权限装上时不弹警告、不停用老用户，正因为温和才更要盯住：
-          # topSites 与 tabs 都是「暂歇」那一屏的站点来源 —— 一个读 Chrome 的常访问榜，
-          # 一个读当前 profile 打开着的标签页（只取标题与网址，按站点汇总）。
-          # 两个都只在用户点「授权」时才申请，面板里随时能撤回。
+          # Optional permissions show no warning at install and don't disable existing users — which is exactly why they need watching:
+          # topSites and tabs are both site sources for the Pause Gallery screen — one reads Chrome's most-visited list,
+          # the other reads the tabs open in the current profile (titles and URLs only, summarized by site).
+          # Both are requested only when the user clicks to grant them, and can be revoked in the panel at any time.
           python3 - <<'PY'
           import json, sys
           m = json.load(open('corridor-newtab/manifest.json'))
           want = ["topSites", "tabs"]
           got = m.get("optional_permissions", [])
           if sorted(got) != sorted(want):
-              print(f"::error::optional_permissions 变了：{sorted(got)}（期望 {sorted(want)}）")
+              print(f"::error::optional_permissions changed: {sorted(got)} (expected {sorted(want)})")
               sys.exit(1)
-          print("optional_permissions 正常")
+          print("optional_permissions OK")
           PY
 
-      - name: host 权限仍限于三个维基媒体域名
+      - name: host permissions still limited to the three Wikimedia domains
         run: |
           python3 - <<'PY'
           import json, sys
@@ -82,17 +82,17 @@ jobs:
                   "https://www.wikidata.org/*"}
           got = set(m.get("host_permissions", []))
           if got != want:
-              print(f"::error::host_permissions 变了：{sorted(got)}")
+              print(f"::error::host_permissions changed: {sorted(got)}")
               sys.exit(1)
-          print("host_permissions 正常")
+          print("host_permissions OK")
           PY
 
-      - name: 作品目录完整性
+      - name: Catalog integrity
         run: |
           python3 - <<'PY'
           import json, sys
           items = json.load(open('corridor-newtab/data/catalog.json'))
-          print(f"目录里有 {len(items)} 条记录")
+          print(f"The catalog has {len(items)} entries")
           required = ['id','title','artist','life','year','ys','medium','dims','museum',
                       'place','movement','region','tags','mature','format','note','look',
                       'img','src','vis']
@@ -101,19 +101,19 @@ jobs:
               wid = w.get('id', f'#{i}')
               missing = [k for k in required if k not in w]
               if missing:
-                  print(f"::error::{wid} 缺字段：{missing}"); bad += 1
+                  print(f"::error::{wid} is missing fields: {missing}"); bad += 1
               if wid in seen:
-                  print(f"::error::id 重复：{wid}"); bad += 1
+                  print(f"::error::duplicate id: {wid}"); bad += 1
               seen.add(wid)
               base = w.get('img', {}).get('base', '')
               full = w.get('img', {}).get('full', '')
               for u in (base, full):
                   if u and not u.startswith('https://upload.wikimedia.org/'):
-                      print(f"::error::{wid} 的图片不在 upload.wikimedia.org 下：{u}"); bad += 1
+                      print(f"::error::{wid} has an image outside upload.wikimedia.org: {u}"); bad += 1
               lic = w.get('src', {}).get('licence', '')
               if 'public domain' not in lic.lower() and not lic.upper().startswith('PDM'):
-                  print(f"::error::{wid} 的授权不是公有领域：{lic!r}"); bad += 1
-          print("全部通过" if not bad else f"{bad} 处问题")
+                  print(f"::error::{wid} is not licensed as public domain: {lic!r}"); bad += 1
+          print("All passed" if not bad else f"{bad} problems")
           sys.exit(1 if bad else 0)
           PY
 

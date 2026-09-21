@@ -1,6 +1,7 @@
-name: 发版
+name: Release
 
-# 打一个 v 开头的 tag 就会自动打包、建 Release、把 zip 挂上去，说明取自 CHANGELOG：
+# Pushing a tag that starts with "v" packages the extension, creates a Release and attaches the zip.
+# The release notes are taken from CHANGELOG.md:
 #   git tag v1.19.1 && git push origin v1.19.1
 
 on:
@@ -9,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: '版本号（例如 v1.19.0）'
+        description: 'Version tag (e.g. v1.19.0)'
         required: true
 
 permissions:
@@ -21,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 确定版本号
+      - name: Work out the version
         id: ver
         run: |
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
@@ -30,26 +31,27 @@ jobs:
           echo "tag=$TAG"     >> "$GITHUB_OUTPUT"
           echo "version=$V"   >> "$GITHUB_OUTPUT"
           if [ "$V" != "$M" ]; then
-            echo "::error::tag 是 $TAG，但 manifest.json 里写的是 $M。两边必须一致。"
+            echo "::error::The tag is $TAG, but manifest.json says $M. The two must match."
             exit 1
           fi
 
-      - name: 打包
+      - name: Package
         run: |
           V="${{ steps.ver.outputs.version }}"
           ZIP="$PWD/dist/corridor-newtab-v$V.zip"
           mkdir -p dist
-          # 扁平包：manifest.json 必须在 zip 根目录，所以进到扩展那一层再压
+          # Flat package: manifest.json must sit at the root of the zip, so zip from inside the extension folder.
+          # Both manuals (README.md and README.<lang>.md) stay out of the package.
           ( cd corridor-newtab && zip -r -q -X "$ZIP" . \
-              -x 'README.md' '.DS_Store' '*/.DS_Store' '._*' '*/._*' '__MACOSX/*' '*.map' '*.zip' 'node_modules/*' )
+              -x 'README.md' 'README.*.md' '.DS_Store' '*/.DS_Store' '._*' '*/._*' '__MACOSX/*' '*.map' '*.zip' 'node_modules/*' )
           LIST="$(unzip -l "$ZIP")"
           echo "$LIST" | tail -1
           case "$LIST" in
-            *" manifest.json"*) echo "✓ manifest.json 在根目录" ;;
-            *) echo "::error::manifest.json 不在 zip 根目录，Chrome 会拒绝"; exit 1 ;;
+            *" manifest.json"*) echo "✓ manifest.json is at the root" ;;
+            *) echo "::error::manifest.json is not at the root of the zip; Chrome will reject it"; exit 1 ;;
           esac
 
-      - name: 从 CHANGELOG 里取出这一版的说明
+      - name: Take this version's notes from CHANGELOG
         id: notes
         run: |
           V="${{ steps.ver.outputs.version }}"
@@ -63,19 +65,30 @@ jobs:
             echo ""
             echo "---"
             echo ""
+            echo "**Install**: download the zip below and unzip it. Open \`chrome://extensions/\`, turn on Developer mode,"
+            echo "click **Load unpacked** and choose the unzipped folder;"
+            echo "or clone this repository and choose \`corridor-newtab/\` directly."
+            echo ""
+            echo "Full manual: [corridor-newtab/README.md](../../blob/main/corridor-newtab/README.md)."
+            echo ""
+            echo "<details>"
+            echo "<summary>中文</summary>"
+            echo ""
             echo "**安装**：下载下方的 zip 并解开，在 \`chrome://extensions/\` 打开开发者模式，"
             echo "「加载已解压的扩展程序」选解开后的那个文件夹；"
             echo "或者 clone 本仓库，直接选 \`corridor-newtab/\`。"
             echo ""
-            echo "完整说明见 [corridor-newtab/README.md](../../blob/main/corridor-newtab/README.md)。"
+            echo "完整说明见 [corridor-newtab/README.zh-CN.md](../../blob/main/corridor-newtab/README.zh-CN.md)。"
+            echo ""
+            echo "</details>"
             echo "CHANGELOG_EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: 建 Release
+      - name: Create the Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
-          name: 长廊 Corridor ${{ steps.ver.outputs.tag }}
+          name: Corridor ${{ steps.ver.outputs.tag }}
           body: ${{ steps.notes.outputs.notes }}
           files: dist/*.zip
           draft: false

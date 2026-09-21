@@ -1,520 +1,527 @@
-# 长廊 Corridor · 艺术新标签页
+# Corridor · Art New Tab
 
 <sub>v1.22.2</sub>
 
-把每一个新标签页变成一面美术馆的墙。106 幅公有领域杰作（默认展出 93 幅），双语策展导览，
-五种呈现模式，可自动或手动换画，图片抓取后存入本地、离线可用，每天还会自己再添几幅。
-接上你自己的模型之后，界面与作品信息可以换成**世界上任意两种语言** —— 一种母语，一种外语。
+**English** · [简体中文](README.zh-CN.md)
+
+Turns every new tab into a wall in an art museum. 106 public-domain masterpieces (93 on display by default), bilingual curatorial notes,
+five display modes, works that change automatically or by hand, images fetched once and stored locally so it works offline, and a few more works added on its own every day.
+Connect your own model and the interface and artwork information can switch to **any two languages in the world** — one native, one foreign.
+
+> A few features have slightly different names in the current English interface: Circular Gallery appears as “Carousel”, Pause Gallery as “Pause”, Today's Selection as “Today's portfolio”, and the Library as “Collection”.
 
 ---
 
-## 一、安装
+## 1. Installation
 
-### 从 Chrome 网上应用店（推荐）
+### From the Chrome Web Store (recommended)
 
-**[▸ 长廊 Corridor · 艺术新标签页](https://chromewebstore.google.com/detail/mnllopjjkbkoeljonbgmlabijamcjlam)** —— 装完打开一个新标签页即可，之后会自动更新。
+**[▸ Corridor · Art New Tab](https://chromewebstore.google.com/detail/mnllopjjkbkoeljonbgmlabijamcjlam)** — once it's installed, just open a new tab; from then on it updates itself.
 
-### 开发者模式加载（想改源码时用）
+### Loading in developer mode (for when you want to modify the source)
 
-1. 打开 Chrome，地址栏输入 `chrome://extensions/` 回车
-2. 右上角打开 **开发者模式**
-3. 点击 **加载已解压的扩展程序**
-4. 选择 `corridor-newtab/` 文件夹（即包含 `manifest.json` 的这一层）
-5. 打开一个新标签页即可
+1. Open Chrome, type `chrome://extensions/` in the address bar and press Enter
+2. Turn on **Developer mode** in the top right corner
+3. Click **Load unpacked**
+4. Select the `corridor-newtab/` folder (the level that contains `manifest.json`)
+5. Open a new tab and you're done
 
-> 首次安装会自动打开一个新标签页。若新标签页没有变化，检查是否有其他扩展也在接管新标签页。
-> Edge / Brave / Arc 等 Chromium 内核浏览器同样适用。
+> A new tab opens automatically on first install. If the new tab page doesn't change, check whether another extension is also taking over the new tab page.
+> Edge / Brave / Arc and other Chromium-based browsers work the same way.
 
-卸载或停用：回到 `chrome://extensions/` 关闭或移除即可，本地缓存会随扩展一并清除。
+To uninstall or disable: go back to `chrome://extensions/` and switch it off or remove it; the local cache is cleared along with the extension.
 
 ---
 
-## 二、界面与操作
+## 2. Interface and controls
 
-### 五种呈现模式（右上角第一个按钮循环，或按 `M`）
+### Five display modes (the first button at the top right cycles through them, or press `M`)
 
-| 模式 | 说明 |
+| Mode | Description |
 |---|---|
-| **美术馆展墙** | 模拟真实展厅：墙色与材质、顶部射灯、十种画框、亚麻内衬或卡纸留白、落墙投影、右下角墙签。**墙签上永远排着两行标题**：上面是当前界面语言的名字，下面小一号是另一种语言的原名——真展签就是这么做的。 |
-| **环形长廊** | Cover-flow 式 3D 旋转画廊：中心一幅正对你，两侧依次侧转、变暗、失焦。**默认每 4.2 秒转到下一幅**（可调）；也可以**按住鼠标左右拖动**（带甩动惯性，松手自动吸附到最近一幅），或用 `← →`、滚轮。点中心放大。整条队列用浮点位移驱动，每转一格只回收落到最外侧的那一张，其余六张的图片不重载，所以滚动时不闪不抖。 |
-| **胶卷** | **一幅焦点图**：正中那一幅完全平整、正对着你、最大也最亮（片门平顶只罩住它一幅，片基脚下垫着一圈放映机光池）。两侧是一条**蜿蜒过来又远去的平滑长带**：出了片门，画格以长过渡（2.1 格高）单程拧向侧后方（渐近 46°），两翼轻轻抬起成一道浅谷，画格依次转侧、缩小、变暗、变虚，最后在屏幕两端缩进放映室的暗处——转角逐格渐变（相邻 ≤16°），**屏内能同时看到约 8–9 幅的全貌**（画格高占窗高 26%、封顶 300px）。片基亮黑光泽，远处画格按距离挂离散模糊档（0.5 / 0.9 / 1.3px）。五种片型，节拍可调（逐格 / 连续）。拖动手动卷片，`← →`、滚轮翻格，点片门那格放大。 |
-| **沉浸式** | 作品铺满整屏。横幅比例接近屏幕时铺满；竖幅、超宽幅自动改为「完整显示」，背后垫一层同一幅画的柔焦放大。 |
-| **瀑布流** | 整墙作品按列缓慢向上流动，各列速度略有差异形成层次；悬停某幅即暂停并浮出信息，点击直接进入沉浸式。滚轮可手动翻。 |
+| **Gallery Wall** | Simulates a real gallery room: wall color and finish, spotlights from above, ten frames, matting with a linen liner or a mat, a shadow cast onto the wall, and a wall label at the bottom right. **The wall label always carries two lines of title**: on top, the name in the current interface language; below it, one size smaller, the original name in the other language — exactly how real museum labels do it. |
+| **Circular Gallery** | A Cover-flow-style rotating 3D gallery: the center work faces you, and the works on either side turn away, darken and fall out of focus one after another. **By default it turns to the next work every 4.2 seconds** (adjustable); you can also **hold the mouse button and drag left or right** (with fling momentum; on release it snaps to the nearest work), or use `← →` or the scroll wheel. Click the center work to enlarge it. The whole queue is driven by a floating-point offset, and each step recycles only the card that drops off the outermost edge; the images of the other six are not reloaded, so scrolling doesn't flicker or jitter. |
+| **Filmstrip** | **One focus image**: the frame at the very center lies perfectly flat, faces you squarely, and is the largest and brightest (the gate's flat top covers that one frame alone, and a pool of projector light lies on the film base at its foot). On either side runs **a smooth, long band that winds toward you and away again**: once out of the gate, the frames twist steadily back and outward over one long transition (2.1 frame heights) (approaching 46°), the two wings lift gently into a shallow valley, and the frames turn sideways, shrink, darken and blur one after another until, at both edges of the screen, they recede into the darkness of the projection booth — the angle changes gradually from frame to frame (≤16° between neighbors), and **about 8–9 works are visible in full on screen at once** (a frame is 26% of the window height, capped at 300px). The film base is a glossy black, and distant frames are given discrete blur levels by distance (0.5 / 0.9 / 1.3px). Five film stocks, adjustable pace (Step / Continuous). Drag to wind the film by hand, use `← →` or the scroll wheel to move frame by frame, and click the frame in the gate to enlarge it. |
+| **Immersive** | The work fills the entire screen. Landscape-format works close to the screen's proportions fill it completely; portrait-format and ultra-wide works switch automatically to “Show whole work”, with a soft-focus enlargement of the same painting laid behind them. |
+| **Masonry** | A whole wall of works drifts slowly upward in columns, each column at a slightly different speed to create depth; hovering over a work pauses it and brings up its details, and clicking takes you straight into Immersive. The scroll wheel lets you scroll by hand. |
 
-**任何模式下，鼠标移到画上都变成放大镜，点一下就能看细节** —— 展墙、环形长廊、胶卷、沉浸式都一样。
-（环形长廊与胶卷里为了拖拽设了指针捕获，浏览器会把 click 事件改派给整个舞台，
-所以这两处的点击是按坐标命中判定的，不是挂在每一格上的 onclick。）
+**In any mode, the pointer turns into a magnifying glass over a painting, and one click shows you the detail** — Gallery Wall, Circular Gallery, Filmstrip and Immersive alike.
+(Circular Gallery and Filmstrip set pointer capture for dragging, so the browser retargets the click event to the whole stage;
+that is why clicks in these two modes are resolved by hit-testing coordinates, not by an onclick attached to each item.)
 
-后两种模式里画框设置同样生效——你在展墙里挑好的框，走廊和长廊里挂的就是那一款。
+The frame setting carries over to the other modes as well — the frame you picked on the Gallery Wall is the one they hang with.
 
-> **环形长廊的展签**（v1.7 改版）：不再套用沉浸式那张浮在角落的信息卡，
-> 而是像真展厅一样，把**说明牌直接放在当前这幅作品的正下方**——
-> 一道发丝短线、流派与年代、标题（另一种语言的标题以斜体附在下面）、作者、收藏地，最后是一句导览。
-> 牌子的位置按当前那幅画的实际下沿算出来，所以竖幅和横幅切换时它会跟着上下移动，始终贴着画走。
-> 同时中心那幅**放大到 1.22 倍**并略微提亮提彩，打了一道顶光、边框加深、镶一道极细的暖色内圈；
-> 两侧的作品退得更远、依次压暗去饱和失焦，左右两端还有一层渐隐——注意力自然落在中间那一幅上。
+> **The Circular Gallery label** (v1.7 redesign): it no longer borrows the info card that floats in a corner in Immersive;
+> instead, as in a real gallery, **the label sits directly beneath the current work** —
+> a short hairline rule, movement and date, the title (with the title in the other language in italics below it), artist, collection, and finally a one-line curatorial note.
+> The label's position is computed from the actual bottom edge of the current painting, so it moves up and down as portrait and landscape works alternate, always staying with the painting.
+> Meanwhile the center work is **scaled up to 1.22×** and slightly brightened and saturated, lit from above, with a darker frame edge and a very fine warm inner ring;
+> the works on either side recede further, progressively darkened, desaturated and blurred, with a fade at the far left and right — attention settles naturally on the one in the middle.
 >
-> **展签的换字跟着画走**（v1.7.1）：之前它要等缓动收敛才换，而 tau=240 的指数缓动要 ~1.3 秒才落到阈值内，
-> 所以画早就停稳了、字才姗姗来迟。现在改成看**离最近一格还有多远**：画一动字就随它退场，
-> 越过半格立刻把内容换好（此时还是隐形的），等画滑到最后一点点再逐行浮起来。
-> （另外那段淡出本来就没生效过——`#carousel.lit .ccap` 的权重压过了 `.ccap.swap`，字是硬切的。）
+> **The label text follows the painting** (v1.7.1): it used to wait for the easing to settle before changing, and an exponential ease with tau=240 takes ~1.3 seconds to get within the threshold,
+> so the painting had long since come to rest before the text finally showed up. Now it looks at **how far it still is from the nearest slot**: as soon as the painting moves, the text exits with it;
+> past the halfway point the content is swapped at once (while it is still invisible), and as the painting slides through its last little stretch, the text rises back in line by line.
+> (Also, that fade-out had never actually worked — `#carousel.lit .ccap` outweighed `.ccap.swap` in specificity, so the text was hard-cut.)
 
-### 十种画框（离线光照渲染，参照实物线脚）
+### Ten frames (lit and rendered offline, modeled on real mouldings)
 
-画框不是 CSS 描边。每种线脚先按真实剖面建高度场——**外唇 → 凹槽 → 珠圆 → 内缘线脚**，
-分段保留锐利转折（真框的 arris 是硬的，不是糊的）——再叠上浮雕纹样，解出法线，
-用 Lambert 漫反射 + Blinn-Phong 高光 + **光线步进投影** + 环境光遮蔽照亮（光从上方偏左，与展厅射灯一致）。
+The frames are not CSS borders. Each moulding starts as a height field built from a real profile — **outer lip → cove → bead → inner-edge moulding**,
+with sharp breaks kept between the segments (the arrises of a real frame are crisp, not mushy) — then relief ornament is layered on and the normals are solved,
+and it is lit with Lambert diffuse + Blinn-Phong specular + **ray-marched shadows** + ambient occlusion (the light comes from above and slightly to the left, matching the gallery spotlights).
 
-上色区分**水金与油金**：平滑顶面是水金打磨过的，高光锐利偏冷；雕花处是油金，哑光偏暖；
-高点磨损露出红色**底胶**，凹处积着赭褐色的做旧，表面有细龟裂。
-输出成 9 宫格贴图，用 `border-image ... round` 铺开，四角自动 45° 斜接。
+The coloring distinguishes **water gilding from oil gilding**: the smooth top surfaces are burnished water gilding, with sharp, cool highlights; the carved areas are oil gilding, matte and warmer;
+wear on the high points exposes the red **bole** underneath, ochre-brown antiquing settles in the recesses, and the surface has fine craquelure.
+The result is output as a 9-slice texture and laid out with `border-image ... round`, which miters the four corners at 45° automatically.
 
-| 风格 | 线脚与纹样 | 默认留白 |
+| Style | Moulding and ornament | Default matting |
 |---|---|---|
-| **月桂描金** | 外缘月桂叶带 + 浆果，宽凹面，内缘串珠 | 亚麻内衬 |
-| **沙龙金** | 外缘齿饰，大面积水金凹面，内缘卵箭饰 | 亚麻内衬 |
-| **巴洛克金** | 最宽，厚重茛苕卷叶，深度做旧 | 无（直接入裁口） |
-| **洛可可蓝金** | 藏青漆身 + 描金贝饰 + 四角花饰 | 无 |
-| **乌木金线** | 黑漆阶梯剖面 + 贴金内缘线 | 卡纸 |
-| **胡桃木** | S 形线脚，年轮顺着框走 | 卡纸 |
-| **白橡** | 擦白橡木，开放棕眼 | 卡纸 |
-| **极简黑框** | 哑黑盒形剖面 | 大留白 |
-| **细金框** | 极细暖金 | 大留白 |
-| **画布浮框** | 深色托盘框，与画布之间留悬浮缝隙 | 无 |
-| **无框** | 只有画布与落墙投影 | 无 |
+| **Laurel gilt** | Band of laurel leaves + berries at the outer edge, wide cove, beading at the inner edge | Linen liner |
+| **Salon gold** | Dentils at the outer edge, a broad water-gilt cove, egg-and-dart at the inner edge | Linen liner |
+| **Baroque gilt** | The widest; heavy acanthus scrolls, deeply antiqued | None (straight into the rabbet) |
+| **Rococo blue** | Navy lacquered body + gilded shell ornament + corner flourishes | None |
+| **Ebony & gold** | Black-lacquered stepped profile + gilded inner edge line | Mat |
+| **Walnut** | S-profile moulding, with the grain running along the frame | Mat |
+| **Limed oak** | White-rubbed oak, open pores | Mat |
+| **Matte black** | Matte black box profile | Wide matting |
+| **Thin gold** | Very slim, warm gold | Wide matting |
+| **Float frame** | Dark tray frame, with a floating gap between it and the canvas | None |
+| **Frameless** | Just the canvas and its shadow on the wall | None |
 
-### 画与框之间的留白
+### The matting between picture and frame
 
-这一项决定了「专业感」。规矩来自真实的装裱惯例：
+This is what decides whether it looks “professional”. The rules come from real framing conventions:
 
-- **油画进金框不加卡纸**——画布直接落进裁口，中间最多垫一道**亚麻内衬**（linen liner），
-  也就是包着亚麻布的窄平面，内缘再压一道金线。月桂描金和沙龙金默认就是这样。
-- **纸本作品才用卡纸**（mount）——白卡纸开窗，窗口是 45° 斜切的，露出白色纸芯。
-  极简黑框和细金框默认给**大留白**，就是上传参考里那种「画很小、白边很宽」的当代装裱。
-- 卡纸窗口的斜面、卡纸投在画面上的一道暗影、画布本身的一圈暗边，都做了。
+- **Oil paintings in gilt frames get no mat** — the canvas drops straight into the rabbet, with at most a **linen liner** in between,
+  that is, a narrow linen-covered flat with a gold line pressed along its inner edge. Laurel gilt and Salon gold do this by default.
+- **Only works on paper get a mat** (mount) — a window cut in white mat board, with a 45° bevel that shows the white core.
+  Matte black and Thin gold default to **wide matting**: the contemporary framing seen in the uploaded reference, “a small picture with a very wide white border”.
+- The bevel of the mat window, the thin shadow the mat casts onto the picture, and the dark rim around the canvas itself are all rendered.
 
-设置里「留白方式」可以手动改成：随画框 / 亚麻内衬 / 卡纸 / 大留白 / 无。
+In settings, the matting style (“Mount”) can be set by hand to: Auto / Linen / Mount / Wide / None.
 
-另有一条独立的**「留白宽度」滑块**（0.40× – 2.00×），在当前留白方式的基础上整体加宽或收窄，
-拖动时画面实时跟着变。喜欢当代美术馆那种「画小、白边极宽」的挂法，把它拉到 1.6× 以上就对了。
+There is also a separate **“Mount width” slider** (0.40× – 2.00×) that widens or narrows the current matting style as a whole,
+and the picture follows live as you drag. If you like the contemporary-museum way of hanging, “small picture, extremely wide white border”, push it above 1.6×.
 
-### 墙面颜色与纹理
+### Wall color and finish
 
-十种展厅漆色：炭黑、石墨灰、鸽灰、暖灰、石膏米、展厅白、美术馆绿、勃艮第红、普鲁士蓝、陶土红。
+Ten gallery paint colors: Charcoal, Graphite, Dove grey, Warm grey, Plaster, Gallery white, Museum green, Burgundy, Prussian blue, Terracotta.
 
-**二十五种墙面材质**，v1.5 按真实展墙的做法重建。
+**Twenty-five wall finishes**, rebuilt in v1.5 to follow how real gallery walls are made.
 
-先说清楚现实里的展墙是怎么做的：美术馆的墙通常是 **半英寸胶合板打底 + 石膏板**（胶合板是为了随处能吃钉挂画），
-接缝填缝后**整面满批一道**——也就是 **Level 5 级** 的做法，只有满批过的墙，在擦地射灯那种掠射光下才不会把接缝照出来；
-面漆是哑光乳胶，一年换展要重刷两三次，所以墙上会积起一层薄薄的漆膜、留下补过的钉眼和滚筒搭接。
-所以真正的「美术馆展墙」不是拉毛、不是艺术漆，而是**近乎平整、但在斜光下仍有极细起伏的哑光白**。
+First, how gallery walls are actually built in real life: a museum wall is usually **half-inch plywood backing + drywall** (the plywood is there so a nail will hold wherever you hang a picture);
+after the joints are filled, **the whole surface gets a full skim coat** — the **Level 5** finish. Only a fully skimmed wall keeps its seams from showing under the raking light of grazing spotlights;
+the topcoat is matte latex, repainted two or three times a year as exhibitions change, so the wall builds up a thin film of paint, along with patched nail holes and roller lap marks.
+So a real “gallery wall” is not knock-down texture or decorative paint, but **a matte white that is nearly flat, yet still shows extremely fine undulations in raking light**.
 
-历史宅邸类博物馆是另一路：伊莎贝拉·嘉纳博物馆的展厅至今用织物包墙，
-**锦缎光滑所以反光、丝绒吸光、花缎表面不平所以散光**——同一间屋子里靠三种织法调节光线。
-二十世纪的现代美术馆则流行**麻布包板**。数字与沉浸展厅又是另一套：声学毡、消光黑箱、LED 屏、微孔吸音板、投影幕。
+Historic house museums follow another tradition: the galleries of the Isabella Stewart Gardner Museum are still hung with fabric today,
+**damask is smooth and so reflects light, velvet absorbs it, and brocatelle's uneven surface scatters it** — three weaves tuning the light within the same room.
+Twentieth-century modern museums favored **hessian-wrapped panels**. Digital and immersive galleries are another story again: acoustic felt, matte black boxes, LED walls, micro-perforated acoustic panels, projection screens.
 
-材质全部是按高度场解法线再打光渲出来的浮雕，用 FFT 做严格周期的带限噪声保证接缝隐形；
-渲完再把亮度做**标准差归一化**到各自的目标反差（五级批白 σ=0.009，清水混凝土 σ=0.033），细腻而不失真。
+Every finish is a relief rendered by solving normals from a height field and then lighting it, with strictly periodic band-limited noise generated via FFT so the seams stay invisible;
+after rendering, the luminance is **normalized by standard deviation** to each finish's target contrast (Level-5 skim σ=0.009, Board-formed concrete σ=0.033) — subtle, without losing fidelity.
 
-**v1.7 把「展墙做法」与「石材与硬装」这两组整个重做了一遍**，起因是它们看着糊。查下来是三件事叠在一起：
+**v1.7 rebuilt the two groups “Gallery walls” and “Stone & hard finishes” from scratch**, because they looked blurry. It turned out to be three problems stacked on top of each other:
 
-1. **贴图 512px 却要放大到 640–820px 显示**——先天就被拉虚。现在这两组渲到 **1024px，显示尺寸一律小于它**，永远是降采样。
-2. **划痕的角度参数写了却没用上**，所以「交叉打磨痕」根本没交叉，威尼斯灰泥的抹痕成了一排横条纹。
-   现在改用频域的方向性滤波，角度真的生效，而且仍然无缝。
-3. **带限噪声把频谱切成了方块**，方块频谱的自相关是 sinc，会在墙上留下淡淡的斜向波纹（微水泥上最明显）。改成平滑的径向截止。
+1. **The textures were 512px but displayed scaled up to 640–820px** — blurry from birth. These two groups now render at **1024px, and the display size is always smaller than that**, so they are always downsampled.
+2. **The angle parameter for scratches was written but never used**, so the “cross-sanding marks” didn't cross at all, and the trowel strokes in Venetian plaster came out as a row of horizontal stripes.
+   A directional filter in the frequency domain is now used instead, so the angle really takes effect, and it is still seamless.
+3. **The band-limited noise cut the spectrum into a square**; the autocorrelation of a square spectrum is a sinc, which leaves faint diagonal ripples on the wall (most visible on Microcement). It now uses a smooth radial cutoff.
 
-另外补上了真正近看才有的东西：混凝土的**气泡孔**与对拉螺栓孔、木材的**管孔**与髓射线、洞石沿层理聚集的孔洞、
-砖墙**每块砖各自不同的颜色**、砂岩的沉积色带。木纹、砖色、混凝土色斑这类**本身就是颜色深浅、光打不出来**的特征，
-单独走一条反照率通道叠进去。
+It also adds the things you only see up close: **air-bubble voids** and form-tie holes in the concrete, **vessel pores** and medullary rays in the wood, voids in the travertine clustered along its bedding,
+**a different color for every brick** in the brick wall, and sedimentary color bands in the sandstone. Features like wood grain, brick color and concrete mottling — **variations in color itself, which lighting cannot produce** —
+are layered in through a separate albedo channel.
 
-最细的那层漆膜颗粒**单独拆成一张共享贴图**（`grain.webp`，256px，固定 128px 平铺）：
-纯噪声没有地标，小图重复看不出来，却让每种墙面都有 1–2px 的细颗粒；
-而 14 张结构贴图不必再背负不可压缩的白噪声，体积从 ~3.5 MB 降到 ~1.1 MB。
-选材质的色块也叠了同一层颗粒，所见即所得。
+The finest layer, the paint-film grain, **has been split out into a single shared texture** (`grain.webp`, 256px, always tiled at 128px):
+pure noise has no landmarks, so a small repeating tile goes unnoticed, yet it gives every wall finish a fine 1–2px grain;
+meanwhile the 14 structure textures no longer have to carry incompressible white noise, and their size dropped from ~3.5 MB to ~1.1 MB.
+The swatches you pick a finish from have the same grain layered on, so what you see is what you get.
 
-| 分组 | 材质 |
+| Group | Finishes |
 |---|---|
-| **展墙做法** | 五级批白（满批一道，只剩极淡的批刀起伏与砂痕）· 哑光滚涂（滚筒橘皮 + 补过的钉眼 + 搭接）· 批刀刮痕 · 威尼斯灰泥 · 抛光灰泥 Marmorino · 刀抹拉毛 · 微水泥 · 硅藻泥 · 蛋壳漆 |
-| **织物包墙** | 麻布包板 · 亚麻墙布 · 真丝壁布 · 丝绒 · **锦缎**（地与花同色，靠经纬方向相反的缎纹反光成像）· **花缎**（花头鼓起，表面不平所以散光） |
-| **数字展厅** | 声学毡 · 消光黑箱 · LED 屏（细间距像素阵列）· 微孔吸音板 · 投影幕 |
-| **石材与硬装** | 清水混凝土（模板缝 + 对拉螺栓孔 + 骨料）· 木饰面 · 洞石 · 砖墙 · 砂岩 |
+| **Gallery walls** | Level-5 skim (one full skim coat; only the faintest trowel undulations and sanding marks remain) · Matt rolled (roller orange peel + patched nail holes + lap marks) · Trowelled skim · Venetian · Marmorino (polished plaster) · Knock-down · Microcement · Diatom clay · Eggshell |
+| **Fabric-lined** | Hessian · Linen · Silk · Velvet · **Damask** (ground and pattern in the same color; the image comes from satin weaves running in opposite warp and weft directions catching the light) · **Brocatelle** (the motifs stand out in relief; the uneven surface scatters light) |
+| **Digital exhibition** | Acoustic felt · Black box · LED wall (fine-pitch pixel array) · Micro-perf · Projection screen |
+| **Stone & hard finishes** | Board-formed concrete (formwork seams + form-tie holes + aggregate) · Wood panel · Travertine · Brick · Sandstone |
 
-> 深色墙上 overlay 的相对调制是 2·b·s，和浅色墙完全不是一个量级：
-> **结构纹要提反差才看得见，颗粒反而要压下去，否则就成了雪花**。
-> 所以深色墙下纹理按自身反差分三档提（最平的五级批白 / 蛋壳漆 / 哑光滚涂提 3.6 倍，
-> 拉毛、混凝土、砖、砂岩这些本来反差就大的只提 2.0 倍），颗粒层统一降到 42%。
-> 这样丝绒挂在美术馆绿上、锦缎挂在勃艮第红上才看得出织法。
+> On a dark wall the relative modulation of the overlay is 2·b·s, a completely different order of magnitude from a light wall:
+> **the structure needs more contrast to be visible, while the grain has to be pushed down, or it turns into snow**.
+> So on dark walls the texture is boosted in three tiers according to its own contrast (the flattest, Level-5 skim / Eggshell / Matt rolled, by 3.6×;
+> knock-down, concrete, brick and sandstone, which have plenty of contrast to begin with, by only 2.0×), and the grain layer is reduced across the board to 42%.
+> Only then does the weave show when Velvet hangs on Museum green or Damask on Burgundy.
 
-选浅色墙时界面会自动切成深色图标与深色文字。
+When you choose a light wall, the interface automatically switches to dark icons and dark text.
 
-### 时钟
+### Clock
 
-两种，都不会压在画上：
+Two styles, and neither ever sits on top of the painting:
 
-- **顶栏**：`11:00 · 周四 8月20日`，细排版贴在顶栏右侧，任何模式都不占画面。
-- **大字**：只在沉浸式出现，细体衬线 + 一道发丝分隔线；开启时「完整显示」会自动给上方留出空间，
-  画作往下让，绝不重叠。切到展墙模式时自动降级成顶栏样式。
+- **In bar**: `11:00 · Thu, Aug 20`, set in fine type at the right of the top bar; it takes no space from the painting in any mode.
+- **Grand**: appears only in Immersive, a thin serif + a hairline divider; when it is on, “Show whole work” automatically leaves room at the top,
+  and the painting moves down, so the two never overlap. Switching to Gallery Wall mode automatically downgrades it to the top-bar style.
 
-按 `C` 在三种状态间循环。
+Press `C` to cycle through the three states.
 
-### 键盘快捷键
+### Keyboard shortcuts
 
-| 键 | 作用 |
+| Key | Action |
 |---|---|
-| `←` `→` | 上一幅 / 下一幅 |
-| `Space` | 暂停 / 继续自动轮换 |
-| `F` | 收藏 / 取消收藏 |
-| `X` | 去除这一幅（不再轮换，也不列进藏品库；五秒内可撤销） |
-| `Q` | 暂歇 / 回到展出（不展画时改显示常去的站点） |
-| `Z` | 高清查看（滚轮缩放、拖动平移、双击自适应） |
-| `I` | 作品详情（完整导览文字、材质尺寸、来源与授权）。面板右上角有个语言按钮，点一下整页换成另一种语言，关掉再开还是母语 |
-| `L` | 藏品库（全部 / 收藏夹 / 浏览历史 + 筛选检索） |
-| `S` | 设置抽屉 |
-| `C` | 切换时钟样式 |
-| `M` | 切换呈现模式 |
-| `D` | 下载当前作品 |
-| `Esc` | 关闭面板 |
+| `←` `→` | Previous / next work |
+| `Space` | Pause / resume automatic rotation |
+| `F` | Add to / remove from favorites |
+| `X` | Remove this work (out of the rotation and no longer listed in the Library; can be undone within five seconds) |
+| `Q` | Pause Gallery / back on show (instead of paintings, it shows the sites you visit often) |
+| `Z` | View in detail (scroll to zoom, drag to pan, double-click to fit) |
+| `I` | Artwork details (the full curatorial note, medium and dimensions, source and license). The panel has a language button at its top right: one click switches the whole page to the other language, and closing and reopening it brings back your native language |
+| `L` | The Library (All / Favorites / History + filters and search) |
+| `S` | Settings drawer |
+| `C` | Switch clock style |
+| `M` | Switch display mode |
+| `D` | Download the current work |
+| `Esc` | Close panel |
 
-### 去除一幅（右下角那个划掉的眼睛，或按 `X`）
+### Removing a work (the crossed-out eye at the bottom right, or press `X`)
 
-收藏的反面。点下去，这一幅**不再参与轮换，藏品库里也不再列出** ——
-办公模式只管「轮换时跳过」，藏品库照旧全都列，「去除」是唯一会让作品从藏品库里消失的。
+The opposite of favoriting. Click it and this work **leaves the rotation and is no longer listed in the Library** —
+Work-safe mode only “skips it during rotation” and the Library still lists everything; “Remove” is the only thing that makes a work disappear from the Library.
 
-它不是删除：存的只是一份名单，作品数据一个字节都没动。
-**设置 → 存储 → 已移除**里列着所有被去除的作品，可以逐幅「放回」，也可以「全部放回」。
+It is not deletion: all that is stored is a list, and not a single byte of the artwork data is touched.
+**Settings → Storage → Removed** lists every removed work; you can “Put back” works one at a time, or “Put them all back”.
 
-点完不弹确认框，改成底部亮出一条「已移除《XX》· 撤销」，**五秒内可以反悔** ——
-连着整理藏品时不会被一串确认框打断，手滑了也找得回来。
+No confirmation dialog appears after you click; instead a bar lights up at the bottom, “Removed ‘XX’ · Undo”, and **you can change your mind within five seconds** —
+so tidying up the collection in one go isn't interrupted by a string of confirmation dialogs, and a slip of the hand can still be undone.
 
-### 暂歇：把长廊临时关掉（设置左边那个电源按钮，或按 `Q`）
+### Pause Gallery: switching Corridor off for a while (the power button to the left of Settings, or press `Q`)
 
-按下去，这一页不展画了，改成一块安静的落脚地，上面是你常去的那几个站点；
-再点一次回到展出。状态**跨标签页同步，重启浏览器也还是关着**，直到你再点一次。
+Press it and this page stops showing paintings and becomes a quiet landing spot instead, with the few sites you visit most;
+press it again to go back on show. The state **syncs across tabs and stays off even after you restart the browser**, until you press it again.
 
-> 为什么不是「真的关掉扩展」：Chrome 的新标签页接管是全有或全无，
-> 扩展一旦接管，就没法在页面里让位给原来那一页。真要让位只能去
-> `chrome://extensions` 停用整个扩展，那不叫「临时」。
+> Why not “really switch the extension off”: Chrome's new-tab takeover is all or nothing;
+> once an extension has taken over, it cannot step aside from within the page and give way to the original one. Really stepping aside would mean going to
+> `chrome://extensions` and disabling the whole extension, which is hardly “temporary”.
 
-**三种排版**（设置 → 呈现 → 暂歇）：
+**Three layouts** (Settings → Display → Pause):
 
-| | 样子 |
+| | What it looks like |
 |---|---|
-| **展签墙**（默认） | 墙还在、灯还亮着，只是墙上挂的是展签不是画。错落着，指上去轻轻抬起 |
-| **闭馆告示** | 画撤了墙空了，中间「暂歇」两个大字，一条金线，下面两列编号条目 |
-| **目录索引** | 展览手册最后那页的索引：站点名在左、网址在右，中间一行点线牵着 |
+| **Wall of labels** (default) | The wall is still there and the lights are still on, but what hangs on it is labels, not paintings. They are staggered, and lift slightly when you point at one |
+| **Closed notice** | The paintings are gone and the wall is bare; in the middle, “Paused” in large letters and a gold rule, with two columns of numbered entries below |
+| **Index** | Like the index on the last page of an exhibition catalog: site name on the left, URL on the right, joined by a dotted leader |
 
-- **展签墙有两种皮**：**简约**（跟作品展签同一种奶油色纸）与**彩签**
-  （一排签从左到右铺成一柄色卡扇面，珊瑚红 → 琥珀 → 绿 → 青 → 蓝 → 紫）。
-- **闭馆告示与目录索引可以选底色**：跟随设置面板 / 浅 / 深。
-  这两种不挂在展墙上、自己铺底，所以深浅要单独选；展签墙的底色就是墙本身。
+- **Wall of labels comes in two skins**: **Plain** (the same cream paper as the artwork labels) and **Swatches**
+  (the row of labels fans out from left to right like a color-swatch deck, coral red → amber → green → teal → blue → violet).
+- **Closed notice and Index let you pick the background**: Follow settings / Light / Dark.
+  These two don't hang on the gallery wall and lay down their own background, so light or dark is chosen separately; the background of Wall of labels is the wall itself.
 
-**站点从哪来，三处合流**：
+**Where the sites come from — three sources, merged**:
 
-- **自己钉的** —— 设置里手动加，或者直接点墙上末尾那张「＋ 钉一个站点」，
-  就地展开一个小表单。存在本机，零权限，排在最前。
-- **Chrome 的常访问榜** —— 要 `topSites` 权限。
-- **当前打开的标签页** —— 要 `tabs` 权限。读的是这个 profile **全部窗口**的标签页，
-  只取标题与网址；**同一个站点的几个标签页并成一条**，后面缀上数目（`zhihu.com · 3`），
-  开得多的排在前面。只开了一个就指向那一页本身，开了好几个就指向站点首页。
+- **Pinned by you** — add them by hand in settings, or just click the last card on the wall, “＋ Pin a site”,
+  which opens a small form right there. Stored on this machine, no permissions needed, listed first.
+- **Chrome's most-visited sites** — needs the `topSites` permission.
+- **Tabs you have open** — needs the `tabs` permission. It reads the tabs in **all windows** of this profile,
+  taking only titles and URLs; **several tabs on the same site fold into one entry**, with the count appended (`zhihu.com · 3`),
+  and sites with more tabs open come first. With just one tab open, the entry points to that page itself; with several, it points to the site's home page.
 
-后两处都做成**可选权限**：装上不申请、不弹窗，第一次开启时才申请一次，
-同一个面板里随时能撤回。一个都没授权也能用，只显示自己钉的。
+The last two are **optional permissions**: nothing is requested and nothing pops up at install; permission is requested once, the first time you turn one on,
+and can be revoked at any time in the same panel. It works even with neither granted, showing only your pinned sites.
 
-按域名去重，自己钉的优先。**「最多显示几个」削的是自动来的那批，自己钉的一定会显示**；
-两处自动来源轮流取，谁也不会被另一处挤没。
+Duplicates are removed by domain, with pinned sites taking priority. **“How many to show” trims only the automatic entries; your pinned sites always show**;
+the two automatic sources take turns, so neither gets crowded out by the other.
 
-**常访问与标签页同时都有内容时，这一屏按来路分成三组**（自己钉的 / 常访问 / 标签页），
-每组一个很轻的小标题。只有一处有内容就不分 —— 一个光杆标题比不分组更碍眼。
+**When most-visited sites and open tabs both have entries, the screen is split into three groups by source** (Pinned / Most visited / Open tabs),
+each with a very light subheading. When only one source has entries it isn't split — a lone heading is more of an eyesore than no grouping at all.
 
-#### 排序与摘除
+#### Reordering and removing
 
-- **拖动排序**：签可以拖着换位置。分组的时候只能在同一组里换，不分组时整面墙随便拖。
-  顺序记在本机，下次打开还是这个样子。
-- **摘掉一张**：指上去，右上角（告示与索引里是右侧）一个 ×。后面的会顺移上来。
-  自己钉的是直接从名单里删；自动来的记进「已移除」。
-- **一次摘好几张**：点墙底下那个「整理」。每张签换上勾选框，点一张勾一张
-  （这时候点签不会跳走），选完「移除所选」。也有「全选 / 全不选」。
-- **顺手关标签页**：整理时勾中的里面有标签页，会多出一个「关掉所选标签页」。
-  × 只管墙面，这个才真的关浏览器的标签页，分成两个按钮是为了不误点。
+- **Drag to reorder**: labels can be dragged to new positions. When grouped, they can only move within their own group; ungrouped, you can drag them anywhere on the wall.
+  The order is saved on this machine, so it looks the same the next time you open it.
+- **Remove one**: point at it and an × appears at the top right (on the right side in Closed notice and Index). The ones after it move up.
+  Pinned sites are deleted straight from your list; automatic ones are recorded under “Removed sites”.
+- **Remove several at once**: click “Tidy” below the wall. Each label gets a checkbox, and clicking a label ticks it
+  (clicking a label won't take you away at this point); when you're done, click “Remove selected”. There's also “Select all / Select none”.
+- **Close tabs while you're at it**: if what you ticked in Tidy includes open tabs, an extra “Close those tabs” button appears.
+  The × only affects the wall; this one really closes the browser tabs. They are two separate buttons so you don't hit the wrong one.
 
-#### 摘掉之后什么时候回来
+#### When removed sites come back
 
-**摘掉是暂时的。** 摘的那一刻会记下这个站点当时的两个数：在 Chrome 常访问榜上排第几、
-当时开着几个标签页。往后它排得更靠前，或者标签页开得更多，就说明它又重要了，自己回来。
-设置 → 呈现 → 暂歇 → **已移除的站点**里也能手动放回，或者一次全放回。
+**Removal is temporary.** The moment you remove a site, two numbers are recorded: its rank on Chrome's most-visited list,
+and how many tabs were open on it at the time. If it later ranks higher, or more tabs are open on it, it evidently matters again, and it comes back on its own.
+In Settings → Display → Pause → **Removed sites** you can also put sites back by hand, or all at once.
 
-真的不想再看见的，在那一行末尾点 × 移进**永不再现**。这一份不会自动回来，
-「全部放回」也碰不到它，只能在设置里一条条解除或者全部解除。
+For a site you really never want to see again, click the × at the end of its row to move it into **Never again**. That list never comes back on its own,
+and “Put all back” doesn't touch it; entries can only be unblocked in settings, one by one or all at once.
 
-> **两件刻意不做的事。** 不取站点图标：要图标就得再加一条权限，或者去第三方图标服务取
-> —— 那等于把你常去的站点报给别人。**这一屏一个网络请求都不发。**
-> 不碰历史记录：读到的只有 Chrome 算好的那张榜与此刻开着的标签页，
-> 读不到你什么时候去过、去过几次。
+> **Two things it deliberately doesn't do.** No site icons: icons would take one more permission, or a third-party icon service
+> — which would amount to reporting the sites you visit to someone else. **This screen sends no network requests at all.**
+> No browsing history: all it reads is the list Chrome has already computed and the tabs open right now;
+> it cannot see when you visited a site or how many times.
 
-> **一个落差**：`topSites` 给的是 Chrome 自己算的「最常访问」，
-> **不含**你在原生新标签页上手动固定的快捷方式 —— 那些 Chrome 不通过 API 给出来。
-> 想让它们出现，在「自己钉的」里加一遍。
+> **One gap**: `topSites` returns Chrome's own “most visited” list,
+> which **does not include** the shortcuts you pinned by hand on the built-in new tab page — Chrome doesn't expose those through the API.
+> If you want them to appear, add them again under “Pinned by you”.
 
-每一条都是真的链接，中键、Cmd 点击、右键「在新标签页打开」全都照常管用。
+Every entry is a real link, so middle-click, Cmd-click and right-click → “Open link in new tab” all work as usual.
 
-### 筛选与检索（藏品库内）
+### Filtering and search (in the Library)
 
-- **流派**：唐五代、宋、元、浮世绘、文艺复兴、巴洛克、荷兰黄金时代、洛可可、新古典、浪漫主义、现实主义、拉斐尔前派、印象派、后印象派、象征主义、分离派、表现主义、抽象……
-- **国家 · 地区**（v1.4 单列成组）：法国、英国、美国、荷兰、意大利、中国、西班牙、德国、奥地利、日本、俄罗斯、比利时、梵蒂冈、波兰、挪威、波多黎各、瑞典、瑞士——按藏品数量排序，每个后面标着数量
-- **地区**：欧洲 / 东亚 / 美洲
-- **题材**：肖像、风景、夜景、海、静物、神话、宗教、战争、舞蹈……
-- **按色系**：直接按作品的主色调筛选（红 / 橙金 / 黄 / 绿 / 青 / 蓝 / 紫 / 粉 / 黑白灰）
-- **搜索框**：作品名、艺术家、博物馆、年代，中英文均可
+- **Movement**: Tang & Five Dynasties, Song, Yuan, Ukiyo-e, Renaissance, Baroque, Dutch Golden Age, Rococo, Neoclassicism, Romanticism, Realism, Pre-Raphaelite, Impressionism, Post-Impressionism, Symbolism, Secession, Expressionism, Abstraction…
+- **Country · Region** (a group of its own since v1.4): France, United Kingdom, United States, Netherlands, Italy, China, Spain, Germany, Austria, Japan, Russia, Belgium, Vatican City, Poland, Norway, Puerto Rico, Sweden, Switzerland — sorted by number of works, each followed by its count
+- **Region**: Europe / East Asia / Americas
+- **Subject**: Portrait, Landscape, Night, Sea, Still life, Myth, Religion, War, Dance…
+- **By colour**: filter directly by a work's dominant color (Red / Gold / Yellow / Green / Teal / Blue / Purple / Pink / Neutral)
+- **Search box**: title, artist, museum, date — in Chinese or English
 
-### 色卡
+### Palette
 
-每幅作品左下角的色带，是从画面本身提取的六个主色（按面积占比排序）。
-点击任一色块即复制其十六进制色值——拿去配色很好用。
+The color strip at the bottom left of each work holds six dominant colors extracted from the painting itself (sorted by how much of the area they cover).
+Click any swatch to copy its hex value — handy for putting color schemes together.
 
 ---
 
-### 墙签会翻面
+### The wall label flips over
 
-展墙模式右下角那张墙签**宽度跟着内容走** —— 长的自然宽些、短的自然窄些，
-常规作品每一行都排得下；真遇上六十多字符的超长标题才会换行。
-墙签在版面里占的是一格**恒定宽度**的位置，自己贴着这一格的左边按内容向右伸缩，
-所以换作品、翻语言时**左边那幅画一动不动**，墙签的左端离画框也永远是同一个距离。
+In Gallery Wall mode, the wall label at the bottom right **sizes its width to its content** — longer ones naturally come out wider, shorter ones narrower,
+and for ordinary works every line fits; only a really long title of sixty-plus characters wraps.
+In the layout, the label occupies a slot of **constant width**; it stays anchored to the left edge of that slot and grows or shrinks to the right with its content,
+so when the work changes or the language flips, **the painting to its left doesn't move at all**, and the left end of the label always keeps the same distance from the frame.
 
-墙签**点一下就像闪卡一样翻到另一种语言**（绕竖轴转半圈，转到侧面那一瞬换内容）——
-正面是**母语**，背面是**外语**，作品名、艺术家、材质、收藏机构一起翻。再点一下翻回来。
-翻过面的那张右上角有个小圆点，免得看不出来。
+**Click the wall label and it flips like a flash card to the other language** (a half turn about the vertical axis, with the content swapped the instant it is edge-on) —
+the front is your **native language** and the back your **foreign language**, with title, artist, medium and museum all flipping together. Click again to flip it back.
+A flipped label has a small dot in its top right corner, so you can tell.
 
-默认这两面就是中文和英文。换成别的语言之后（见「五之三、说你的话」），
-这张墙签就成了一张**语言闪卡** —— 正面「星月夜」，背面 *La Nuit étoilée*。
-某一幅还没译到外语时，背面会退回英文，绝不会两面一模一样。
+By default the two sides are Chinese and English. Once you switch to other languages (see section 5b, “Speak your language”),
+the label becomes a **language flash card** — with Chinese as the native language and French as the foreign one, “星月夜” (*The Starry Night*) on the front and *La Nuit étoilée* on the back.
+If a work hasn't been translated into the foreign language yet, the back falls back to English, so the two sides are never identical.
 
 ---
+## 3. Settings
 
-## 三、设置项
+The settings drawer has **five tabs**: Display / Room / Rotation / Library / Storage. Each tab is made up of several **groups**;
+**click a group heading to collapse it**; the current value is shown to the right of the heading (so you know what it's set to even when collapsed),
+and in groups that are switched on and off as a whole (daily additions, custom library, AI enrichment) the master switch sits right on the heading row.
+On the right of the title bar is a row of **sun / moon · This mode / All · Reset · Close** — four controls with the same height, corner radius and font size.
+“This mode” (the default) lists only the settings the current presentation mode can use — in Gallery Wall mode you won't see the film stock and transport settings,
+and in Filmstrip mode you won't see frames and matting; choose “All” and everything is listed. The choice is remembered.
+The sun / moon switches the settings panel to a light theme.
+It switches only the panel — the picture, the frame and the wall color are never touched, because they are the gallery room, not the interface.
+At the top is a **search box**: type any keyword and all five tabs are spread out together and filtered,
+with each result marked with the tab it comes from — you no longer need to remember which tab a setting is on.
+You can search in Chinese or English, and it also recognizes English words such as `api`, `cache` and `frame` (this works in the Chinese interface too).
 
-设置抽屉分**五页**：呈现 / 展厅 / 轮换 / 图库 / 存储。每一页由若干**分组**构成，
-**点分组标题就能收起来**，标题右侧显示当前值（收着也知道设成了什么），
-开关类分组（每日新作、自定义图库、AI 补全）的总开关直接放在标题行上。
-标题栏右边一排是 **太阳 / 月亮 · 当前 / 全部 · 重置 · 关闭**，四个控件同高同圆角同字号。
-「当前」（默认）只列出当前这种呈现模式用得上的设置 —— 看展墙时不会看到胶卷片基和走带方式，
-看胶卷时不会看到画框和留白；选「全部」就什么都列出来，这个选择会记住。
-太阳 / 月亮把设置面板切成浅色。
-切的只是这块面板 —— 画面、画框、墙色一概不动，因为那是展厅，不是界面。
-顶上有一个**搜索框**：输入任意关键词，五页会一起铺开再筛，
-每条结果标着它来自哪一页 —— 找一个设置不必再记得它在第几页。
-中英文都能搜，也认 `api`、`cache`、`frame` 这类英文词（中文界面下同样有效）。
+**Display** Presentation mode (one of five) · Framing: Smart / Fill screen / Show whole work ·
+**Language** (native · foreign · which one the interface follows; once an endpoint has tested OK you can pick from 78 languages, plus translation of the artwork info and the interface text) ·
+Clock (Off / In bar / Grand) · Slow drift (Ken Burns) · Pan handscrolls horizontally ·
+**Hide interface when idle** (nine separate items; whichever you check fades out: Toolbars / Clock / Counter /
+Title / Artist / Date & medium / Museum / Highlight / Palette; check all four artwork items and the whole wall label card is put away too) ·
+**Film stock** (Colour positive / Colour negative / Black & white / Slide mounts / Cine 35mm) · Edge print & frame numbers · Transport
 
-**呈现（Display）** 呈现模式（五选一）· 画面适配 智能 / 铺满屏幕 / 完整显示 ·
-**语言**（母语 · 外语 · 界面跟谁；测通接口后可从 78 种语言里挑，另带作品信息与界面文案的翻译）·
-时钟（不显示 / 顶栏 / 大字）· 缓慢推移动画 · 手卷横向卷动 ·
-**静止时隐藏界面**（九个细项，勾哪个淡出哪个：顶栏与按钮 / 时钟 / 计数与进度 /
-作品名 / 艺术家 / 年代与材质 / 收藏机构 / 看点 / 色条；作品那四项全勾上，连墙签整块纸一起收掉）·
-**胶片风格**（彩色正片 / 彩色负片 / 黑白 / 幻灯片 / 电影胶片）· 片边字与格号 · 走带方式
+**Room** Frame (11 kinds) · Mount (the matting style, 5 kinds) · Mount width slider ·
+**Wall colour (15, in three groups, plus Custom)** · **Fine tune (Saturation, Temperature)** ·
+**Wall texture (31 finishes in five groups: Gallery walls / Fabric-lined / Digital exhibition / Stone & hard finishes / Metal panels)** ·
+**Lighting (Lamps 0–4, Brightness, Angle, Warmth)** · Film stock (5 kinds)
 
-**展厅（Room）** 画框（11 种）· 留白方式（5 种）· 留白宽度滑块 ·
-**墙面颜色（15 种，分三组 ＋ 自定义色板）** · **色调微调（饱和度、色温）** ·
-**墙面纹理（31 种，分五组：展墙做法 / 织物包墙 / 数字展厅 / 石材与硬装 / 金属背景板）** ·
-**灯光（灯数 0–4、亮度、角度、冷暖光）** · 胶片风格（5 种）
+**Library** Daily additions · Custom library · **AI enrichment** (see section 5a)
 
-**图库（Library）** 每日新作 · 自定义图库 · **AI 补全**（见第五之二节）
+**Storage** Offline cache · Export as image files · Where the cache lives · Chrome footer · About
 
-**存储（Storage）** 离线缓存 · 导出为图片 · 缓存路径 · Chrome 页脚 · 关于
+**Rotation** **New work on every new tab (a switch of its own)** ·
+Timed rotation: Manual only / 1, 5, 15 minutes / **25 minutes (Pomodoro)** / 1, 6 hours / daily (**timed rotation applies only to Gallery Wall and Immersive**) ·
+**Carousel pace** and **Film transport** (Off / 3, 5, 10, 15, 30 seconds / 1, 3, 5, 10, 30 minutes / Custom; the Circular Gallery defaults to 15 seconds, the Filmstrip to **3 seconds**) ·
+Order: Shuffled / Chronological · Show from: Whole collection / Saved only / Current filters ·
+**Work-safe mode** (the 13 works containing nudity are left out of the rotation, but can still be opened individually in the Library) · Image quality
 
-**轮换（Rotation）** **每次新标签页换一幅（独立开关）** ·
-定时轮换 仅手动 / 1、5、15 分钟 / **25 分钟（番茄钟）** / 1、6 小时 / 每天（**只作用于展墙与沉浸式**）·
-**环形长廊节奏** 与 **胶卷走带**（不自动 / 3、5、10、15、30 秒 / 1、3、5、10、30 分钟 / 自定义；环形默认 15 秒，胶卷默认 **3 秒**）·
-播放顺序 随机 / 按年代 · 播放范围 全部藏品 / 仅收藏夹 / 当前筛选结果 ·
-**办公模式**（13 幅含裸体的作品不参与轮换，但在藏品库里仍可单独点开）· 图像质量
+> “New work on every new tab” and “Timed rotation” are two independent rules and can both be on at once:
+> opening a new tab switches to another work immediately, and while the page sits untouched the timer keeps rotating.
+> Masonry and Circular Gallery have continuous motion of their own and don't use the timer.
 
-> 「每次新标签页换一幅」和「定时轮换」是两条独立的规则，可以同时开着：
-> 开新标签页立刻换一幅，页面停着不动时按定时器继续轮换。
-> 瀑布流 / 环形长廊 这两种模式自己有连续动效，不走定时器。
+**Image quality** Auto (by screen resolution) / Data saver 1280 / High 1920 / Maximum 3840
 
-**图像质量** 自动（按屏幕分辨率）/ 省流 1280 / 高 1920 / 最高 3840
+> Settings open in a **drawer that slides in from the right**: the picture narrows to the left instead of being covered, so a change of frame or wall color shows right away.
+> In the drawer, **hovering over a frame or wall color tries it on**; move away and it reverts, and only a click saves. Press `S` to open and close it.
+> Every tab uses the same layout: group heading (collapsible, current value shown on the right) → title + description → control,
+> with switches laid out as right-aligned single rows of equal width.
+> When you change a setting, the drawer **stays where it is** instead of jumping back to the top; only switching tabs takes you back to the top.
 
-> 设置是**右侧侧滑抽屉**：打开时画面向左收窄而不是被盖住，改画框、改墙色当场就能看到效果。
-> 抽屉里鼠标**悬停在画框或墙色上就是试挂**，移开自动还原，点击才保存。按 `S` 开合。
-> 每一页都用同一套版式：分组标题（可折叠，右侧显示当前值）→ 标题 + 说明 → 控件，
-> 开关类做成右侧对齐的单行，宽度一致。
-> 改设置时抽屉**停在原地**，不会跳回顶部；只有切换分页才回到顶端。
+**Offline cache** See how many works are cached and how much space they take, cache every work in one click, clear the cache, set the cache limit (200 MB – 2 GB, default 400 MB),
+**Export as image files**, **Open folder**, and see the cache's actual path on disk, with one-click copy
 
-**离线缓存** 查看已缓存数量与占用空间、一键缓存全部作品、清空缓存、设置缓存上限（200 MB – 2 GB，默认 400 MB）、
-**导出为图片文件**、**打开文件夹**、显示缓存的实际磁盘路径并一键复制
+> You can also change the main settings under `chrome://extensions/` → Corridor → **Extension options**.
 
-> 也可以在 `chrome://extensions/` → 长廊 → **扩展程序选项** 里改主要设置。
+### Default settings
 
-### 默认设置
-
-装完就是一套配好的展厅，不改任何设置也完整。设置抽屉右上角的 **Reset** 随时恢复到这一套。
+Out of the box you get a fully arranged gallery room — complete without changing a single setting. **Reset** at the top right of the settings drawer brings this setup back at any time.
 
 | | |
 |---|---|
-| 呈现模式 | 美术馆展墙 |
-| 界面语言 | 中文 |
-| 时钟 | 顶栏 |
-| 静止时隐藏界面 | 开 |
-| 画框 | 乌木金线 |
-| 留白方式 | 卡纸 |
-| 留白宽度 | 0.90× |
-| 墙面颜色 | 陶土红 |
-| 墙面纹理 | 丝绒 |
-| 每次新标签页换一幅 | 开 |
-| 定时轮换 | 25 分钟（番茄钟） |
-| 办公模式 | 开 |
-| 播放范围 | 全部藏品 |
-| 每日新作 | 开（每天 3 幅） |
-| 设置面板配色 | 深色 |
-| 设置范围 | 当前 |
-| AI 补全 | 关 |
-| 缓存上限 | 400 MB |
+| Presentation mode | Gallery Wall |
+| Interface language | Chinese |
+| Clock | In bar |
+| Hide interface when idle | On |
+| Frame | Ebony & gold |
+| Mount (matting style) | Mount (a card mat) |
+| Mount width | 0.90× |
+| Wall colour | Terracotta |
+| Wall texture | Velvet |
+| New work on every new tab | On |
+| Timed rotation | 25 minutes (Pomodoro) |
+| Work-safe mode | On |
+| Show from | Whole collection |
+| Daily additions | On (3 a day) |
+| Settings panel theme | Dark |
+| Settings shown | This mode |
+| AI enrichment | Off |
+| Cache limit | 400 MB |
+
+> **The interface starts in Chinese.** For English, press `S` and on the first tab (呈现 · Display) find
+> 语言 (Language) → 界面用 (Interface in). Choose 跟随系统 (Follow system) and an English browser gets the
+> English interface, or choose 外语 (Second language), which is English by default.
 
 ---
 
-## 四、藏品数量与每日新作
+## 4. The collection and daily additions
 
-内置 **106 幅**精选作品，默认展出 **93 幅**——**办公模式是默认开着的**，它会把 13 幅含裸体的作品排除在轮换之外
-（`106 − 13 = 93`）。这 13 幅在藏品库里仍然看得到，也点得开，只是不会自己轮到你屏幕上。
-想全部参与轮换，关掉「设置 → 轮换 → 办公模式」即可。
+**106 hand-picked works** are built in, and **93** are shown by default — **Work-safe mode is on by default**, and it keeps the 13 works that contain nudity out of the rotation
+(`106 − 13 = 93`). Those 13 can still be seen and opened in the Library; they just won't come up on your screen by themselves.
+To bring them all into the rotation, turn off “Settings → Rotation → Work-safe (hide works with nudity)”.
 
-从 v1.5 起，藏品库还会**自己长**：
+Since v1.5 the Library also **grows on its own**:
 
-- 每天一次，扩展会从 Wikimedia Commons 的策展分类（精选图片、优质图片、各大馆的绘画分类、名家分类）
-  里再挑 **3 幅**公有领域作品补进来，最多留 150 幅，满了删最早的。
-- 抓取是**广度优先地在分类树里走**，走到哪里记在本地，第二天接着走——所以每天看到的都是新的一段，
-  今天走到北斋，明天可能就到莫里索、弗里德里希。
-- 只读 Commons 的公开 API，不需要账号，不上传任何东西。抓下来后在本地算出主色色卡与占位图，
-  和内置作品用同一套呈现。
-- 筛掉的东西：非公有领域、宽度不足 1400px、比例太极端、文件名里带 detail / verso / x-ray 之类的局部与技术照、
-  维基用户自己拍的现场照（Credit 是 Own work）、新闻社照片。
-- 这些作品在藏品库里有**单独一页「每日新作」**，卡片上会注明元数据来自 Commons、没有本项目撰写的导览——
-  内置的 106 幅才是逐幅写过导览的。
-- **入口在顶栏**：一枚画夹图标，有没看过的新作时会安静地呼吸一圈金边并点一颗小点。点开是「今日画夹」——
-  几张画像刚从画夹里抽出来，依次落到台面上，带一点随机的倾斜和投影。点任意一张直接进展墙看大图。
-- **画夹的底色可以自己配**：设置 → 图库 → 每日新作 → 画夹的底色。三档：跟随展墙、深色、单独挑一个。
-  单独挑那一档用展墙同一套色卡，也能直接填色号。挑了浅色时，标题与说明会自动翻成深色。
-- **中英双语怎么解决的**：Commons 的结构化数据里有「这张图是哪件作品」（P6243）和作者（P170），
-  顺着它们到 Wikidata 取中英文标签。**作者名基本都能拿到中文**（如 Katsushika Hokusai → 葛饰北斋），
-  收藏机构、材质同理；作品标题则看 Wikidata 上有没有中文名，没有就沿用原名并在详情里注明。
-  一次更新只发三个只读请求。
-- **满 150 幅之后**：**收藏过的一律留着**，其余按加入时间从最早的开始退场，腾出位置给新来的。
-  所以想长期留住某一幅，收藏它就行。
-- 不想要就关掉：设置 → 缓存 → 每日新作。旁边还有「立即更新」和「清空每日新作」。
-
----
-
-## 五、自定义图库（把你自己的图片挂进来）
-
-设置 → 图库 → **自定义图库**。可以加**好几个来源**，两种：
-
-| | |
-|---|---|
-| **＋ 文件夹** | 本机目录。用浏览器的 File System Access API，目录句柄存在本地，下次打开新标签页直接复用；Chrome 偶尔会要求再确认一次读取权限，卡片上会提示。**图片始终留在你自己的硬盘上** —— 扩展不复制、不上传、不进缓存库，只在显示那一刻读一次。 |
-| **＋ 网址** | 一个在线图库。目录索引页、普通图库页面、一份 JSON 清单、一行一个网址的纯文本，或者干脆就是一张图 —— 都认。第一次扫会问你要那个域名的访问权限；抓回来的图走正常缓存那条路，离线照样看得到。 |
-
-一个来源一张卡：图标分文件夹 / 网址，右边写着它收了多少张。**点卡片标题展开**，
-里面是这一路自己的筛选条件与「重扫 / 重选 / 删除」。各来源互不干扰 ——
-重扫其中一个，别的一张都不动；删掉一个，只有它名下的作品跟着走。
-
-### 筛选：只导入你想要的那些
-
-每个来源各带一套：
-
-| | |
-|---|---|
-| **只要** | 留下匹配的。`*.jpg`、`IMG_?`、或者干脆写 `猫` |
-| **排除** | 踢掉匹配的。`thumb`、`*_preview.*` |
-| **正则** | 打开就按正则表达式理解（`^IMG_\d{4}$`）；关着时 `*` 和 `?` 是通配符，什么都不写就当「文件名里带这几个字」 |
-| **格式** | jpg / jpeg / png / webp / avif / gif / bmp，逐个勾 |
-| **最小边长** | 挡掉图标和缩略图。默认 200px，也可以不限 |
-
-几处刻意的宽松：
-
-- 模式同时拿**带后缀的文件名**和**去掉后缀的名字**去比 ——
-  写 `*.png` 的人想的是前者，写 `^IMG_\d{4}$` 的人想的是后者，两种都能用。
-- 模式里**带正斜杠**就改用整条相对路径来比，于是 `2024/` 就是「只要 2024 那个子目录」。
-  （反斜杠不算 —— 正则里 `\d`、`\.` 满地都是。）
-- **正则写错不会崩**，卡片上如实显示哪一条错在哪里。
-
-其余照旧：每个来源最多 800 张，含四层子文件夹，跳过隐藏目录与缩略图目录；
-**文件名当作品名**（自动去掉 `01_` 这类序号前缀），**上层文件夹名当作者名**
-（网址来源则用这个来源的名字）；比例、主色色卡、占位图都在本地算出来，
-和内置作品用同一套呈现（色卡、筛选、收藏都能用）。
-「播放范围」里会多出 **我的图库** 和 **每日新作** 两个选项。
+- Once a day, the extension goes to curated Wikimedia Commons categories (Featured pictures, Quality images, the painting categories of major museums, categories of major artists)
+  and picks **3 more** public-domain works to add; it keeps at most 150 and deletes the oldest when full.
+- The crawl **walks the category tree breadth-first**, keeps a local note of where it got to, and carries on from there the next day — so every day you see a new stretch:
+  today it reaches Hokusai, tomorrow it may be on to Morisot or Friedrich.
+- It only reads Commons' public API, needs no account and uploads nothing. Once a work is fetched, its dominant-color palette and placeholder are computed locally,
+  and it is presented the same way as the built-in works.
+- What gets filtered out: anything not in the public domain, less than 1400px wide or too extreme in aspect ratio; details and technical shots with words like detail / verso / x-ray in the file name;
+  on-site photos taken by Wikimedia users themselves (Credit: Own work); and news agency photos.
+- These works have **a page of their own in the Library, “Daily additions”**, and their cards note that the metadata comes from Commons and that there is no curatorial note written by this project —
+  only the 106 built-in works have a note written for each one.
+- **The way in is on the top bar**: a portfolio icon; when there are new works you haven't seen, a gold ring around it quietly breathes and a small dot appears. Click it to open “Today's Selection” —
+  a few pictures, as if just drawn from the portfolio, land on the table one after another with a slight random tilt and a shadow. Click any one to go straight to the Gallery Wall and see it large.
+- **You can choose the portfolio's background color**: Settings → Library → Daily additions → Portfolio ground. Three options: Follow the wall, Dark, or Pick one.
+  “Pick one” uses the same swatches as the wall, or you can type in a hex code. If you pick a light color, the heading and captions automatically turn dark.
+- **How both Chinese and English are covered**: Commons' structured data records “which artwork this image represents” (P6243) and the creator (P170);
+  following those to Wikidata yields Chinese and English labels. **Artist names nearly always come with a Chinese form** (e.g. Katsushika Hokusai → 葛饰北斋, his name in Chinese),
+  and the same goes for museums and media; titles depend on whether Wikidata has a Chinese name — if not, the original is kept and the details say so.
+  One update sends only three read-only requests.
+- **Once there are 150**: **anything you've favorited always stays**; the rest leave in the order they were added, oldest first, to make room for new arrivals.
+  So to keep a particular work for good, just favorite it.
+- Don't want it? Turn it off: Settings → Library → Daily additions. Next to it are “Fetch now” and “Clear daily additions”.
 
 ---
 
-## 五之二、AI 补全（可选，默认关闭）
+## 5. Your own library (hang your own pictures)
 
-「每日新作」从 Commons 抓回来的条目，流派、材质、尺寸、导览多半是空的；
-「自定义图库」更彻底 —— 标题就是文件名，作者就是上层文件夹名，`IMG_2043` 那种名字
-在展墙上挂着并不好看。这一版可以**接你自己的多模态大模型**，让它看一眼图，把这些字段补上。
-
-**设置 → 图库 → AI 补全**，填四样：接口格式、接口地址、密钥、模型。
+Settings → Library → **Custom library**. You can add **several sources**, of two kinds:
 
 | | |
 |---|---|
-| 接口格式 | **自动识别** / OpenAI / Anthropic。地址里带 `anthropic` 或 `/messages` 就按 Anthropic 走，其余按 OpenAI |
-| 接口地址 | 填到 `/v1` 即可，也可以把完整地址贴进来。本机模型如 `http://localhost:11434/v1`（Ollama）、`http://localhost:1234/v1`（LM Studio） |
-| 密钥 | OpenAI 格式发 `Authorization: Bearer`，Anthropic 格式发 `x-api-key`。默认遮起来，点「显示」看明文 |
-| 模型 | 必须是**能看图**的模型 |
+| **+ Folder** | A folder on this computer. It uses the browser's File System Access API; the directory handle is stored locally and reused directly the next time you open a new tab. Chrome occasionally asks you to confirm read access again, and the card tells you when. **The images always stay on your own disk** — the extension doesn't copy them, upload them or put them in the cache; it reads each one only at the moment it's displayed. |
+| **+ URL** | An online gallery. A directory index page, an ordinary gallery page, a JSON list, a plain-text file with one URL per line, or simply a single image — it accepts them all. The first scan asks you for access to that domain; the images it fetches go through the normal cache, so you can still see them offline. |
 
-**一个接口下还可以存好几把密钥、好几个模型。** 密钥或模型框里换一个值，
-旧的那个不会丢 —— 它会变成下面一排小标签，点一下换回去，点标签上的 × 忘掉它。
-密钥在标签上只露头尾（`sk-abc…7f2e`）。每个接口各记各的，最多各 8 个。
-手上有几把限额不同的密钥、或者想在便宜模型和好模型之间来回切时，不用再粘来粘去。
+One card per source: the icon shows folder or URL, and on the right it says how many images it holds. **Click a card's title to expand it**;
+inside are that source's own filters and “Rescan / Pick another folder / Delete”. Sources don't interfere with one another —
+rescan one and not a single image in the others is touched; delete one and only the works under it go with it.
 
-**可以存好几套接口，随时切。** 最上面那个下拉列着已存的接口，选「＋ 新建接口」再加一套；
-每套有自己的名称（不填就用域名当名字）、格式、地址、密钥、模型，旁边有「复制」和「删除」。
-想拿本机 Ollama 跑白天、云端模型跑夜里，或者手上几个供应商轮着用，切一下下拉就行，
-不用把地址密钥反复粘来粘去。最多存 16 套。
+### Filters: import only the ones you want
 
-填完点**测试连接**。它分**两步**问：
+Each source has its own set:
 
-1. **先纯文字** —— 发一句「把『你好』译成英文」。这一步验的是地址、密钥、模型名对不对。
-2. **再看图** —— 现画一张「白底红圆」发过去问它看到了什么。这一步验的是这个模型能不能读图。
-
-分开问是有道理的：**识图补全**要多模态模型，**作品信息多语言**只用到文字。
-第一步过了，多语言那一整块就解锁；第二步没过，也只是识图这一路走不通而已，
-状态行会照直说：「接口通了 · 文字可用 · 多语言已解锁 · 但这个模型看不了图片」。
-
-**哪一步不通，都会给一张诊断卡。** 不是把接口那句 `HTTP 400 · {"error":{"code":"1210"…`
-原样甩给你，而是先认出这是十几种常见毛病里的哪一种，再给几条照着改就行的建议：
-
-| 认出来的 | 给的建议 |
+| | |
 |---|---|
-| 模型不认图片 | 说明识图要多模态模型（名字里常带 v / vl / vision），按你的服务商列几个能识图的型号，**点一下就填进模型框**；顺带提醒这不挡多语言那条路 |
-| 模型名不认识 | 对拼写、大小写和前缀（有些家要写成 `厂商/型号`）；这个接口下存过别的模型就提示去下面小标签里换 |
-| 密钥没过 | 重新复制别带空格换行；密钥要跟地址是同一家的；地址像 Anthropic 却选了 OpenAI 格式时会一并点出来 |
-| 地址上没有接口 | 填到 `/v1` 就行，并把**这一次实际请求的完整地址**亮出来 |
-| 连不上 | 先点「授权访问」；这个地址得允许浏览器直连（CORS）；本机模型要设 `OLLAMA_ORIGINS=chrome-extension://*`；`http://` 可能被当混合内容拦下 |
-| 限流 / 余额 / 超上下文 / 内容审核 / 5xx | 各给各的下一步：调并发、看余额、减小打包件数、开重试…… |
+| **Include** | Keeps what matches. `*.jpg`, `IMG_?`, or simply `cat` |
+| **Exclude** | Drops what matches. `thumb`, `*_preview.*` |
+| **regex** | When on, patterns are read as regular expressions (`^IMG_\d{4}$`); when off, `*` and `?` are wildcards, and a pattern with neither is read as “the file name contains these characters” |
+| **Formats** | jpg / jpeg / png / webp / avif / gif / bmp, each checked individually |
+| **Min. side** | Keeps out icons and thumbnails. Default 200px, or “any” for no limit |
 
-服务商是按地址认的：智谱、OpenAI、Anthropic、通义、豆包、Kimi、硅基、MiniMax、
-阶跃、Gemini、OpenRouter、Mistral、Groq、xAI、DeepSeek，以及 `localhost` 上的本机模型。
-认出来了就给这一家**值得先试**的型号，认不出来就给通用建议。
+A few places where it's deliberately lenient:
 
-> **给的都是候选，不是结论。** 哪家有没有多模态、哪个型号能不能读图，一直在变
-> —— DeepSeek 就是个例子：一度没有，后来有了。所以长廊不写死「这家不行」，
-> 界面上每一个「能识图」都必须是**真发过一次请求**测出来的。这就是下面这个按钮的意思。
+- A pattern is compared against both **the file name with its extension** and **the name without it** —
+  someone writing `*.png` has the former in mind, someone writing `^IMG_\d{4}$` the latter, and both work.
+- If a pattern **contains a forward slash**, it's compared against the whole relative path instead, so `2024/` means “only the 2024 subfolder”.
+  (Backslashes don't count — regexes are full of `\d` and `\.`.)
+- **A broken regex doesn't crash anything**; the card shows exactly which pattern is wrong and where.
 
-### 本机模型（Ollama / LM Studio）：那个 403 不是密钥的问题
+Everything else is as before: up to 800 images per source, including four levels of subfolders, skipping hidden folders and thumbnail folders;
+**the file name becomes the title** (numbering prefixes like `01_` are removed automatically), **the parent folder's name becomes the artist**
+(for a URL source, the source's name is used); aspect ratio, dominant-color palette and placeholder are all computed locally,
+and the images are presented the same way as the built-in works (palette, filters and favorites all work).
+“Show from” gains two options: **My library** and **Daily additions**.
 
-地址填 `http://localhost:11434/v1`，点「测试连接」，回来一句
-**`HTTP 403 · 未知错误`** —— 这是本机模型最常见的一堵墙，而且看不出所以然。
+---
 
-**真因**：Ollama（LM Studio、llama.cpp 同理）在**服务端**检查请求的来源（`Origin`），
-默认只认「本机网页」那几个，而浏览器给**扩展**发出去的请求一律打上
-`chrome-extension://…`。不在白名单里，于是被整个挡下，回一个 **403 而且响应体是空的**
-—— 响应体是空的，所以界面上只剩「未知错误」四个字。
+## 5a. AI enrichment (optional, off by default)
 
-跟密钥、跟模型权限都没关系。（顺带：本机模型一般不校验密钥，那一栏留空就行。）
+The entries that “Daily additions” fetches from Commons mostly have an empty movement, medium, dimensions and curatorial note;
+the “Custom library” has it even worse — the title is just the file name, the artist just the parent folder's name, and a name like `IMG_2043`
+doesn't look good hanging on the Gallery Wall. This version lets you **connect your own multimodal model**, have it take a look at each image and fill in those fields.
 
-**长廊怎么处理**：点过「授权访问」之后，长廊会把发往**本机地址**
-（`localhost` / `127.x` / `0.0.0.0` / `::1` / `*.local`）的请求的来源改写成那个地址自己，
-本机服务就当是自己人了。多数情况下这一步就通了。
-公网接口的来源一个字都不动，规则也只对长廊自己发的请求生效。
+**Settings → Library → AI enrichment**, then fill in four things: API format, Endpoint, API key, Model.
 
-**万一还是 403**，就直接给 Ollama 放行扩展 —— 诊断卡里会按你的系统给出可一键复制的命令：
+| | |
+|---|---|
+| API format | **Auto** / OpenAI / Anthropic. If the address contains `anthropic` or `/messages`, it's treated as Anthropic; anything else as OpenAI |
+| Endpoint | Going as far as `/v1` is enough, or you can paste in the full address. For a local model, e.g. `http://localhost:11434/v1` (Ollama) or `http://localhost:1234/v1` (LM Studio) |
+| API key | Sent as `Authorization: Bearer` in OpenAI format and as `x-api-key` in Anthropic format. Masked by default; click “Show” to see it in plain text |
+| Model | Must be a model that **can see images** |
+
+**One endpoint can also hold several keys and several models.** Put a different value into the key or model box,
+and the old one isn't lost — it becomes one of a row of small chips underneath; click a chip to switch back, click the × on it to forget it.
+On a chip, a key shows only its first and last few characters (`sk-abc…7f2e`). Each endpoint keeps its own, up to 8 of each.
+When you have several keys with different quotas, or want to switch back and forth between a cheap model and a good one, there's no more copying and pasting.
+
+**You can save several endpoint profiles and switch at any time.** The dropdown at the very top lists the saved endpoints; choose “＋ New endpoint” to add another.
+Each one has its own name (left blank, the domain is used as the name), format, address, key and model, with “Duplicate” and “Delete” beside it.
+If you want a local Ollama during the day and a cloud model at night, or you rotate among several providers, just switch the dropdown —
+no more pasting addresses and keys back and forth. Up to 16 can be saved.
+
+When you're done, click **Test connection**. It checks in **two steps**:
+
+1. **Text only first** — it sends one line: “Translate ‘你好’ into English” (你好 is Chinese for “hello”). This step checks that the address, key and model name are right.
+2. **Then an image** — it draws a “red circle on white” on the spot, sends it and asks what the model sees. This step checks whether this model can read images.
+
+There's a reason to ask separately: **image enrichment** needs a multimodal model, while **multilingual artwork info** only uses text.
+Pass the first step and the whole multilingual block is unlocked; fail the second and it only means the image route is closed —
+the status line says it plainly: “Endpoint reachable · text works · multilingual unlocked · but this model cannot see images”.
+
+**Whichever step fails, you get a diagnosis card.** Instead of throwing the endpoint's raw `HTTP 400 · {"error":{"code":"1210"…` at you,
+it first works out which of a dozen or so common problems this is, then gives a few suggestions you can simply follow:
+
+| What it recognizes | What it suggests |
+|---|---|
+| The model doesn't accept images | Explains that image enrichment needs a multimodal model (the name often contains v / vl / vision), lists a few vision-capable models for your provider — **one click puts it into the model box** — and mentions that this doesn't block the multilingual route |
+| Unknown model name | Check the spelling, case and prefix (some providers want `vendor/model`); if you've saved other models on this endpoint, it points you to the chips below to switch |
+| Key rejected | Copy it again without stray spaces or line breaks; the key must come from the same provider as the address; if the address looks like Anthropic but the OpenAI format is selected, it points that out too |
+| No endpoint at that address | Going as far as `/v1` is enough; it also shows **the full address actually requested this time** |
+| Can't connect | Click “Allow” first; the address has to allow direct connections from the browser (CORS); a local model needs `OLLAMA_ORIGINS=chrome-extension://*`; `http://` may be blocked as mixed content |
+| Rate limit / balance / context too long / content moderation / 5xx | Each gets its own next step: adjust concurrency, check the balance, pack fewer works per request, turn on retries… |
+
+Providers are recognized by address: Zhipu, OpenAI, Anthropic, Tongyi (Qwen), Doubao, Kimi, SiliconFlow, MiniMax,
+StepFun, Gemini, OpenRouter, Mistral, Groq, xAI, DeepSeek, and local models on `localhost`.
+When it recognizes one, it offers that provider's models **worth trying first**; when it doesn't, it gives general advice.
+
+> **These are candidates, not verdicts.** Which providers have multimodal models, and which models can read images, keeps changing
+> — DeepSeek is one example: for a while it had none, then it did. So Corridor never hard-codes “this provider can't”;
+> every “can read images” in the interface has to be established by **actually sending a request**. That's what the button below is for.
+
+### Local models (Ollama / LM Studio): that 403 is not a key problem
+
+Enter `http://localhost:11434/v1` as the address, click “Test connection”, and back comes
+**`HTTP 403 · unknown error`** — the most common wall people hit with local models, and one that gives no clue why.
+
+**The real cause**: Ollama (and likewise LM Studio and llama.cpp) checks the request's origin (`Origin`) **on the server side**,
+and by default accepts only a few “local web page” origins, while the browser stamps every request sent by an **extension** with
+`chrome-extension://…`. That's not on the allowlist, so the whole request is refused with a **403 and an empty response body**
+— and because the body is empty, all the interface has left to show is “unknown error”.
+
+It has nothing to do with the key or with model permissions. (Incidentally, local models usually don't check the key, so you can leave that field empty.)
+
+**What Corridor does about it**: once you've clicked “Allow”, Corridor rewrites the origin of requests sent to **local addresses**
+(`localhost` / `127.x` / `0.0.0.0` / `::1` / `*.local`) to that address itself,
+so the local server treats them as its own. In most cases that alone gets it working.
+The origin of requests to public endpoints is left completely untouched, and the rule applies only to requests Corridor itself sends.
+
+**If it's still 403**, let the extension in on the Ollama side directly — the diagnosis card gives you the command for your system, ready to copy with one click:
 
 ```
 macOS     launchctl setenv OLLAMA_ORIGINS "chrome-extension://*"
@@ -522,402 +529,401 @@ Windows   setx OLLAMA_ORIGINS "chrome-extension://*"
 Linux     OLLAMA_ORIGINS='chrome-extension://*' ollama serve
 ```
 
-跑完重启 Ollama。LM Studio 不用这一套：在它的 Server 设置里把 CORS 打开就行；
-llama.cpp 用 `--cors` 启动。
+Then restart Ollama. LM Studio doesn't need any of this: just turn on CORS in its Server settings;
+start llama.cpp with `--cors`.
 
-> 地址写成 `0.0.0.0` 或 `::1` 的，换成 `127.0.0.1` 再试 —— 这两种写法本机服务
-> 自己也常常不认。另外「探测模型」本来就能用（它是个简单 GET，浏览器不附来源），
-> 所以会出现「能看到模型清单，却连不上」这种看着矛盾的情形。
+> If the address is written as `0.0.0.0` or `::1`, change it to `127.0.0.1` and try again — local servers themselves
+> often don't accept those two forms. Also, “Probe models” works regardless (it's a simple GET, and the browser attaches no origin),
+> so you can end up in the seemingly contradictory situation of “I can see the model list, but can't connect”.
 
-### 探测模型：谁能读图，测出来说了算
+### Probe models: the test decides which ones can read images
 
-**测试连接**旁边是**探测模型**。点下去它做三件事：
+Next to **Test connection** is **Probe models**. Click it and it does three things:
 
-1. `GET {接口地址}/models` —— 问这个接口自己有哪些模型。拉不到就退回「你存过的那几个 + 这一家值得先试的」。
-2. 排个先后：名字里带 v / vl / vision 的先探（只影响顺序，不影响结论）；
-   嵌入、重排、语音、画图这些根本不是聊天模型的，直接跳过，不浪费请求。
-3. 挨个**真跑两次**：一句纯文字，一张 96×64 的小图。
+1. `GET {endpoint}/models` — asks the endpoint itself which models it has. If that list can't be fetched, it falls back to “the ones you've saved + the ones worth trying first for this provider”.
+2. Puts them in order: models with v / vl / vision in the name are probed first (this affects only the order, not the result);
+   embedding, reranking, speech and image-generation models, which aren't chat models at all, are skipped outright so no requests are wasted.
+3. Runs each one **for real, twice**: one line of plain text, one small 96×64 image.
 
-结果是一份带颜色的清单：
-
-| | |
-|---|---|
-| 🟢 绿 | 文字与识图都通过 —— 这个能用来补全 |
-| 🟡 琥珀 | 只有文字通过 —— 翻译够用，补图不行 |
-| 🔴 红 | 连文字都没通过，后面挂着接口原话 |
-
-**点一行就把它设成当前模型。** 清单存在这一档下面，下次打开还在。
-一次最多探 14 个；探到一半可以停。
-
-小心思两处：连文字那一关都没过的模型，**不会**再白发一张图片；
-「这个模型不认图片」这类 400 也不再脱掉 `response_format` 重试一遍
-—— 那一次重试注定还是同样的错，省下来就是省一半请求。
-
-### 文字与识图可以分开配
-
-翻译只用到文字，补全要看图。这两件事可以**各用各的接口和模型**：
-
-**设置 → 图库 → 文字与识图** 里有个开关。关着＝两件事共用当前这一档（默认）；
-打开之后给两个下拉：
+The result is a color-coded list:
 
 | | |
 |---|---|
-| 文字用 | 翻译作品信息、译界面语言包 |
-| 识图用 | 看图补全每日新作与自定义图库 |
+| 🟢 Green | Passes both text and vision — this one can be used for enrichment |
+| 🟡 Amber | Only text passes — good enough for translation, not for image enrichment |
+| 🔴 Red | Doesn't even pass the text test; the endpoint's own words follow |
 
-便宜的小模型管翻译、贵的多模态只在补图时才动，是很自然的分工；
-本机 Ollama 跑翻译、云端模型管识图也一样。两个下拉旁边各挂一个
-**已实测 / 未实测**的小标签 —— 这一档在这一件事上到底行不行，一眼就能看到。
+**Click a row to make it the current model.** The list is stored under this profile and is still there the next time you open it.
+At most 14 models are probed per run; you can stop partway through.
 
-**测试结果是按档记的。** 换了地址，这一档整份凭证作废；只换了模型，
-作废的只是「识图」那一项（文字那一关跟具体型号关系不大，留着）。
-「多语言」解不解锁，看的是**文字那一档**测通没有 —— 跟识图那一档无关。
+Two small touches: a model that fails even the text check is **not** sent an image for nothing;
+and a 400 of the “this model doesn't accept images” kind no longer triggers a second try with `response_format` stripped off
+— that retry is bound to fail the same way, and skipping it saves half the requests.
 
-> 截图里那个例子：地址填的是 `https://open.bigmodel.cn/api/coding/paas/v4`。
-> 诊断卡除了说「这个模型能对话，但不认图片」，还会额外点一句：
-> **`/api/coding/` 是编程专用端点，识图请改成 `https://open.bigmodel.cn/api/paas/v4`**。
+### Text and vision can be configured separately
 
-**三种触发方式**
+Translation only needs text; enrichment needs to see the image. The two jobs can **each use their own endpoint and model**:
 
-- **手动**：点「立即补全」，按钮下面出现进度条与逐张清单，再点一次就是停止。
-- **自动**：新作品一入库就补。每日新作抓完当场补；自定义图库扫完文件夹当场补，
-  没补完的下次打开新标签页接着补。
-- **定时**：关闭 / 每小时 / 每 6 小时 / 每 12 小时 / 每天 / 每 3 天 / **自定义**（分钟 · 小时 · 天，最短 15 分钟）。定时是用来**清扫漏网的**——
-  每日新作由后台服务处理，开不开标签页都跑；自定义图库的图片只有页面里读得到
-  （目录句柄拿不到后台去），所以那部分要等你打开一次新标签页。
+Under **Settings → Library → Text & vision** there's a switch. Off = both jobs share the current profile (the default);
+on = you get two dropdowns:
 
-**它会补什么**
+| | |
+|---|---|
+| Text | Translating artwork info and the interface language pack |
+| Vision | Looking at images to enrich daily additions and the custom library |
 
-两套提示词，分开走：
+A cheap small model for translation, with the expensive multimodal one stirring only when images need enriching, is a natural division of labor;
+so is local Ollama for translation and a cloud model for vision. Next to each dropdown hangs a small
+**measured / not measured yet** tag — so you can see at a glance whether this profile really works for this job.
 
-- **每日新作**当名画编目：中文译名、材质、流派、地区、题材、看点，
-  以及一段 120–200 字的导览。已知的英文原名、收藏机构这些**不动**，只填空着的格子。
-- **自定义图库**当**普通图片**处理 —— 提示词里第一句就是「它可能是照片、截图、插画、
-  设计稿、扫描件，也可能是绘画，先看清楚它到底是什么，别默认它是名画」。
-  标题要求「用一句朴素的话说清画面里是什么，八到十六个字，像相册里给照片起的名字」，
-  作者一栏**只有画面上真有署名、水印、落款时才填**，否则宁可空着。
+**Test results are recorded per profile.** Change the address and the profile's whole record of passed tests is voided; change only the model,
+and only the “vision” result is voided (passing the text check has little to do with the particular model, so that one is kept).
+Whether “multilingual” is unlocked depends on whether **the text profile** has tested OK — the vision profile has nothing to do with it.
 
-**几条克制的规矩**（这些是补全好不好用的关键）
+> The example in the screenshot: the address entered is `https://open.bigmodel.cn/api/coding/paas/v4`.
+> Besides saying “This model can talk, but it cannot see images”, the diagnosis card adds one more line:
+> **`/api/coding/` is the coding-only endpoint; for images, change it to `https://open.bigmodel.cn/api/paas/v4`**.
 
-- **词表是封闭的**。流派只能从内置的 21 个里挑，地区只能从 7 个里挑，题材只能从词表里挑
-  —— 模型自己编的标签会被丢掉。这样筛选面板里不会长出一堆野生标签。
-  自定义图库多一档日常题材（建筑 / 食物 / 草木 / 天空 / 山峦 / 树林 / 交通工具 / 器物 /
-  图案 / 文字 / 运动 / 服饰 / 星空 / 机械），内置藏品用不到，只有认出来时才会出现。
-- **默认只填空着的字段**，已经有的一律不动。要覆盖得自己打开「覆盖已有字段」。
-- **标题处理**三档：**只换机器名**（默认）只动 `IMG_2043`、`DSC00123`、
-  `Screenshot 2024-01-01 at 12.30.45`、`微信图片_20240101`、`截屏2024-01-01 下午3.20`
-  这类「前缀＋一串数字」的名字；`Photo of a cat`、`奶奶家的院子` 这种有内容的标题不碰。
-  另外两档是「总是重写」和「不动标题」。
-- **作者**：自定义图库里那个「作者」其实是上层文件夹名。`Downloads`、`新建文件夹`、
-  `截图` 这种一看就没意义的会被清空；`2019 京都` 这种有意义的保留。
-- **办公模式的标记只往安全方向拨**：模型说「这张不适合办公室」就标上，
-  说「适合」不会把已经标过的解开。
-- **失败重试**：不重试 / 1 次 / 2 次 / 3 次 / 直至成功 / 自定义（上限 20）。
-  只对**值得再试的**失败重试 —— 限流（429）、服务器抽风（5xx）、网络断一下、
-  模型这次没按 JSON 回话；密钥不对（401）、地址不对（404）、请求被拒（400/422）
-  一次都不多试，试一百遍也还是那样。间隔逐次拉长（0.6 秒起，×1.8，封顶 20 秒），
-  「直至成功」最多 30 轮，随时可以按「停止」。
-- **单条重试**：补全清单里每一行右边有个 ↻，只重来这一张。
-  失败那行一直显示，成功那行鼠标移上去才出现（改坏了想重补也行）。
-  重完就地把那一行换掉，存下来的记录同步更新。
-- 补过的会打一个记号，不再重复花钱。想重来点「清除补全记录」（已经写进去的字段不会退回原样）。
-- 读不到图片（比如文件夹权限被系统收回了）**不算补过**，下次还会再来；
-  这种情况下连接口都不会打。
+**Three ways to trigger it**
 
-**看得见在补什么**
+- **Manual**: click “Run now”; a progress bar and a per-image list appear below the button. Click again to stop.
+- **Automatic**: new works are enriched as soon as they arrive. Daily additions are enriched right after they're fetched; the custom library right after a folder is scanned,
+  and whatever isn't finished continues the next time you open a new tab.
+- **Scheduled**: Off / Hourly / Every 6 hours / Every 12 hours / Daily / Every 3 days / **Custom** (minutes · hours · days, at least 15 minutes). The schedule is for **sweeping up whatever slipped through** —
+  daily additions are handled by the background service and run whether or not a tab is open; custom library images can only be read from inside the page
+  (the directory handle can't be passed to the background), so that part waits until you next open a new tab.
 
-补全时按钮下方是一条进度条，底下跟着一份逐张清单，边补边长：
+**What it fills in**
+
+Two sets of prompts, run separately:
+
+- **Daily additions** are cataloged as famous paintings: Chinese title, medium, movement, region, subject, highlight,
+  and a curatorial note of 120–200 Chinese characters. What's already known — the original English title, the museum and so on — is **left alone**; only empty fields are filled.
+- The **custom library** is treated as **ordinary images** — the very first line of the prompt is “It may be a photo, a screenshot, an illustration,
+  a design draft or a scan, or it may be a painting; look carefully at what it actually is first, and don't assume it's a famous painting.”
+  The title is required to “say plainly, in one phrase, what is in the picture, eight to sixteen characters, like the name you'd give a photo in an album”,
+  and the artist field is **filled only if the picture actually has a signature, watermark or inscription**; otherwise it's better left empty.
+
+**A few rules of restraint** (these decide whether enrichment is any use)
+
+- **The vocabularies are closed.** Movement can only be one of the 21 built in, region one of 7, subject one from the vocabulary
+  — labels the model makes up are thrown away. That way the filter panel doesn't sprout a crop of wild tags.
+  The custom library gets an extra set of everyday subjects (Architecture / Food / Plants / Sky / Mountains / Forest / Vehicles / Objects /
+  Pattern / Typography / Sport / Fashion / Cosmos / Machines); the built-in collection doesn't use them, and they appear only when recognized.
+- **By default only empty fields are filled**; whatever is already there is left alone. To overwrite, you have to turn on “Overwrite existing fields” yourself.
+- **Titles** has three settings: **Machine names** (the default) only touches `IMG_2043`, `DSC00123`,
+  `Screenshot 2024-01-01 at 12.30.45`, `微信图片_20240101` (a WeChat image), `截屏2024-01-01 下午3.20` (a screenshot on a Chinese system)
+  and other “prefix + string of digits” names; titles with real content, such as `Photo of a cat` or `奶奶家的院子` (“Grandma's courtyard”), are left alone.
+  The other two settings are “Always” (always rewrite) and “Never” (leave titles alone).
+- **Artist**: in the custom library the “artist” is really the parent folder's name. Obviously meaningless ones like `Downloads`, `新建文件夹` (Windows' “New folder”) or
+  `截图` (“Screenshots”) are cleared; meaningful ones like `2019 京都` (“2019 Kyoto”) are kept.
+- **The Work-safe flag only moves in the safe direction**: if the model says “this one isn't suitable for the office”, it gets flagged;
+  if it says “suitable”, that won't clear a flag that's already set.
+- **Retry on failure**: No retry / 1× / 2× / 3× / Until it works / Custom (max 20).
+  Only failures **worth another try** are retried — rate limiting (429), server hiccups (5xx), a brief network drop,
+  the model not answering in JSON this time; a wrong key (401), a wrong address (404) or a rejected request (400/422)
+  gets not a single extra try — a hundred attempts would end the same way. The wait grows each time (from 0.6 s, ×1.8, capped at 20 s);
+  “Until it works” goes at most 30 rounds, and you can press “Stop” at any time.
+- **Retrying a single image**: every row in the enrichment list has a ↻ on its right that redoes just that image.
+  It's always shown on failed rows; on successful rows it appears when you hover (handy if a result came out wrong and you want to redo it).
+  When the retry is done, the row is replaced in place and the saved log is updated to match.
+- Enriched items get a mark so you don't pay for them twice. To start over, click “Clear enrichment marks” (fields already written won't revert).
+- An image that can't be read (say, because the system took back the folder permission) **doesn't count as enriched** and will be tried again next time;
+  in that case the endpoint isn't even called.
+
+**You can see what's being enriched**
+
+While enrichment runs, there's a progress bar below the button with a per-image list under it that grows as it goes:
 
 ```
-● 雨后的石阶            10 项
+● Stone steps after the rain       10 fields
   IMG_2043
-● 楚门的世界 电影海报     8 项
+● The Truman Show movie poster      8 fields
   IMG_2044
 ● Along the River …
-  读不到图片 · HTTP 404
+  Couldn't read the image · HTTP 404
 ```
 
-每行第一行是补完的名字，第二行是原来的名字（没改名就不显示），右侧是这一张补上了几个字段；
-鼠标停上去能看到具体是哪几个字段、以及试了几次。最右边那个 ↻ 单独重来这一张。失败的那行是红点，第二行直接写原因
-（网址会被去掉，留下真正有用的那截）。
+In each entry, the first line is the name after enrichment and the second the original name (not shown if it wasn't renamed); on the right is how many fields were filled in for that image;
+hover to see exactly which fields, and how many tries it took. The ↻ at the far right redoes just that image. A failed entry has a red dot, and its second line states the reason
+(URLs are stripped out, leaving the part that's actually useful).
 
-清单跑完不会消失，关掉设置再打开还在，最近 200 条存在本地；不想看了点「清空这份记录」。
-后台定时补的那些也会记进同一份清单，下次打开设置就能看到夜里补了什么。
+The list doesn't disappear when the run ends — close settings and open them again and it's still there; the latest 200 entries are kept locally. When you're done with it, click “Clear this log”.
+Scheduled background runs are recorded in the same list, so the next time you open settings you can see what was enriched overnight.
 
-**提示词是打开的**
+**The prompts are out in the open**
 
-设置 → 图库 → AI 补全 → **提示词**（点标题展开），三个框，就是真正发出去的原文：
+Settings → Library → AI enrichment → **Prompts** (click the heading to expand): three boxes, holding exactly the text that gets sent:
 
 | | |
 |---|---|
-| 系统提示词 | 两套共用的那几条铁律 |
-| 名作提示词 | 每日新作用这份 |
-| 通用图片提示词 | 自定义图库用这份 |
+| System prompt | The few hard rules both sets share |
+| Artwork prompt | Used for daily additions |
+| General image prompt | Used for the custom library |
 
-框里花括号包着的是**占位符**，发出去之前会换成真东西：
+Anything in curly braces in the boxes is a **placeholder**, replaced with the real thing before sending:
 
-`{title}` `{artist}` `{year}` `{museum}` `{file}` `{folder}` `{dims}` —— 已知线索
-`{shape}` —— 要模型输出的 JSON 骨架
-`{vocab}` —— 词表约束（流派 / 地区 / 题材 / 画幅 / 办公模式 / 把握）
-`{movements}` `{regions}` `{tags}` —— 单独的词表
-`{noteLen}` —— 介绍字数要求，跟着「生成作品介绍」开关走
+`{title}` `{artist}` `{year}` `{museum}` `{file}` `{folder}` `{dims}` — known clues
+`{shape}` — the JSON skeleton the model should output
+`{vocab}` — vocabulary constraints (movement / region / subject / format / Work-safe / confidence)
+`{movements}` `{regions}` `{tags}` — the individual vocabularies
+`{noteLen}` — the required length of the note, which follows the “Write the note” switch
 
-写错的占位符会**原样留在文本里**，一眼就能看出没生效。
-点「预览」能看到**这一刻真正会发出去的完整内容**——线索用的是你库里第一件待补作品，
-不是编的样例；旁边有「复制」，可以贴到别处调。
+A mistyped placeholder **stays in the text as it is**, so you can see at a glance that it didn't take effect.
+Click “Preview” to see **the complete content that would really be sent at this moment** — the clues come from the first work in your library waiting to be enriched,
+not a made-up sample; next to it is “Copy”, so you can paste it elsewhere to fine-tune it.
 
-改过的那份右上角会出现「已改」角标，点「恢复默认」回到内置文案。
-框里始终显示**真正在用的那份**：没改过时显示内置原文，你把它改回一字不差，也会被当作没改
-——这样以后内置文案更新了，你还能跟着走。
+An edited prompt gets an “edited” badge in its top right corner; click “Reset” to go back to the built-in text.
+The box always shows **the version actually in use**: if you haven't edited it, that's the built-in original, and if you edit it back to exactly the original, it's treated as unedited
+— so when the built-in text is updated later, you'll still get the update.
 
-> 改坏了不会出安全问题：**词表过滤是在代码里做的**，模型返回什么标签都得先过一遍白名单，
-> 提示词里怎么写都污染不了筛选面板。但 `{shape}` 删掉，模型就不知道该回什么结构了。
+> Breaking a prompt can't cause a safety problem: **vocabulary filtering is done in code**, so whatever labels the model returns have to pass an allowlist first,
+> and nothing you write in a prompt can pollute the filter panel. But delete `{shape}` and the model no longer knows what structure to reply with.
 >
-> 三份提示词都是中文写的，要求模型同时给中英两版结果，所以英文界面下也照常工作；
-> 想换成英文提示词，直接在框里改掉就是。
+> All three prompts are written in Chinese and ask the model for both a Chinese and an English version of the results, so they work just as well with the English interface;
+> if you'd rather use English prompts, just rewrite them in the boxes.
 
-**开销与稳妥处**
+**Cost and safeguards**
 
-- 发出去的是**缩到 1024px 以内的 JPEG**，不是原图。
-- 每轮张数可选 5 / 10 / 20 / 50 / 100 / 200 或**自定义**（1–2000），默认 20；
-  并发可选 1–4 或自定义（上限 8），默认 2，每次之间隔 250 ms。
-- 页面和后台各有一份，靠存储里的一把**租约**互相避让，不会把同一批图片补两遍。
-- 有些兼容接口不认 `response_format` 或 `temperature`，被 400 顶回来会**自动脱掉重发一次**。
-- 模型爱把 JSON 包在代码块里、前后再说一句话，都会剥掉再解析。
+- What gets sent is **a JPEG scaled down to within 1024px**, not the original.
+- Images per run can be 5 / 10 / 20 / 50 / 100 / 200 or **custom** (1–2000), default 20;
+  concurrency can be 1–4 or custom (max 8), default 2, with 250 ms between requests.
+- The page and the background each have their own runner, and they stay out of each other's way through a **lease** held in storage, so the same batch of images is never enriched twice.
+- Some compatible endpoints don't accept `response_format` or `temperature`; when a 400 bounces back, the request is **automatically resent once without them**.
+- Models like to wrap the JSON in a code block and add a sentence before or after; all of that is stripped off before parsing.
 
-> **接口地址一留空，整套功能就是关的**，两个图库完全沿用原来的规则，一个请求都不会发。
+> **Leave the endpoint address empty and the whole feature is off**: both libraries keep their original rules exactly, and not a single request is sent.
 
 ---
+## 5b. Speak your language (multilingual, needs an endpoint)
 
-## 五之三、说你的话（多语言，需要接口）
+Corridor has only Chinese and English built in. But art shouldn't be open only to people who speak those two languages —
+so since v1.15.0, Corridor works with just **two language slots**: one **native** language and one **foreign** language.
+Which two they are is up to you: pick from **78 languages**, and if yours isn't there, type in a name yourself.
 
-长廊内建的只有中文和英文。但「艺术」这件事不该只对懂这两种话的人开放 ——
-所以从 v1.15.0 起，长廊只认**两个语言位置**：一个**母语**，一个**外语**。
-具体是哪两种由你定，从 **78 种语言**里挑，挑不到就自己填一个名字。
-
-**设置 → 呈现 → 语言 · 时钟**
+**Settings → Display → Language · Clock**
 
 | | |
 |---|---|
-| 母语 | 你自己的话。界面默认跟着它走 |
-| 外语 | 另一面。墙签翻过去看到的就是它 |
-| 界面用 | 母语 / 外语 / 跟随系统（系统语言更接近哪一个就用哪一个） |
+| Your language | Your native language, the one you speak. The interface follows it by default |
+| Second language | The foreign language — the other side. It's what you see when you flip a wall label over |
+| Interface in | Yours / Second / Follow system (uses whichever of the two is closer to the system language) |
 
-中文和英文**任何时候都能选**，不需要接口。想换成第三种语言，
-得先在「图库 → AI 补全」里把**文字那一档**测通（只要文字那一步过了就行，
-识图通不通不影响）——
-因为界面文案和作品信息都得现场译出来。没测通时下拉里只有中英两档，
-下面有一行说明和一个「去设置接口」的按钮，点一下直接跳过去。
+Chinese and English **can be chosen at any time**, with no endpoint needed. To switch to a third language,
+you first need **the profile used for text** to pass its test under “Library → AI enrichment” (passing the text step is enough;
+whether the vision step passes makes no difference) —
+because the interface text and the artwork information both have to be translated on the spot. Until that test passes, the drop-downs offer only Chinese and English,
+with a line of explanation below them and a “Set up the endpoint” button that takes you straight there.
 
-**两样东西会被译**
+**Two things get translated**
 
-- **作品信息** —— 标题、艺术家、材质、收藏机构、地点、看点、那段导览，
-  还有年代与生卒里的「约 / 世纪 / 之后」这类限定词。
-  可以选**译哪些**（全部 / 内置馆藏 / 每日新作 / 自定义图库）和**一轮译几件**，
-  以及**一次请求打包几件**（打包多了省钱，打包少了稳当）。
-  译的时候有进度条和逐条清单，跟 AI 补全那一套是同一副样子。
-- **界面文案** —— 设置面板、按钮提示、流派 / 地区 / 题材 / 色系 / 墙面 / 纹理 / 画框
-  这一整套筛选词表，一共 **580 条**。分批送出去，**只译一次**，之后存在本机，
-  换回来再换过去都不用重译。
+- **Artwork information** — title, artist, medium, museum, location, highlight, the curatorial note,
+  plus the qualifiers in dates and life spans such as “c. / century / after”.
+  You can set **Which works** (Everything / Built-in collection / Daily additions / Custom library) and **Works per run**,
+  as well as **Works per request** (packing more into one request costs less; packing fewer is more reliable).
+  While it translates, there's a progress bar and an item-by-item list, the same look as for AI enrichment.
+- **Interface text** — the settings panel, button tooltips, and the whole filter vocabulary for movement / region / subject / color family / wall color / wall finish / frame:
+  **580 strings** in all. They're sent in batches and **translated only once**, then kept on this machine,
+  so switching back and forth never means translating them again.
 
-**几条让它不至于翻车的规矩**
+**A few rules that keep it from going off the rails**
 
-- **底本挑过**：目标是中日韩就拿中文原文去译，别的一律走英文那一份 ——
-  英文那份本来就是写给全世界看的，转到拉丁语系损耗最小。
-- **占位符不许动**：`{n}` `{a}` `<em>` 这类会明确要求原样保留，位置可以按语序挪。
-- **专名不许译**：OpenAI、Ollama、LM Studio、CORS、JSON、`chrome-extension` 这些留着。
-- **只收认得的字段**，长度掐住 —— 模型顺手写篇小作文进来也进不了库。
-- **回落链**：当前语言 → 另一面 → 英文 → 中文。哪一格没译到就往下顺一位，
-  **绝不开天窗**，也绝不露出内部键名。
-- **从右往左的语言**（阿拉伯语、希伯来语、波斯语、乌尔都语）会把整页的书写方向翻过来。
+- **The source text is chosen deliberately**: for Chinese, Japanese and Korean targets the translation starts from the Chinese original; everything else goes from the English version —
+  the English text was written for the whole world in the first place, and it loses the least on the way into Latin-script languages.
+- **Placeholders stay untouched**: the model is explicitly told to keep things like `{n}` `{a}` `<em>` exactly as they are, though they may move to fit the word order.
+- **Proper names are not translated**: OpenAI, Ollama, LM Studio, CORS, JSON, `chrome-extension` and the like stay as they are.
+- **Only recognized fields are accepted**, and their length is capped — if the model throws in a little essay while it's at it, the essay still doesn't make it into storage.
+- **Fallback chain**: current language → the other side → English → Chinese. Wherever a slot has no translation, it drops one step down the chain —
+  **never a blank gap**, and never an internal key name showing through.
+- **Right-to-left languages** (Arabic, Hebrew, Persian, Urdu) flip the writing direction of the whole page.
 
-**译文存在哪** —— 单独一层「覆盖层」，不动原库。内置馆藏是只读的静态 JSON，
-每日新作与自定义图库也不该被译文撑大；换语言不动原库，想清掉就是一句话的事
-（「清掉译文」会把这两种语言的作品译文与界面语言包一起清干净）。
+**Where the translations are stored** — in a separate “overlay” layer that leaves the original data alone. The built-in collection is read-only static JSON,
+and the daily additions and the custom library shouldn't be bloated with translations either; switching languages never touches the original data, and clearing the translations out is a one-step job
+(“Clear translations” wipes both the artwork translations and the interface language packs for the two languages in one go).
 
-**新作品会自己补上** —— 开着「作品信息也用这两种语言」时，每次打开新标签页，
-补全跑完之后会顺手译一小批（一轮至多 12 件），不用你惦记着回来点一次。
+**New works are picked up on their own** — with “Translate the artwork texts too” switched on, every time you open a new tab,
+once enrichment has finished it also translates a small batch (at most 12 works per round), so you don't have to remember to come back and click.
 
 ---
 
-## 六、离线是怎么做的
+## 6. How offline works
 
-作品图片在第一次显示后会存进浏览器本地的 IndexedDB；下次打开新标签页直接读本地，
-不再请求网络。后台每隔三小时会悄悄预取几幅还没缓存的作品，并且每次换画时预取接下来的三幅。
-**缓存满了会怎样**：写入累计到 12 MB 就检查一次占用；超过上限时按「**最久没看过的先删**」清理，
-一直腾到上限的九成为止（留出余量，免得刚删完又满）。**收藏过的作品排在最后才动**。
-删掉的只是本地那份副本，下次显示时会重新取一遍，设置、收藏、历史都不受影响。
+After a work's image is shown for the first time, it is stored in the browser's local IndexedDB; the next time you open a new tab it is read locally,
+with no network request. Every three hours the background quietly prefetches a few works that aren't cached yet, and each time the picture changes it prefetches the next three.
+**What happens when the cache is full**: every time writes add up to 12 MB, usage is checked; when it is over the limit, the cache is cleaned out “**least recently seen goes first**”,
+until it is down to 90% of the limit (leaving some headroom, so it doesn't fill up again right after a cleanup). **Works you've favorited are the last to be touched**.
+Only the local copy is deleted; it is fetched again the next time it's shown, and your settings, favorites and history are unaffected.
 
-图片与索引分成两个 store 存：`images` 只放图，`meta` 只放 `{大小, 最后使用时间, 作品 id}`。
-统计占用和执行淘汰都只读 `meta`，几百兆的图片不会因为「算一下用了多少」被整个读进内存——
-命中缓存时也只更新 meta 的时间戳，不再回写整张图。
+Images and the index are kept in two separate stores: `images` holds only the images, `meta` holds only `{size, last used time, work id}`.
+Measuring usage and running eviction both read only `meta`, so hundreds of megabytes of images never get loaded into memory whole just to “work out how much is used” —
+and a cache hit only updates the timestamp in meta instead of writing the whole image back.
 
-断网时仍会正常显示已缓存的作品；如果某幅完全没缓存过，会退回到内置的极小占位图（每幅约 0.5 KB，已随扩展打包）。
+When you're offline, cached works still display normally; if a work has never been cached at all, it falls back to a tiny built-in placeholder (about 0.5 KB each, bundled with the extension).
 
-想一次备齐：设置 → 离线缓存 → **缓存全部作品**。按默认画质约需 300–600 MB。
+To stock up on everything at once: Settings → Offline cache → **Cache every work**. At the default image quality this takes about 300–600 MB.
 
-### 缓存到底在磁盘的哪里
+### Where the cache actually lives on disk
 
-图片存在 Chrome 分配给本扩展的 IndexedDB 里。设置页会自动识别你的系统并显示实际路径，旁边有「复制路径」：
+The images are stored in the IndexedDB that Chrome allocates to this extension. The settings page detects your system automatically and shows the actual path, with a “Copy path” button next to it:
 
-| 系统 | 路径 |
+| System | Path |
 |---|---|
-| **Windows** | `%LOCALAPPDATA%\Google\Chrome\User Data\Default\IndexedDB\chrome-extension_<扩展ID>_0.indexeddb.leveldb` |
-| **macOS** | `~/Library/Application Support/Google/Chrome/Default/IndexedDB/chrome-extension_<扩展ID>_0.indexeddb.leveldb` |
-| **Linux** | `~/.config/google-chrome/Default/IndexedDB/chrome-extension_<扩展ID>_0.indexeddb.leveldb` |
+| **Windows** | `%LOCALAPPDATA%\Google\Chrome\User Data\Default\IndexedDB\chrome-extension_<extension ID>_0.indexeddb.leveldb` |
+| **macOS** | `~/Library/Application Support/Google/Chrome/Default/IndexedDB/chrome-extension_<extension ID>_0.indexeddb.leveldb` |
+| **Linux** | `~/.config/google-chrome/Default/IndexedDB/chrome-extension_<extension ID>_0.indexeddb.leveldb` |
 
-（用的不是 Default 配置文件时，把 `Default` 换成 `Profile 1` 之类。扩展 ID 在设置页里就是完整显示的。）
+(If you're not using the Default profile, replace `Default` with `Profile 1` or similar. The settings page shows the extension ID in full.)
 
-不过那是 LevelDB 数据库文件，**不能直接当图片浏览**。要拿到能用的图片，用下面这个：
+Those are LevelDB database files, though — **you can't browse them as images**. To get usable images, use this instead:
 
-### 一键导出图片（Windows / macOS 通用）
+### One-click image export (works on Windows and macOS)
 
-设置 → 离线缓存 → **导出已缓存作品**。
-每幅作品会按 `艺术家 - 作品名 (年代).jpg` 写进 **下载 / Corridor Gallery /**，文件名做过 ASCII 净化，
-中文系统、英文系统都不会出错。导完点旁边的 **打开文件夹**，会直接在 Windows 资源管理器 / macOS 访达 /
-Linux 文件管理器里定位到那个目录——不用自己去翻路径。
+Settings → Offline cache → **Export cached works**.
+Each work is written to **Downloads / Corridor Gallery /** as `Artist - Title (Year).jpg`; file names are sanitized to ASCII,
+so nothing goes wrong on either a Chinese or an English system. When the export is done, click **Open folder** next to it, and that folder opens directly in Windows File Explorer / macOS Finder /
+your Linux file manager — no need to go hunting for the path yourself.
 
-按 `D` 也可以随时单独下载当前这一幅。
+You can also press `D` at any time to download just the current work.
 
 ---
 
-## 六之二、备份与恢复（设置 → 存储）
+## 6a. Backup and restore (Settings → Storage)
 
-**升级本来就不丢配置。** 同一个扩展 id 下，`chrome.storage.local` 在版本更新时原样留着 ——
-设置、接口档（含密钥与「测试连接」的实测结果）、收藏，一样不少。
+**Upgrading doesn't lose your configuration in the first place.** As long as the extension id stays the same, `chrome.storage.local` is kept intact across version updates —
+settings, endpoint profiles (including keys and the measured results of “Test connection”) and favorites all come through intact.
 
-丢的是另一种：**把扩展删掉重装**，或者换一台机器 —— 那时扩展 id 变了，存储是全新的。
-备份是给这种情况的。
+What does get lost is the other case: **removing the extension and reinstalling it**, or moving to another machine — then the extension id changes and storage starts from scratch.
+That's what backups are for.
 
-**格式是 JSON**。这份东西是给机器读的：Markdown 好看，但没有类型，数组、布尔、
-嵌套结构一转就会丢，倒回来还得靠猜。
+**The format is JSON**. This file is meant for machines to read: Markdown looks nice, but it has no types — arrays, booleans
+and nested structures get lost as soon as you convert, and reading it back in would come down to guesswork.
 
-**带走哪几块自己勾**：设置与接口档 / 收藏与已移除 / 浏览历史 / 作品译文 /
-界面语言包 / 每日新作 / 图库网址来源。导入时也按同一组勾选来。
+**You tick which parts to take along**: Settings & endpoints / Saved & removed / History / Artwork translations /
+UI language packs / Daily finds / Gallery URL sources. Importing goes by the same set of ticks.
 
-**接口密钥三条路**：
+**Three ways to handle API keys**:
 
-| 选项 | 文件里 | 导入时 | 适合 |
+| Option | In the file | On import | Good for |
 |---|---|---|---|
-| 不带 | 搜不到密钥 | 直接导 | 只想同步设置，密钥手动再粘 |
-| 口令加密 | 只有密文 | 要同一个口令 | 默认推荐，文件落到云盘也不泄密 |
-| 明文 | 看得到 `sk-…` | 直接导 | 最省事，但这份 json 从此得当密码本收着 |
+| Leave out | No keys to be found | Imports directly | You only want to sync settings and will paste the keys in again by hand |
+| Encrypt | Ciphertext only | Needs the same passphrase | The recommended default; even if the file ends up on a cloud drive, nothing leaks |
+| Plain text | `sk-…` in plain sight | Imports directly | The least hassle, but from then on this json has to be kept like a password file |
 
-加密用的是浏览器自带的 Web Crypto：PBKDF2-SHA256 派生（25 万轮）＋ AES-GCM-256。
-**只加密密钥那几个字段**，别的照旧可读 —— 所以口令忘了，其余配置照常恢复，
-只是密钥要重填一次。口令错了会明确报「口令不对，或这个文件被改过」，
-而且**一个字都不会写进存储**：解密排在所有写操作之前。
+Encryption uses the browser's built-in Web Crypto: PBKDF2-SHA256 key derivation (250,000 iterations) + AES-GCM-256.
+**Only the key fields are encrypted**; everything else stays readable — so if you forget the passphrase, the rest of the configuration still restores normally,
+and you just have to enter the keys again. A wrong passphrase gets a clear “Wrong passphrase, or the file has been altered”,
+and **nothing at all is written to storage**: decryption happens before any write.
 
-**导入两种合法**：
+**Two valid ways to import**:
 
-- **覆盖** —— 勾中的那几块整块换成备份里的。重装之后恢复用这个。
-- **并入** —— 只添不删：接口档按编号合并（本机已有的那一档留着），
-  收藏、已移除、图库来源并进来。从另一台机器搬配置用这个。
+- **Replace** — each ticked part is swapped wholesale for what's in the backup. Use this to restore after a reinstall.
+- **Merge** — adds, never deletes: endpoint profiles are merged by id (a profile that already exists on this machine is kept),
+  and favorites, the Removed list and library sources are merged in. Use this to carry your setup over from another machine.
 
-**备份里没有的两样**：图片缓存（几百 MB，装回来自己会重新抓）；
-本机文件夹图库 —— 浏览器不允许把目录授权带走，换台机器也指不到同一个盘，
-所以只备份网址来源，文件夹要重新选一次。
-
----
-
-## 七、Chrome 底部那条白色页脚
-
-那条写着扩展名和「Customize Chrome」的白条**不是本扩展的界面**。
-从 Chrome 138 起，只要新标签页是被扩展接管的，Chrome 就会在底部加这条官方页脚，
-用来告诉你是哪个扩展在提供这个页面——**扩展无权隐藏它**，这是浏览器行为。
-
-关掉它只要一步，两种方式任选：
-
-1. 在新标签页上**右键点那条白条** → 选「隐藏新标签页上的页脚」
-2. 或点白条右侧的「**自定义 Chrome**」→ 侧栏拉到最下方 → 关掉「在新标签页上显示页脚」
-
-改完如果没立刻生效，重启一次 Chrome。设置页里也放了这段说明，随时可以查。
+**Two things the backup doesn't include**: the image cache (hundreds of MB; after a reinstall it fetches the images again by itself);
+and local-folder libraries — the browser doesn't let a folder permission travel, and another machine couldn't point to the same disk anyway,
+so only URL sources are backed up, and folders have to be picked again.
 
 ---
 
-## 八、关于图片来源（请读一下）
+## 7. The white footer at the bottom of Chrome
 
-**Google Arts & Culture 没有面向个人开发者的公开 API**，官方接口只对合作的文博机构开放，
-直接抓取其页面既违反服务条款也随时可能失效。所以本扩展采用的是同样合规、同样高清的路线：
+The white bar showing the extension's name and “Customize Chrome” is **not part of this extension's interface**.
+Since Chrome 138, whenever the new tab page is taken over by an extension, Chrome adds this official footer at the bottom
+to tell you which extension is providing the page — **extensions are not allowed to hide it**; this is browser behavior.
 
-- 全部图片来自 **Wikimedia Commons** 的公有领域高清扫描，多数正是各大博物馆（含 Google Art Project）
-  公开释出的原始文件——例如《星月夜》用的就是 Google Art Project 的 44567 × 35291 版本。
-- 每幅作品的详情页都附有两个外链：**在 Wikimedia Commons 查看**（原始文件与授权信息）、
-  **在 Google Arts & Culture 搜索**（跳转到官方站点检索同一件作品，可看超高倍放大与馆方策展）。
-- 106 幅作品全部处于公有领域（作者去世逾 70 年，或由收藏机构以 CC0 释出）。
-  文字导览为本项目原创撰写。
+Turning it off takes just one step; either of these two ways works:
 
-图片按 Wikimedia 的标准尺寸阶梯请求（120 / 250 / 330 / 500 / 960 / 1280 / 1920 / 3840 px），
-按你的屏幕分辨率自动选择，不会浪费流量。
+1. On a new tab, **right-click the white bar** → choose “Hide footer on New Tab page”
+2. Or click “**Customize Chrome**” on the right side of the bar → scroll the side panel to the very bottom → turn off “Show footer on New Tab page”
+
+If the change doesn't take effect right away, restart Chrome once. The settings page includes this explanation too, so you can look it up any time.
 
 ---
 
-## 九、隐私
+## 8. About the image sources (please read)
 
-- 不收集、不上传任何数据；没有统计代码、没有账号、没有远程配置。
-- 默认情况下，网络请求只发往 `upload.wikimedia.org`（取图）、`commons.wikimedia.org`（每日新作的公开 API 与来源页）、`www.wikidata.org`（补中英文名）。设置、收藏、历史、缓存、自定义图库全部存在本机。
-- **唯一的例外是你自己开的「AI 补全」**：开了之后，被补全的图片会缩成 1024px 以内的 JPEG，
-  发到**你自己填的那个接口地址**，不经过任何第三方。密钥只写在本机 `chrome.storage.local`，
-  只随请求发往那一个地址。**地址留空就完全不发。**
-  自定义图库里如果有私人照片，请自行斟酌是否打开这个开关，以及要不要用本机模型
-  （`http://localhost:11434/v1` 这类，图片连机器都不出）。
-- 权限说明：`storage`/`unlimitedStorage` 存设置与图片缓存；`alarms` 用于后台预取与定时补全；
-  `downloads` 用于「下载原图」、导出图片与保存备份文件；`host_permissions` 仅限
-  `upload.wikimedia.org`、`commons.wikimedia.org`、`www.wikidata.org` 三个域名。
-  AI 补全用的是 **可选权限**：只有你填了接口地址并点「测试连接 / 立即补全 / 去授权」时，
-  浏览器才会弹窗问你要不要放行**那一个域名**；不用这个功能就永远不会问。
-- `topSites` 与 `tabs`（v1.21.0）都是**可选权限**：装上时不申请、不弹窗。
-  只有你打开「暂歇」那一屏并点「授权读取常访问站点」/「授权读取标签页」时才各申请一次，
-  同一个面板里随时能撤回。
-  `topSites` 读到的只有站点名与网址；`tabs` 读到的只有此刻开着的标签页的**标题与网址**
-  （这个 profile 的全部窗口），并且立刻按站点汇总成一条 —— 两样都读不到你什么时候去过、
-  去过几次，也读不到页面内容。这一屏还**不取站点图标、不发任何网络请求** ——
-  取图标要么再加一条权限，要么把你常去的站点报给第三方图标服务，两样都不值得。
-  「关掉所选标签页」只关你在整理模式里亲手勾中的那几个。
-- `declarativeNetRequestWithHostAccess`（v1.20.0 新增）只做一件事：把发往**本机地址**
-  （`localhost` / `127.x` / `0.0.0.0` / `::1` / `*.local`）的请求的 `Origin` 头改写成
-  那个地址自己，好让 Ollama 这类本机服务的来源检查放行。它带 `WithHostAccess` 后缀，
-  意思是**只在你已经授权的地址上生效**，安装时不会多出任何权限提示；规则还锁死在本扩展
-  自己发出的请求上（`initiatorDomains`），网页发往同一个端口的请求不受影响。
-  公网接口的 `Origin` 一个字都不动。
+**Google Arts & Culture has no public API for individual developers**; its official interface is open only to partner cultural institutions,
+and scraping its pages directly would both violate the terms of service and be liable to break at any time. So this extension takes a route that is just as legitimate and just as high-resolution:
+
+- All images are public-domain high-resolution scans from **Wikimedia Commons**, most of them the very original files released to the public by major museums (including the Google Art Project)
+  — *The Starry Night*, for example, uses the Google Art Project's 44567 × 35291 version.
+- Every work's detail page carries two external links: **View on Wikimedia Commons** (the original file and license information) and
+  **Search on Google Arts & Culture** (jumps to the official site and searches for the same work, where you can see ultra-high zoom and the museum's own curation).
+- All 106 works are in the public domain (the artist died more than 70 years ago, or the holding institution released it under CC0).
+  The written curatorial notes are original to this project.
+
+Images are requested along Wikimedia's standard size steps (120 / 250 / 330 / 500 / 960 / 1280 / 1920 / 3840 px),
+chosen automatically for your screen resolution, so no bandwidth is wasted.
 
 ---
 
-## 十、目录结构
+## 9. Privacy
+
+- No data is collected or uploaded; there is no analytics code, no account and no remote configuration.
+- By default, network requests go only to `upload.wikimedia.org` (fetching images), `commons.wikimedia.org` (the public API and source pages for daily additions) and `www.wikidata.org` (filling in Chinese and English names). Settings, favorites, history, the cache and the custom library are all stored on this machine.
+- **The only exception is “AI enrichment”, which you turn on yourself**: once it's on, the images being enriched are shrunk to JPEGs of at most 1024px
+  and sent to **the endpoint address you entered yourself**, with no third party in between. The key is stored only on this machine, in `chrome.storage.local`,
+  and is sent only with requests to that one address. **Leave the address empty and nothing is sent at all.**
+  If your custom library contains private photos, use your own judgment about whether to turn this on, and whether to use a local model
+  (something like `http://localhost:11434/v1`, where the images never even leave your computer).
+- Permissions: `storage`/`unlimitedStorage` hold settings and the image cache; `alarms` is for background prefetching and scheduled enrichment;
+  `downloads` is for “Download original”, exporting images and saving backup files; `host_permissions` is limited to three domains:
+  `upload.wikimedia.org`, `commons.wikimedia.org` and `www.wikidata.org`.
+  AI enrichment uses **optional permissions**: only when you have entered an endpoint address and click “Test connection / Run now / Allow”
+  does the browser pop up and ask whether to allow **that one domain**; if you don't use this feature, it never asks.
+- `topSites` and `tabs` (v1.21.0) are both **optional permissions**: nothing is requested and no prompt appears at install.
+  Each is requested once, and only when you open the Pause Gallery screen and click “Allow reading most-visited” / “Allow reading open tabs”;
+  you can revoke either one at any time in the same panel.
+  `topSites` gets only site names and URLs; `tabs` gets only the **titles and URLs** of the tabs open at that moment
+  (across all windows of this profile), which are immediately folded into one entry per site — neither can tell when you visited a site or
+  how many times, and neither can read page content. This screen also **fetches no site icons and makes no network requests at all** —
+  getting icons would mean either adding another permission or reporting the sites you visit most to a third-party icon service, and neither is worth it.
+  “Close those tabs” closes only the tabs you ticked yourself in Tidy mode.
+- `declarativeNetRequestWithHostAccess` (new in v1.20.0) does exactly one thing: it rewrites the `Origin` header of requests sent to **local addresses**
+  (`localhost` / `127.x` / `0.0.0.0` / `::1` / `*.local`) to that address itself,
+  so that the origin check in local services such as Ollama lets them through. Its `WithHostAccess` suffix
+  means it **only takes effect on addresses you have already granted access to**, so installing it adds no extra permission prompt; the rule is also locked
+  to requests sent by this extension itself (`initiatorDomains`), so requests that web pages send to the same port are unaffected.
+  The `Origin` of public endpoints is not changed in the slightest.
+
+---
+
+## 10. Project structure
 
 ```
 corridor-newtab/
-├── manifest.json          扩展清单（MV3）
-├── newtab.html            新标签页
-├── options.html           选项页
-├── data/catalog.json      106 幅作品的全部数据（约 384 KB）
-├── assets/frames/         九宫格画框贴图（离线光照渲染的 WebP，10 种线脚）
-├── assets/tex/            墙面材质（无缝浮雕贴图，31 种 WebP ＋ 共享的颗粒层与不匀层）
-├── _locales/              商店名称与简介（zh_CN / en）
+├── manifest.json          Extension manifest (MV3)
+├── newtab.html            New tab page
+├── options.html           Options page
+├── data/catalog.json      All the data for the 106 works (about 384 KB)
+├── assets/frames/         Nine-slice frame textures (WebP rendered with offline lighting, 10 mouldings)
+├── assets/tex/            Wall finishes (seamless relief textures: 31 WebP + shared grain and mottling layers)
+├── _locales/              Store name and description (zh_CN / en)
 ├── src/
-│   ├── app.js             主程序：播放、渲染、抽屉、缩放
-│   ├── modes.js           瀑布流 / 环形长廊 / 胶卷
-│   ├── daily.js           每日新作：Commons 分类爬取、Wikidata 双语补齐、色卡计算
-│   ├── local.js           自定义图库：目录句柄、扫描建库、按需读取
-│   ├── ai.js              AI 补全：OpenAI / Anthropic 双格式客户端、可编辑提示词模板、词表约束、补全报告
-│   ├── diag.js            接口报错诊断：把 HTTP 4xx 翻成「哪儿不对、该怎么办」
-│   ├── localnet.js        本机模型：把发往 localhost 的请求的 Origin 改写成本机地址
-│   ├── backup.js          备份与恢复：分块收集、口令加密密钥、覆盖或并入
-│   ├── pause.js           暂歇：自己钉的 ＋ 常访问站点与打开的标签页（可选权限），三种排版
-│   ├── store.js           设置 / 收藏 / 历史 / 已移除 / IndexedDB 图片缓存
-│   ├── i18n.js            中英文案、流派与题材词表
-│   ├── translate.js       多语言：作品译文与界面语言包
-│   ├── langs.js           78 种语言表
-│   ├── tone.js            墙色：亮暗判断、饱和度与色温
-│   ├── gallery.css        全部样式（含各种呈现方式、画框与墙面材质）
-│   ├── sw.js              后台服务：定时预取、每日新作、定时补全
-│   └── options.js         选项页逻辑
+│   ├── app.js             Main program: playback, rendering, drawers, zoom
+│   ├── modes.js           Masonry / Circular Gallery / Filmstrip
+│   ├── daily.js           Daily additions: Commons category crawling, bilingual fill-in from Wikidata, palette calculation
+│   ├── local.js           Custom library: directory handles, scanning and indexing, on-demand reads
+│   ├── ai.js              AI enrichment: dual-format OpenAI / Anthropic client, editable prompt templates, vocabulary constraints, enrichment report
+│   ├── diag.js            Endpoint error diagnosis: turns HTTP 4xx into “what's wrong, and what to do”
+│   ├── localnet.js        Local model: rewrites the Origin of requests sent to localhost to the local address
+│   ├── backup.js          Backup and restore: collection by part, passphrase-encrypted keys, replace or merge
+│   ├── pause.js           Pause Gallery: your own pinned sites + most-visited sites and open tabs (optional permissions), three layouts
+│   ├── store.js           Settings / Favorites / History / Removed / IndexedDB image cache
+│   ├── i18n.js            Chinese and English strings, movement and subject vocabularies
+│   ├── translate.js       Multilingual: artwork translations and interface language packs
+│   ├── langs.js           Table of 78 languages
+│   ├── tone.js            Wall color: light/dark detection, saturation and color temperature
+│   ├── gallery.css        All styles (including every presentation mode, frames and wall finishes)
+│   ├── sw.js              Background service worker: scheduled prefetching, daily additions, scheduled enrichment
+│   └── options.js         Options page logic
 └── icons/                 16 / 32 / 48 / 128
 ```
 
-## 十一、增删作品
+## 11. Adding and removing works
 
-编辑 `data/catalog.json`，每一项的结构：
+Edit `data/catalog.json`. Each entry is structured like this:
 
 ```jsonc
 {
@@ -925,57 +931,57 @@ corridor-newtab/
   "title":  { "zh": "星月夜", "en": "The Starry Night" },
   "artist": { "zh": "文森特·梵高", "en": "Vincent van Gogh" },
   "life": "1853–1890",
-  "year": "1889", "ys": 1889,                    // ys 用于年代排序与筛选
+  "year": "1889", "ys": 1889,                    // ys is used for sorting and filtering by date
   "medium": { "zh": "布面油画", "en": "Oil on canvas" },
   "dims": "73.7 × 92.1 cm",
   "museum": { "zh": "纽约现代艺术博物馆", "en": "Museum of Modern Art" },
   "place":  { "zh": "美国 纽约", "en": "New York, USA" },
-  "movement": "post-impressionism",               // 见 src/i18n.js 的 MOVEMENTS
+  "movement": "post-impressionism",               // see MOVEMENTS in src/i18n.js
   "region": "europe",                             // europe | east-asia | americas
-  "tags": ["landscape", "night"],                 // 见 src/i18n.js 的 TAGS
-  "mature": false,                                // true 会被「办公模式」隐藏
+  "tags": ["landscape", "night"],                 // see TAGS in src/i18n.js
+  "mature": false,                                // true = hidden in “Work-safe” mode
   "format": "std",                                // std | tall | wide | scroll
   "note": { "zh": "两段导览…\n\n第二段…", "en": "…" },
   "look": { "zh": "一句话看点", "en": "…" },
   "img": {
     "base":  "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/文件名.jpg",
-    "name":  "文件名.jpg",                         // 与 base 末段一致（保持 URL 编码）
+    "name":  "文件名.jpg",                         // same as the last segment of base (keep it URL-encoded); 文件名 = file name
     "full":  "https://upload.wikimedia.org/wikipedia/commons/e/ea/文件名.jpg",
     "w": 44567, "h": 35291, "ar": 1.2628,
-    "sizes": [120, 250, 330, 500, 960, 1280, 1920, 3840]   // 不超过原图宽度的阶梯值
+    "sizes": [120, 250, 330, 500, 960, 1280, 1920, 3840]   // size steps no larger than the original's width
   },
   "src": { "file": "File:…", "page": "https://commons.wikimedia.org/wiki/File:…", "licence": "Public domain" },
   "vis": {
-    "accent": "#4a6fa5",                          // 主色
+    "accent": "#4a6fa5",                          // accent color
     "lum": 0.31, "sat": 0.42,
-    "palette": ["#…", "#…"],                      // 六个主色，按占比排序
+    "palette": ["#…", "#…"],                      // six dominant colors, sorted by share
     "weights": [0.31, 0.22],
-    "lqip": "data:image/jpeg;base64,…"            // 20px 占位图，离线兜底
+    "lqip": "data:image/jpeg;base64,…"            // 20px placeholder, the offline fallback
   }
 }
 ```
 
-改完刷新扩展（`chrome://extensions/` 里点扩展卡片上的刷新图标）即可生效。
+After editing, reload the extension (at `chrome://extensions/`, click the reload icon on the extension's card) and the changes take effect.
 
 ---
 
-## 十一之二、每一版改了什么
+## 11a. What changed in each version
 
-见仓库根目录的 [`CHANGELOG.md`](../CHANGELOG.md)：每一版列清楚新增了什么、修了什么。
+See [`CHANGELOG.md`](../CHANGELOG.md) in the repository root: each version lists clearly what was added and what was fixed.
 
-（更细的实现记录——为什么这么改、试错过、踩过哪些坑——留在开发者本地，不进仓库。）
+(The more detailed implementation notes — why things were changed the way they were, the trial and error, the pitfalls along the way — stay on the developer's machine and are not part of the repository.)
 
-## 十二、版本与版权
+## 12. Version and copyright
 
-**长廊 Corridor** v1.22.2
+**Corridor** v1.22.2
 
-作者 **Charles Chern**（**@yearnst**）
+By **Charles Chern** (**@yearnst**)
 
-- 项目主页：<https://yearnst.github.io/corridor-newtab/>
-- 源码仓库：<https://github.com/yearnst/corridor-newtab>
+- Project site: <https://yearnst.github.io/corridor-newtab/>
+- Source repository: <https://github.com/yearnst/corridor-newtab>
 
-作品图片来自 Wikimedia Commons 的公有领域高清扫描；导览文字为本项目原创撰写。
+Artwork images are public-domain high-resolution scans from Wikimedia Commons; the curatorial notes were written originally for this project.
 
 © 2026 Charles Chern · MIT License
 
-<sub>这两个链接与版权信息也在「设置 → 关于」和扩展选项页底部显示，版本号自动读取自 manifest。</sub>
+<sub>These two links and the copyright notice also appear under “Settings → About” and at the bottom of the extension's options page; the version number is read automatically from the manifest.</sub>

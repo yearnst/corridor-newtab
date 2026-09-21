@@ -1,4 +1,30 @@
-# 行为准则 · Code of Conduct
+# Code of Conduct · 行为准则
+
+**English** · [中文](#中文)
+
+## English
+
+Small project, simple rules.
+
+**Do**: be patient with people (the person asking may never have installed an
+extension before), be direct about code (say what is wrong and why, with steps
+to reproduce), assume good faith (text has no tone), and respect differing taste.
+
+**Don't**: personal attacks, insults, or discriminatory remarks — including those
+based on nationality, gender, age, appearance, religion, sexual orientation,
+disability, or level of experience; harassment, public or private; publishing
+others' private information; or unrelated arguments in the issue tracker.
+
+**Enforcement**: a warning first, then removal of the content and a ban on
+further participation. Serious cases are banned immediately.
+
+**Reporting**: email **achillesmars@gmail.com** with `[Corridor CoC]` in the
+subject. Reports are read carefully, the reporter's identity is kept
+confidential, and you will get a reply within 7 days.
+
+The maintainer is bound by this document too.
+
+---
 
 ## 中文
 
@@ -29,27 +55,3 @@
 我会认真看，并对举报人的身份保密。举报后 **7 天内**会给你一个答复。
 
 维护者本人同样受这份准则约束。
-
----
-
-## English
-
-Small project, simple rules.
-
-**Do**: be patient with people (the person asking may never have installed an
-extension before), be direct about code (say what is wrong and why, with steps
-to reproduce), assume good faith (text has no tone), and respect differing taste.
-
-**Don't**: personal attacks, insults, or discriminatory remarks — including those
-based on nationality, gender, age, appearance, religion, sexual orientation,
-disability, or level of experience; harassment, public or private; publishing
-others' private information; or unrelated arguments in the issue tracker.
-
-**Enforcement**: a warning first, then removal of the content and a ban on
-further participation. Serious cases are banned immediately.
-
-**Reporting**: email **achillesmars@gmail.com** with `[Corridor CoC]` in the
-subject. Reports are read carefully, the reporter's identity is kept
-confidential, and you will get a reply within 7 days.
-
-The maintainer is bound by this document too.

@@ -1,9 +1,141 @@
-# 参与长廊
+# Contributing to Corridor · 参与长廊
+
+**English** · [中文](#中文)
+
+Thank you for taking the time. This project has no build step, no dependencies and no CI gate:
+change a line of source, hit reload in `chrome://extensions/`, and you see the result. The low barrier is deliberate.
+
+## Get it running
+
+```bash
+git clone https://github.com/yearnst/corridor-newtab.git
+```
+
+`chrome://extensions/` → turn on **Developer mode** at the top right → **Load unpacked** →
+choose the `corridor-newtab/` level (the one that contains `manifest.json`). After changing the source, come back to this page, click the reload icon,
+and open a new tab. Chrome 110+.
+
+If you changed `sw.js` (the service worker), after reloading also click **Reload** next to “Service Worker”,
+or the old copy keeps running.
+
+## Contributions that help most
+
+| Type | Notes |
+|---|---|
+| **Artwork metadata corrections** | A wrong artist, date, size or collection — please include an authoritative source (the museum's website, a Wikidata entry) |
+| **Suggesting new works** | Must be works **definitely in the public domain**, with a high-resolution scan on Wikimedia Commons. See “Adding a painting” below |
+| **Display problems** | The layout breaks at some resolution, in some browser or at some zoom level — please include a screenshot and the first two lines of `chrome://version` |
+| **Interface translations** | `src/i18n.js` holds the interface strings; additions in any language are welcome |
+| **Performance** | Especially scrolling frame rates in the Circular Gallery and the Filmstrip |
+
+## Adding a painting
+
+Works are registered in `corridor-newtab/data/catalog.json`, an array that currently has 106 entries.
+**Every field** of an entry is required (both the packaging script and CI check this):
+
+```jsonc
+{
+  "id": "starry-night",                       // unique, lowercase with hyphens
+  "title":  { "zh": "星月夜", "en": "The Starry Night" },
+  "artist": { "zh": "文森特·梵高", "en": "Vincent van Gogh" },
+  "life":   "1853–1890",                      // the artist's dates, with an en dash – not a minus sign
+  "year":   "1889",                           // the date shown on the label; can be text such as "10 世纪（宋摹本）" (10th century, Song copy)
+  "ys":     1889,                             // numeric year used for sorting
+  "medium": { "zh": "布面油画", "en": "Oil on canvas" },
+  "dims":   "73.7 × 92.1 cm",                 // use × not x
+  "museum": { "zh": "纽约现代艺术博物馆", "en": "Museum of Modern Art" },
+  "place":  { "zh": "美国 纽约", "en": "New York, USA" },
+  "movement": "post-impressionism",           // the movement, one of the existing 21
+  "region":   "europe",                       // europe | east-asia | americas
+  "tags":     ["landscape", "night"],
+  "mature":   false,                          // true for content, such as nudity, that should be held back by default
+  "format":   "std",                          // std | wide | tall | scroll
+  "note": { "zh": "…", "en": "…" },           // the curatorial note, two paragraphs separated by \n\n
+  "look": { "zh": "…", "en": "…" },           // one “look here” sentence, the hint on the label
+  "img": {
+    "base":  "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/….jpg",
+    "name":  "….jpg",
+    "full":  "https://upload.wikimedia.org/wikipedia/commons/e/ea/….jpg",
+    "w": 44567, "h": 35291, "ar": 1.2628,
+    "sizes": [120, 250, 330, 500, 960, 1280, 1920, 3840]
+  },
+  "src": {
+    "file":    "File:Van Gogh - Starry Night - Google Art Project.jpg",
+    "page":    "https://commons.wikimedia.org/wiki/File:….jpg",
+    "licence": "Public domain"
+  },
+  "vis": {                                    // dominant colors and their shares, used for the interface accent
+    "accent": "#364b85", "lum": 0.3536, "sat": 0.3518,
+    "palette": ["#5a7494", "…"], "weights": [0.2721, "…"],
+    "lqip": "data:image/jpeg;base64,…"        // a tiny blurred placeholder
+  }
+}
+```
+
+The sizes in `img`, the colors in `vis` and the `lqip` are all **computed**, so don't fill them in by hand —
+give the Commons link and the `note` / `look` you wrote in an issue, and the maintainer will run the generator script to fill in the rest.
+If you'd rather do it yourself, fill in every field following the format of the existing entries.
+
+Three hard requirements:
+
+1. **Public domain.** The artist died at least 70 years ago, or the scan itself is marked PD on Commons.
+   `src.licence` must be able to say `Public domain`. If you're not sure, explain your reasoning in the PR — don't guess.
+2. **Images come from `upload.wikimedia.org`.** That domain is already declared in the manifest;
+   any other domain would trigger a permission request and break “install it and it just works”, and CI would block it too.
+   The long side of the original should preferably be over 2000px; anything smaller looks blurry when zoomed in.
+3. **The curatorial text must be original.** `note` is the heart of this project —
+   **don't copy it from Wikipedia or a museum wall label.** Write what you see yourself: what the painting shows,
+   how it was painted, why it's worth stopping for. Two paragraphs, one version each in Chinese and English. `look` is one sentence
+   pointing to a specific spot in the picture, so people know where to look.
+
+Works aren't chosen for fame but for **how they look on a wall**: the composition has to hold up inside a frame,
+the dominant colors have to carry a whole wall, and the details have to hold up when you press `Z` to zoom in.
+
+## Code style
+
+There's no linter, and no plan to add one. Just write like the code around you:
+
+- Native ES modules; no framework, no bundler, no TypeScript
+- 2-space indentation, single quotes
+- **Comments are written in Chinese**, and say *why* rather than *what* —
+  the comments in this project are its documentation, and the passages in the source that read
+  “it used to be written like this, this was wrong with it, so now it's like this” are there on purpose
+- No runtime dependencies. If you really need a small utility function, write it by hand in the file that uses it
+
+## Before opening a PR
+
+Go through these yourself:
+
+- [ ] Open all five display modes once, with no errors (cycle with `M`)
+- [ ] The console is clean (check both the new tab page and the options page)
+- [ ] Try it offline once; works that were cached still show
+- [ ] No new permissions. **Please open an issue to discuss any change to the permissions in `manifest.json` first** —
+      it directly affects store review
+- [ ] No `eval`, `new Function` or remote scripts. The CSP is `default-src 'none'; script-src 'self'`
+- [ ] If you changed a feature, add a line to the matching section of the manual (`corridor-newtab/README.md`;
+      the Chinese `corridor-newtab/README.zh-CN.md` too, if you can)
+
+Give the PR a title that says clearly what changed, and in the description explain “what it was like before, what the problem was, and what it's like now”.
+
+## Version number
+
+The `version` in `manifest.json` is changed by the maintainer at release time — **please don't touch it** in a PR.
+
+## Discussion
+
+If you're not sure whether something should be done, or the idea is a big one, open an issue and talk it over first.
+Sending a big PR out of the blue risks, at worst, work that goes to waste.
+
+For security problems, see [SECURITY.md](SECURITY.md) — **don't open a public issue**.
+
+---
+
+## 中文
 
 谢谢你愿意花时间。这个项目没有构建步骤、没有依赖、没有 CI 门禁，
 改一行源码回 `chrome://extensions/` 点刷新就能看见效果——门槛低是刻意的。
 
-## 先跑起来
+### 先跑起来
 
 ```bash
 git clone https://github.com/yearnst/corridor-newtab.git
@@ -16,7 +148,7 @@ git clone https://github.com/yearnst/corridor-newtab.git
 改了 `sw.js`（service worker）的话，刷新之后还要点一下「Service Worker」旁边的
 **重新加载**，否则跑的还是旧的那份。
 
-## 哪些贡献最受欢迎
+### 哪些贡献最受欢迎
 
 | 类型 | 说明 |
 |---|---|
@@ -26,7 +158,7 @@ git clone https://github.com/yearnst/corridor-newtab.git
 | **界面翻译** | `src/i18n.js` 里是界面文案表，欢迎补任何语言 |
 | **性能** | 尤其是环形长廊与胶卷的滚动帧率 |
 
-## 加一幅画
+### 加一幅画
 
 作品登记在 `corridor-newtab/data/catalog.json`——一个数组，目前 106 条。
 每条记录的字段**一个都不能少**（打包脚本和 CI 都会查）：
@@ -89,7 +221,7 @@ git clone https://github.com/yearnst/corridor-newtab.git
 挑画不看名气，看的是**挂在墙上好不好看**：构图要经得起被框住，
 主色要能撑起一面墙，细节要经得起按 `Z` 放大。
 
-## 代码风格
+### 代码风格
 
 没有 linter，也不打算加。照着周围的代码写就行：
 
@@ -100,7 +232,7 @@ git clone https://github.com/yearnst/corridor-newtab.git
   的段落是有意留下的
 - 不引入任何运行时依赖。真需要一个小工具函数，就手写进对应文件
 
-## 提 PR 之前
+### 提 PR 之前
 
 自己过一遍这几条：
 
@@ -110,15 +242,16 @@ git clone https://github.com/yearnst/corridor-newtab.git
 - [ ] 没有新增权限。**任何 `manifest.json` 的权限改动都请先开 Issue 讨论**——
       这直接影响商店审核
 - [ ] 没有引入 `eval`、`new Function`、远程脚本。CSP 是 `default-src 'none'; script-src 'self'`
-- [ ] 改了功能的话，在 `corridor-newtab/README.md` 对应小节里补一句
+- [ ] 改了功能的话，在手册对应小节里补一句（英文 `corridor-newtab/README.md`；
+      能顺手补上中文 `corridor-newtab/README.zh-CN.md` 更好）
 
 PR 标题写清楚改了什么，正文说明「原来什么样、有什么问题、现在什么样」。
 
-## 版本号
+### 版本号
 
 `manifest.json` 里的 `version` 由维护者在发版时统一改，PR 里**不要动它**。
 
-## 讨论
+### 讨论
 
 不确定该不该做，或者想法比较大——先开一个 Issue 聊。
 直接甩一个大 PR 过来，最坏的情况是白写了。

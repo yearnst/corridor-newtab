@@ -1,14 +1,17 @@
 blank_issues_enabled: false
 contact_links:
-  - name: 🧩 从 Chrome 网上应用店安装
+  - name: 🧩 Install from the Chrome Web Store · 从 Chrome 网上应用店安装
     url: https://chromewebstore.google.com/detail/mnllopjjkbkoeljonbgmlabijamcjlam
-    about: 还没装？从这里装最省事，以后会自动更新
-  - name: 🔒 安全问题
+    about: Not installed yet? This is the easiest way, and it keeps itself up to date. / 还没装？从这里装最省事，以后会自动更新
+  - name: 🔒 Security issues · 安全问题
     url: https://github.com/yearnst/corridor-newtab/blob/main/SECURITY.md
-    about: 请不要开公开 Issue，按 SECURITY.md 发邮件
-  - name: 💬 使用问题 / 想法讨论
+    about: Please don't open a public issue; email as described in SECURITY.md. / 请不要开公开 Issue，按 SECURITY.md 发邮件
+  - name: 💬 Questions and ideas · 使用问题 / 想法讨论
     url: https://github.com/yearnst/corridor-newtab/discussions
-    about: 不确定算不算 bug、想聊聊某个功能该怎么做，来这里
-  - name: 📖 完整手册
+    about: Not sure it's a bug, or want to talk about how a feature should work? Come here. / 不确定算不算 bug、想聊聊某个功能该怎么做，来这里
+  - name: 📖 Full manual
     url: https://github.com/yearnst/corridor-newtab/blob/main/corridor-newtab/README.md
+    about: Every setting and every mode explained in detail — worth a look before asking.
+  - name: 📖 完整手册（中文）
+    url: https://github.com/yearnst/corridor-newtab/blob/main/corridor-newtab/README.zh-CN.md
     about: 每个设置项、每种模式的详细说明，提问前可以先翻一下
