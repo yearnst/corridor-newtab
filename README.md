@@ -9,9 +9,9 @@
 [![chrome](https://img.shields.io/badge/Chrome-110+-1a1a1a?style=flat-square)](https://www.google.com/chrome/)
 [![offline](https://img.shields.io/badge/offline-yes-1a1a1a?style=flat-square)](#隐私)
 
-106 幅公有领域杰作（默认展出 93 幅）· 双语策展导览 · 五种呈现方式 · 装上就离线可用
-
-配置可整份导出导入 · 密钥能用口令加密 · 一键暂歇换成常去的站点
+一幅画作，一份记忆。<br>
+一款墙色，一种心情。<br>
+一束灯光，一种氛围。
 
 [安装](#安装) · [它能做什么](#它能做什么) · [完整手册](corridor-newtab/README.md) · [隐私](PRIVACY.md) · [更新记录](CHANGELOG.md) · [English](#english)
 
@@ -23,14 +23,13 @@
 
 ## 这是什么
 
-长廊把 Chrome 的新标签页换成一面美术馆的墙。
+「长廊 Corridor」把 Chrome 的新标签页变成一面安静的美术馆展墙。
 
-不是一张随机壁纸——**是一幅挂好的画**：墙有颜色和材质，画有画框和卡纸留白，
-顶上有射灯，画在墙上投下影子，右下角一张展签写着标题、作者、年代、收藏地，
-再加一句为这幅画原创撰写的导览。106 幅作品，从《千里江山图》到《星月夜》——办公模式默认开着，
-含裸体的 13 幅不参与轮换，所以装上先看到的是 93 幅，在设置里关掉就全都来。
+106 幅公有领域杰作，从《千里江山图》到《星月夜》，在桌面与你相伴。你可以欣赏名作、了解艺术，
+也可以挂上自己和家人的照片与作品，让熟悉的瞬间重新回到眼前。
 
-图片抓回来就存在本地，断网照样看。没有服务器，没有账号，没有一行统计代码。
+每一幅都配了为这个项目原创撰写的导览。办公模式默认开着，含裸体的 13 幅不参与轮换，
+所以装上先看到的是 93 幅，在设置里关掉就全都来。
 
 <table>
 <tr>
@@ -49,24 +48,60 @@
 
 ## 它能做什么
 
-| | |
-|---|---|
-| **五种呈现方式** | 美术馆展墙 · 沉浸式 · 瀑布流 · 环形长廊 · 胶卷 |
-| **11 种画框** | 从描金老框到极简黑框，也可以不要框。线脚照着实物建模，光影事先渲染好，不是拍来的照片 |
-| **墙面** | 15 种颜色 + 自定义色板，31 种材质分五组，饱和度与色温可再拧 |
-| **射灯** | 几盏、多亮、偏哪边、冷还是暖——角度一变，投影与受光跟着走 |
-| **随画取色** | 每幅画读出六个主色，排成一条色卡，点一下复制色号；展签与按钮的点缀色也跟着这幅画换 |
-| **每日新作** | 每天从 Wikimedia Commons 补几幅公有领域名作，数量自己定；新到的收在顶栏的「今日画夹」里 |
-| **挂你自己的画** | 本机文件夹（可加多个）或在线图库网址，每个来源各带一套筛选 |
-| **藏品库** | 全部 · 收藏夹 · 浏览历史 · 每日新作，按流派、国家地区、题材、色系筛选，也能直接搜 |
-| **去除** | 不想再看到的那一幅按 `X`，它就不再轮换，藏品库里也不再列出；五秒内可撤销，设置里随时放回 |
-| **暂歇** | 不想看画的时候按 `Q`，新标签页换成常去的站点：自己钉的、Chrome 常访问的、此刻开着的标签页。三种排版，展签可以拖着排 |
-| **展签翻面** | 正面母语、背面外语，点一下翻过来，像一张语言闪卡；作品详情页也能一键换成另一种语言 |
-| **接你自己的模型** | 可选、默认关闭。填一个 OpenAI / Anthropic 兼容接口，本机的 Ollama、LM Studio 也行。模型可看图补全作品信息，或把整套界面与导览译成 78 种语言里的任意两种 |
-| **备份与恢复** | 设置、接口、收藏导出成一个 `.json`，重装或换机器后导回来；密钥可以不带、用口令加密，或明文保存 |
-| **完全离线** | 图片缓存在 IndexedDB，断网可用 |
+### 五种呈现方式
 
-**快捷键**　`← →` 换画 · `F` 收藏 · `X` 去除 · `Z` 高清 · `I` 作品信息 · `L` 藏品库 · `M` 换模式 · `C` 时钟 · `D` 下载 · `Q` 暂歇 · `S` 设置 · `Space` 暂停 · `Esc` 关闭
+- **展墙**：像真实美术馆一样，把作品挂在墙上
+- **沉浸式**：满屏一幅，可选缓慢推移
+- **瀑布流**：一整墙的画，随手翻看
+- **环形长廊**：像走过一条弧形的展廊
+- **胶卷**：一格一格走带，看得见片边文字与格号
+
+### 逼真可调的展陈
+
+- 11 种画框，依据真实线脚制作，以离线光照渲染呈现，不是简单贴图
+- 5 种留白方式：油画配亚麻内衬，纸本配卡纸，「随画框」自动选择
+- 15 种墙面颜色，并支持自定义色板；饱和度与色温也可微调
+- 31 种墙面材质：展墙、织物包墙、数字展厅、石材与硬装、金属背景板
+- 射灯可调数量、亮度、方向与冷暖；角度变化，投影与受光也会随之改变
+- 自动读取作品的六个主色，排成一条色卡，点一下复制色号；展签与按钮的点缀色也随画而变
+
+### 办一个自己的画展
+
+- 添加本机文件夹或在线图库，就能把自己的照片与作品挂进「长廊 Corridor」：旅行图册、家庭欢乐时光、爸妈的旧照片、孩子画的宇宙……
+- 支持多个图库来源，并可分别按文件名、格式或正则表达式筛选
+
+照片不必一直躺在文件夹里。有些记忆，值得被挂起来。
+
+### 双语展览与 AI 辅助
+
+- 展签轻点即可翻面：正面母语，背面外语，像一张藏在画边的语言闪卡；作品详情页也能单独切换语言
+- AI 辅助可选、默认关闭：支持 OpenAI、Anthropic 兼容接口，以及 Ollama、LM Studio 等本地模型
+- AI 可辅助补全作品信息，并将界面与导览扩展至 78 种语言中的任意两种
+
+### 今日画夹
+
+- 每天从 Wikimedia Commons 遇见几幅新作品，让藏品持续生长；新到的收在顶栏的「今日画夹」里
+- 每日数量可自定义；配合 AI 辅助，作品信息与双语导览也可自动完善
+
+### 暂歇
+
+- 按 `Q` 一键收起画廊，回到常用站点：自己固定的站点、Chrome 常访问、当前打开的标签页
+- 展签墙、闭馆告示、目录索引三种呈现方式，展签可以拖拽整理
+
+### 藏品库、去除与备份
+
+- **藏品库**：全部 · 收藏夹 · 浏览历史 · 每日新作，按流派、国家地区、题材、色系筛选，也能直接搜
+- **去除**：不想再遇见的画可以拿下墙，五秒内可撤销，设置里随时恢复
+- **备份与恢复**：设置、收藏与接口配置整份导出成 `.json`，换机器或重装后导回来；API 密钥可不导出、明文或口令加密
+
+### 离线与隐私
+
+- 没有项目服务器、没有账号、没有统计代码
+- API 密钥只发送到你自己填写的接口地址
+- 设置、收藏与缓存保存在本机，已缓存作品可离线浏览
+- 自定义图库中的本机图片不复制、不上传，仅在展示时读取
+
+**快捷键**　`← →` 切换 · `F` 收藏 · `X` 去除 · `Z` 高清 · `I` 信息 · `L` 藏品库 · `M` 模式 · `C` 时钟 · `D` 下载 · `Q` 暂歇 · `S` 设置 · `Space` 暂停 · `Esc` 关闭
 
 右下角的键盘按钮，鼠标移上去就能看到全部键位。
 
@@ -144,7 +179,7 @@ zip -r -X ../corridor-newtab.zip . -x 'README.md' '.DS_Store' '*/.DS_Store' '._*
 
 ## 隐私
 
-没有服务器、没有账号、没有统计代码。设置、收藏、缓存全部存在你自己这台电脑上。
+没有项目服务器、没有账号、没有统计代码。设置、收藏与缓存保存在本机，已缓存的作品断网照样看。
 
 主动发出的网络请求只有三类，且都可关：
 
@@ -189,31 +224,31 @@ zip -r -X ../corridor-newtab.zip . -x 'README.md' '.DS_Store' '*/.DS_Store' '._*
 
 ## English
 
-**Open a new tab. See a painting.**
+**Open a new tab. See a work of art.**
 
-Corridor turns Chrome's new tab into a wall of a museum — 106 public-domain
-masterpieces (93 on show by default), each hung properly: a textured wall, a rendered frame, a mount,
-adjustable spotlights, a drop shadow, and a label in the corner carrying the
-title, artist, date, collection, and a curated note written for this project.
+One artwork, one memory.<br>
+One wall color, one mood.<br>
+One beam of light, one atmosphere.
 
-Five ways to hang them (wall, immersive, masonry, carousel, filmstrip),
-11 offline-rendered frames, 31 wall finishes, and a daily trickle of new works
-from Wikimedia Commons, gathered in a small portfolio in the top bar.
-Images are cached locally, so it works with no connection.
+**Corridor** turns Chrome's new tab page into a quiet museum wall. It comes with
+106 public-domain masterpieces, from *A Thousand Li of Rivers and Mountains* to
+*The Starry Night*. Discover great works, learn a little more about art, or hang
+your own photos and creations on the wall — bringing familiar moments back into view.
 
-Press `Q` to pause the gallery: the new tab becomes a quiet page of the sites
-you actually use — the ones you pin, Chrome's most-visited list, and the tabs
-you have open, grouped by site. The last two need optional permissions
-(`topSites`, `tabs`), asked for only when you switch them on; the page fetches
-no favicons and makes no network requests. Settings, endpoints and favourites
-export to a single JSON file, with API keys left out, encrypted with a
-passphrase, or kept in plain text.
+- **Five viewing modes**: Gallery Wall, Immersive, Masonry, Circular Gallery and Filmstrip
+- **A gallery you can truly shape**: 11 frame styles modeled from real mouldings and rendered with offline lighting, 5 matting options, 15 wall colors plus custom color control, 31 wall materials, and adjustable spotlights whose shadows follow the light
+- **Curate your own exhibition**: add local folders or online galleries and hang travel journals, family memories, old photos of your parents, your child's drawings — each source with its own filters
+- **Bilingual exhibitions**: tap a label to flip it between your two languages; optional AI assistance (OpenAI- or Anthropic-compatible APIs, or local models through Ollama and LM Studio) can complete artwork information and extend the interface and notes to any two of 78 languages
+- **Today's Selection**: a few new public-domain works from Wikimedia Commons each day, so the collection keeps growing
+- **Pause Gallery**: press `Q` to step out of the gallery and return to your pinned sites, Chrome's most visited sites and the tabs you have open
+- **Remove, back up, restore**: take a work off the wall with undo; export settings, favorites and API configuration to one JSON file, with keys left out, in plain text or protected by a passphrase
+- **Offline and private**: no project server, no account, no analytics; API keys go only to the endpoint you provide, and local images are never copied or uploaded
 
-No server, no account, no analytics. Any API key you enter is sent only to the
-endpoint you typed in. Point it at any OpenAI- or Anthropic-compatible endpoint
-(a local Ollama or LM Studio works too) and a model can translate the whole
-interface and every note into any two of 78 languages — one native, one
-foreign — with the wall label flipping between them.
+Photos do not have to stay buried in folders. Some memories deserve to be hung on a wall.
+
+Pause Gallery reads Chrome's most-visited list and your open tabs through two optional
+permissions (`topSites`, `tabs`), requested only when you turn them on; the page fetches
+no favicons and makes no network requests.
 
 **Install:** [get it on the Chrome Web Store](https://chromewebstore.google.com/detail/mnllopjjkbkoeljonbgmlabijamcjlam) — then open a new tab.
 To run it from source instead, clone this repository, open `chrome://extensions/`,
@@ -221,6 +256,6 @@ enable Developer mode, choose **Load unpacked**, and select the `corridor-newtab
 folder. Chrome 110+.
 
 Code and curated notes are MIT licensed. Artwork images are public domain,
-sourced from Wikimedia Commons, and not covered by that licence.
+sourced from Wikimedia Commons, and not covered by that license.
 Full manual: [corridor-newtab/README.md](corridor-newtab/README.md) ·
 Privacy: [PRIVACY.md](PRIVACY.md)
