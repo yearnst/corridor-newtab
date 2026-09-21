@@ -41,6 +41,10 @@
 <td width="50%"><img src="media/7-film.png" alt="胶卷模式"></td>
 <td width="50%"><img src="media/5-settings.png" alt="设置 · 墙色与色调"></td>
 </tr>
+<tr>
+<td width="50%"><img src="media/11-pause.png" alt="暂歇 · 展签墙"></td>
+<td width="50%"><img src="media/12-portfolio.png" alt="今日画夹"></td>
+</tr>
 </table>
 
 ## 它能做什么
@@ -48,17 +52,23 @@
 | | |
 |---|---|
 | **五种呈现方式** | 美术馆展墙 · 沉浸式 · 瀑布流 · 环形长廊 · 胶卷 |
-| **11 种画框** | 照实物线脚建高度场，离线解法线做光照渲染，不是贴图 |
+| **11 种画框** | 从描金老框到极简黑框，也可以不要框。线脚照着实物建模，光影事先渲染好，不是拍来的照片 |
 | **墙面** | 15 种颜色 + 自定义色板，31 种材质分五组，饱和度与色温可再拧 |
 | **射灯** | 几盏、多亮、偏哪边、冷还是暖——角度一变，投影与受光跟着走 |
-| **随画取色** | 每幅画的主色被读出来，画框、墙面、展签的色调跟着它走 |
-| **每日新作** | 每天从 Wikimedia Commons 补几幅公有领域名作，数量自己定 |
+| **随画取色** | 每幅画读出六个主色，排成一条色卡，点一下复制色号；展签与按钮的点缀色也跟着这幅画换 |
+| **每日新作** | 每天从 Wikimedia Commons 补几幅公有领域名作，数量自己定；新到的收在顶栏的「今日画夹」里 |
 | **挂你自己的画** | 本机文件夹（可加多个）或在线图库网址，每个来源各带一套筛选 |
-| **接你自己的模型** | 可选、默认关闭。填一个 OpenAI / Anthropic 兼容接口，模型可看图补全作品信息，或把整套界面与导览译成 78 种语言里的任意两种 |
-| **展签翻面** | 正面母语、背面外语，点一下翻过来，像一张语言闪卡 |
+| **藏品库** | 全部 · 收藏夹 · 浏览历史 · 每日新作，按流派、国家地区、题材、色系筛选，也能直接搜 |
+| **去除** | 不想再看到的那一幅按 `X`，它就不再轮换，藏品库里也不再列出；五秒内可撤销，设置里随时放回 |
+| **暂歇** | 不想看画的时候按 `Q`，新标签页换成常去的站点：自己钉的、Chrome 常访问的、此刻开着的标签页。三种排版，展签可以拖着排 |
+| **展签翻面** | 正面母语、背面外语，点一下翻过来，像一张语言闪卡；作品详情页也能一键换成另一种语言 |
+| **接你自己的模型** | 可选、默认关闭。填一个 OpenAI / Anthropic 兼容接口，本机的 Ollama、LM Studio 也行。模型可看图补全作品信息，或把整套界面与导览译成 78 种语言里的任意两种 |
+| **备份与恢复** | 设置、接口、收藏导出成一个 `.json`，重装或换机器后导回来；密钥可以不带、用口令加密，或明文保存 |
 | **完全离线** | 图片缓存在 IndexedDB，断网可用 |
 
-**快捷键**　`← →` 换画 · `F` 收藏 · `Z` 高清 · `L` 藏品库 · `I` 作品信息 · `S` 设置 · `C` 时钟 · `M` 换模式 · `Space` 暂停
+**快捷键**　`← →` 换画 · `F` 收藏 · `X` 去除 · `Z` 高清 · `I` 作品信息 · `L` 藏品库 · `M` 换模式 · `C` 时钟 · `D` 下载 · `Q` 暂歇 · `S` 设置 · `Space` 暂停 · `Esc` 关闭
+
+右下角的键盘按钮，鼠标移上去就能看到全部键位。
 
 ## 安装
 
@@ -90,26 +100,31 @@ corridor-newtab/          扩展本体（加载已解压的扩展程序就选这
 ├── newtab.html           新标签页
 ├── options.html          选项页
 ├── src/
-│   ├── app.js            主逻辑与展墙
-│   ├── modes.js          环形长廊 / 胶卷 / 瀑布流 / 沉浸式
+│   ├── app.js            主逻辑、展墙与沉浸式
+│   ├── modes.js          瀑布流 / 环形长廊 / 胶卷
 │   ├── gallery.css       全部样式，含画框渲染
 │   ├── store.js          IndexedDB 缓存与设置
 │   ├── daily.js          每日新作（Wikimedia）
+│   ├── pause.js          暂歇
+│   ├── backup.js         备份与恢复
 │   ├── ai.js             可选的模型接口
-│   ├── translate.js      多语言与展签翻面
+│   ├── localnet.js       本机模型（Ollama 等）的连接
+│   ├── diag.js           接口报错诊断
+│   ├── translate.js      多语言：作品译文与界面语言包
 │   ├── local.js          本机文件夹与在线图库
 │   ├── i18n.js           界面文案
 │   ├── langs.js          78 种语言表
-│   ├── tone.js           取色与色调
-│   ├── diag.js           自检
+│   ├── tone.js           墙色与色调
+│   ├── options.js        选项页
 │   └── sw.js             service worker
 ├── _locales/             商店名称与简介（zh_CN / en）
 ├── data/catalog.json     106 幅作品的元数据与导览文字
+├── assets/frames/        10 种画框贴图
 ├── assets/tex/           31 种墙面材质贴图
 ├── icons/                16 / 32 / 48 / 128
 └── README.md             完整手册（很长，什么都写了）
 
-media/                    README 与项目主页用的截图（10 张 1280×800）
+media/                    README 与项目主页用的截图（12 张 1280×800）
 ```
 
 ## 开发
@@ -139,6 +154,10 @@ zip -r -X ../corridor-newtab.zip . -x 'README.md' '.DS_Store' '*/.DS_Store' '._*
 
 你填的 API 密钥只作为请求头发往你自己填的地址，别处一概不发。
 自定义图库里的本机图片不复制、不上传、不进缓存，只在显示那一刻读一次。
+
+暂歇要读常访问站点和打开的标签页，用的是两个可选权限（`topSites`、`tabs`）：
+装上时不申请，开启那一项时才问你，随时能撤回。读到的只有站点名和网址，
+不离开这台电脑；这一屏也不取站点图标，不发任何网络请求。
 
 完整说明见 **[PRIVACY.md](PRIVACY.md)**。
 
@@ -179,12 +198,22 @@ title, artist, date, collection, and a curated note written for this project.
 
 Five ways to hang them (wall, immersive, masonry, carousel, filmstrip),
 11 offline-rendered frames, 31 wall finishes, and a daily trickle of new works
-from Wikimedia Commons. Images are cached locally, so it works with no connection.
+from Wikimedia Commons, gathered in a small portfolio in the top bar.
+Images are cached locally, so it works with no connection.
+
+Press `Q` to pause the gallery: the new tab becomes a quiet page of the sites
+you actually use — the ones you pin, Chrome's most-visited list, and the tabs
+you have open, grouped by site. The last two need optional permissions
+(`topSites`, `tabs`), asked for only when you switch them on; the page fetches
+no favicons and makes no network requests. Settings, endpoints and favourites
+export to a single JSON file, with API keys left out, encrypted with a
+passphrase, or kept in plain text.
 
 No server, no account, no analytics. Any API key you enter is sent only to the
 endpoint you typed in. Point it at any OpenAI- or Anthropic-compatible endpoint
-and a model can translate the whole interface and every note into any two of
-78 languages — one native, one foreign — with the wall label flipping between them.
+(a local Ollama or LM Studio works too) and a model can translate the whole
+interface and every note into any two of 78 languages — one native, one
+foreign — with the wall label flipping between them.
 
 **Install:** [get it on the Chrome Web Store](https://chromewebstore.google.com/detail/mnllopjjkbkoeljonbgmlabijamcjlam) — then open a new tab.
 To run it from source instead, clone this repository, open `chrome://extensions/`,
