@@ -87,7 +87,8 @@
 
 * 「最多显示几个」不再限制手动钉选的站点，避免钉满以后继续添加却没有反馈。
 
-* 站点名称会收得更干净一些，例如「扣子编程，你的 AI 开发伙伴，…」现在会显示成「扣子编程」。
+* 站点名称会收得更干净一些，例如「GitHub · Build and ship software on a single,
+  collaborative platform」现在会显示成「GitHub」。
 
 ## [1.20.0] — 2026-09-15
 
