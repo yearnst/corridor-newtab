@@ -1,7 +1,7 @@
 # Privacy Policy · 隐私政策
 
 **Corridor · Art New Tab** · 长廊 Corridor · 艺术新标签页
-Last updated: 21 September 2026 · 最后更新：2026-09-21
+Last updated: 22 September 2026 · 最后更新：2026-09-22
 
 **English** · [中文](#中文)
 
@@ -18,12 +18,12 @@ Corridor collects nothing. There is no server, no account, and no analytics. Eve
 | What | Where | Does it leave your computer? |
 |---|---|---|
 | Settings (mode, frame, language…) | `chrome.storage.local` | No |
-| Saved works and history | `chrome.storage.local` | No |
+| Favorites and history | `chrome.storage.local` | No |
 | Cached artwork images | IndexedDB allocated to this extension | No |
 | Folder handles for your custom library | IndexedDB | No |
 | Any API key you enter | `chrome.storage.local` | Only to **the endpoint you typed in**, nowhere else |
 | AI-generated translations and fields | `chrome.storage.local` | No |
-| Sites you pin or remove in Pause, and the order of their labels | `chrome.storage.local` | No |
+| Sites you pin or remove in Pause Gallery, and the order of their labels | `chrome.storage.local` | No |
 | Backup files (only when you export one) | Wherever you choose in the Save As dialog | Kept by you; API keys are left out by default |
 
 **The developer cannot see any of it.** Corridor has no backend.
@@ -37,7 +37,7 @@ Only in these cases, all of which you control:
 3. **AI enrichment / multilingual** (off by default, needs your own endpoint) — sends a JPEG downscaled to at most 1024px, plus the prompt, to **the endpoint address you entered**. Leave it blank and not a single request is made.
 4. **Online gallery sources** (off by default, needs a URL from you) — requests the page and images from **the URL you entered**. Chrome asks you for permission for that host the first time.
 
-The Pause screen makes no network requests and fetches no site icons. If your model runs on your own machine (`localhost` and the like), its requests never leave that machine.
+The Pause Gallery screen makes no network requests and fetches no site icons. If your model runs on your own machine (`localhost` and the like), its requests never leave that machine.
 
 Nothing else. No analytics, no telemetry, no ads, no third-party SDKs.
 
@@ -56,11 +56,11 @@ Nothing else. No analytics, no telemetry, no ads, no third-party SDKs.
 - They are sent to your own endpoint only if you turn on AI enrichment *and* enable it for the custom library. If the folder holds private photos, think twice before enabling it.
 - Remove the source in settings and the extension loses access. Your files are never modified.
 
-### About the sites shown in Pause
+### About the sites shown in Pause Gallery
 
-Pause can list sites from three places: the ones you pin yourself, Chrome's most-visited list, and the tabs you have open right now.
+Pause Gallery can list sites from three places: the ones you pin yourself, Chrome's most-visited list, and the tabs you have open right now.
 
-- The last two use the optional permissions `topSites` and `tabs`. Neither is requested at install; Chrome asks you only when you turn that source on in the Pause settings, and you can revoke it from the same panel.
+- The last two use the optional permissions `topSites` and `tabs`. Neither is requested at install; Chrome asks you only when you turn that source on in the Pause Gallery settings, and you can revoke it from the same panel.
 - `topSites` gives only site names and URLs. `tabs` is used to read the titles and URLs of the tabs open at that moment, which are folded into one entry per site straight away. Browsing history and page content are never read, and nothing is injected into any page.
 - All of this is used only to draw the labels on that screen. Nothing is uploaded or sent to anyone. The only things stored are your own actions: the sites you pinned, the ones you removed (with the rank and tab count at that moment, used to decide when a site should come back), and the order of the labels — all in `chrome.storage.local`.
 - "Close selected tabs" closes only the tabs you ticked yourself in tidy mode.
@@ -75,13 +75,13 @@ Pause can list sites from three places: the ones you pin yourself, Chrome's most
 
 | Permission | What it is for |
 |---|---|
-| `storage` | Settings, saved works, history |
+| `storage` | Settings, favorites, history |
 | `unlimitedStorage` | The image cache can reach several hundred MB |
 | `alarms` | Waking the background worker for daily additions and scheduled enrichment |
 | `downloads` | The "export images" feature writes cached artworks to your Downloads folder; downloading the current work; saving backup files |
 | `declarativeNetRequestWithHostAccess` | Local models only: rewrites the `Origin` header on the extension's own requests to an address on your machine (`localhost`, `127.0.0.1`…) so that services such as Ollama accept them. It works only on addresses you have granted, and requests to public endpoints are left untouched |
-| `topSites` (optional) | Showing Chrome's most-visited sites in Pause. Not requested at install; asked for when you turn it on |
-| `tabs` (optional) | Showing your open tabs in Pause, and "Close selected tabs" in tidy mode. Also asked for only when needed |
+| `topSites` (optional) | Showing Chrome's most-visited sites in Pause Gallery. Not requested at install; asked for when you turn it on |
+| `tabs` (optional) | Showing your open tabs in Pause Gallery, and "Close selected tabs" in tidy mode. Also asked for only when needed |
 | Three Wikimedia hosts | Fetching public-domain artwork images and metadata |
 | All other hosts (optional) | **Never requested up front.** Only when you enter your own AI endpoint or gallery URL and press a button does Chrome ask you about that one host |
 

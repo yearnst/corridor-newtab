@@ -19,6 +19,63 @@ Every entry is in English first; the Chinese text is folded under **中文**.
 
 ---
 
+## [1.23.0] — 2026-09-22
+
+English users now get an English interface out of the box, and the English interface uses the same names as the docs.
+
+### Added
+
+* **A new install follows your browser's language**
+  A browser set to Chinese gets a Chinese interface, with English as the second language; any other browser gets English, with Chinese as the second language.
+  Existing setups stay as they are. To change it, go to “Settings → Display → Language · Clock”.
+
+### Fixes and improvements
+
+* **English names now match the docs**
+  Gallery Wall (was Wall), Circular Gallery (was Carousel), Pause Gallery (was Pause), Today's Selection (was Today's portfolio) and Library (was Collection).
+  Favorites replace Save / Saved, so taking a work out of your favorites no longer shares the word Remove with Remove Artwork;
+  the settings tab for image sources is now called Sources, so it no longer shares a name with the Library.
+
+* **The English interface uses US spelling**, and dates follow your browser's region (September 22 in the US, 22 September in the UK).
+
+* **Reset leaves your languages alone**: your two languages, and which one the interface uses, stay as they were.
+
+* Fixed Chinese counter words (“1盏”, “8个”) showing up after the number of lamps and in “How many to show” in the English interface.
+
+* The tab title of the new tab page and of the options page follows the interface language (Corridor in English).
+
+* In browsers set to a language other than Simplified Chinese or English, Chrome now shows the extension's name and description in English (it used to fall back to Chinese).
+
+<details>
+<summary markdown="span">中文</summary>
+
+英文用户装上就是英文界面；英文界面里的叫法也和文档对齐了。
+
+### 新增
+
+* **新装时界面语言跟着浏览器**
+  浏览器是中文，界面就是中文、外语配英文；其他语言的浏览器，界面是英文、外语配中文。
+  已经在用的配置不会变；想换，还是在「设置 → 呈现 → 语言 · 时钟」。
+
+### 修复与优化
+
+* **英文界面的叫法和文档统一**
+  展墙叫 Gallery Wall（原来是 Wall），环形长廊叫 Circular Gallery（原来是 Carousel），暂歇叫 Pause Gallery（原来是 Pause），今日画夹叫 Today's Selection（原来是 Today's portfolio），藏品库叫 Library（原来是 Collection）。
+  收藏改叫 Favorite / Favorites，取消收藏不再和「去除作品」共用 Remove 一个词；
+  设置里的「图库」页英文改叫 Sources，免得和藏品库同名。
+
+* **英文界面改用美式拼写**，日期跟着浏览器的地区排（美国是 September 22，英国是 22 September）。
+
+* **重置不再动语言**：母语、外语和界面跟哪一种走，重置后保持原样。
+
+* 修复英文界面里灯数和「最多显示几个」后面冒出中文量词（「1盏」「8个」）的问题。
+
+* 新标签页和选项页在标签栏上的标题跟着界面语言走（英文是 Corridor）。
+
+* 浏览器语言既不是简体中文也不是英文时，Chrome 里显示的扩展名和简介改用英文（原来会退回中文）。
+
+</details>
+
 ## [1.22.2] — 2026-09-21
 
 Fixed a layout problem in Today's Selection: its three works now lie side by side in one row.

@@ -137,12 +137,18 @@ export const isBuiltin = (code) => BUILTIN.includes(code);
 const CJK = ['zh', 'zh-Hant', 'yue', 'ja', 'ko'];
 export const isCJK = (code) => CJK.includes(code);
 
-/* Intl 认得的地区码，用来格式化时钟与日期；认不得就退回 en-GB */
+/* 英文的日期跟浏览器的地区走：en-US 排成 September 22，en-GB 排成 22 September；
+   浏览器不是英文，就按 en-US（界面用的是美式拼写） */
+function enRegion() {
+  const l = String(globalThis.navigator?.language || '');
+  return /^en-[a-z]{2}$/i.test(l) ? l : 'en-US';
+}
+/* Intl 认得的地区码，用来格式化时钟与日期；认不得就退回英文 */
 export function intlOf(code) {
-  if (!code || isCustom(code)) return 'en-GB';
-  const map = { zh: 'zh-CN', 'zh-Hant': 'zh-TW', yue: 'zh-HK', en: 'en-GB', pt: 'pt-PT', nb: 'nb-NO' };
+  if (!code || isCustom(code) || code === 'en') return enRegion();
+  const map = { zh: 'zh-CN', 'zh-Hant': 'zh-TW', yue: 'zh-HK', pt: 'pt-PT', nb: 'nb-NO' };
   if (map[code]) return map[code];
-  try { new Intl.DateTimeFormat(code); return code; } catch { return 'en-GB'; }
+  try { new Intl.DateTimeFormat(code); return code; } catch { return enRegion(); }
 }
 
 /* 浏览器语言 → 表里最接近的一条 */

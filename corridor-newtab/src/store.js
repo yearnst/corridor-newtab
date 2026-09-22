@@ -1,4 +1,16 @@
-// 设置、收藏、历史 与 本地图片缓存 / settings, favourites, history and the local image cache
+// 设置、收藏、历史 与 本地图片缓存 / settings, favorites, history and the local image cache
+
+/* 新装时的母语跟着浏览器走：首选语言是中文就是中文（外语配英文），其余一律英文（外语配中文）。
+   这只决定「默认值」—— 装过的用户，onInstalled 那一下早把整份 settings 写进了 storage，
+   语言照旧，不会因为升级被换掉。 */
+function browserLang() {
+  try {
+    const nav = globalThis.navigator || {};
+    const first = (nav.languages && nav.languages[0]) || nav.language || '';
+    return /^zh\b/i.test(String(first)) ? 'zh' : 'en';
+  } catch { return 'en'; }
+}
+const L0 = browserLang();
 
 export const DEFAULTS = {
   /* 长廊只认两个语言位置：母语（loc.a）与外语（loc.b）。
@@ -6,8 +18,8 @@ export const DEFAULTS = {
      旧版本存的 'zh' / 'en' 会在归一化时迁到新写法上。 */
   lang: 'native',
   loc: {
-    a: 'zh',                  // 母语
-    b: 'en',                  // 外语
+    a: L0,                    // 母语：新装时跟浏览器（中文浏览器 zh，其余 en）
+    b: L0 === 'zh' ? 'en' : 'zh',   // 外语：另一种
     names: {},                // 自定义语言的显示名：{ 'x-xxx': '闽南话' }
     tr: false,                // 作品信息也补这两种语言（要先把接口测通）
     scope: 'all',             // 译哪些：all | builtin 内置馆藏 | daily 每日新作 | local 自定义图库
@@ -145,7 +157,7 @@ export async function getSettings() {
   }
   if (!['auto', 'native', 'foreign'].includes(s.lang)) s.lang = 'auto';
   const LC = (v, d) => { v = String(v || '').trim().slice(0, 32); return /^[A-Za-z][\w-]*$|^x-[\w-]+$/.test(v) ? v : d; };
-  s.loc.a = LC(s.loc.a, 'zh');
+  s.loc.a = LC(s.loc.a, DEFAULTS.loc.a);
   s.loc.b = LC(s.loc.b, s.loc.a === 'en' ? 'zh' : 'en');
   if (s.loc.b === s.loc.a) s.loc.b = s.loc.a === 'en' ? 'zh' : 'en';
   if (!s.loc.names || typeof s.loc.names !== 'object') s.loc.names = {};
@@ -296,8 +308,14 @@ export async function setSettings(patch) {
   return getSettings();          // 再走一遍归一化：切换接口档后镜像字段要立刻跟上
 }
 export async function resetSettings() {
-  await area().set({ settings: structuredClone(DEFAULTS) });
-  return structuredClone(DEFAULTS);
+  /* 语言不跟着重置：母语、外语和界面跟谁走，是「你读哪种文字」，不是一项展陈设置。
+     不然用英文浏览器的中文用户点一下重置，界面就被换成了英文。 */
+  const cur = await getSettings();
+  const next = structuredClone(DEFAULTS);
+  next.lang = cur.lang;
+  next.loc = structuredClone(cur.loc);
+  await area().set({ settings: next });
+  return getSettings();
 }
 function deepMerge(a, b) {
   for (const k of Object.keys(b || {})) {

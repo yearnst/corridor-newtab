@@ -63,6 +63,7 @@ async function render() {
   const ver = globalThis.chrome?.runtime?.getManifest?.().version || '';
   const ivOpts = INTERVALS.map(o => ({ v: o.v, t: o.k ? T(o.k) : `${o.n} ${T(o.u)}${o.tag ? ' · ' + T(o.tag) : ''}` }));
   $('#hName').textContent = T('appName');
+  document.title = T('appName') + ' · ' + T('settings');
   $('#hLead').textContent = T('optLead');
   $('#body').innerHTML =
     row(T('lang'), T('optLangHint'), seg('lang', [

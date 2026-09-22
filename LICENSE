@@ -19,18 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-About the artwork images / 关于作品图片
-
-The artwork images catalogued in data/catalog.json come from Wikimedia Commons and
-are in the public domain. They are not covered by this licence and this project
-claims no rights in them. The curated notes are original to this project and are
-covered by the MIT licence above.
-
-本仓库 data/catalog.json 中登记的画作图片来自 Wikimedia Commons，均为已进入
-公有领域（public domain）的作品扫描件，不受本许可证约束，亦不由本项目主张任何权利。
-每幅作品的来源与收藏地记录在 catalog.json 中。
-
-导览文字（catalog.json 中的 note 字段）为本项目原创撰写，与代码同样适用 MIT License。

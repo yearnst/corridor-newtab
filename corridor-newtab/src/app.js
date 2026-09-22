@@ -1869,7 +1869,7 @@ async function buildTab(tab, s) {
 
     grp('off', T('offTitleSet'), await offBlock(s),
       s.off ? T('offOn') : T('offOff'),
-      'pause off shortcuts topsites 暂歇 关闭 常访问 快捷方式 站点',
+      'pause gallery off shortcuts topsites 暂歇 关闭 常访问 快捷方式 站点',
       toggle('off', s.off));
   }
 
@@ -1891,7 +1891,7 @@ async function buildTab(tab, s) {
         `<div class="dblock"><div class="dbc">${texGrid(s.tex)}</div></div>`,
         texBase(s.tex || 'none') ? lx(texDef(s.tex), A.lang)
           : (s.wall === 'custom' ? T('wallCustom') : lx(wl || WALLS[0], A.lang)),
-        'wall texture colour 墙面 纹理 颜色 色板 饱和度 色温 金属', '', ['wall', 'carousel', 'film', 'masonry']) +
+        'wall texture colour color 墙面 纹理 颜色 色板 饱和度 色温 金属', '', ['wall', 'carousel', 'film', 'masonry']) +
       grp('light', T('light'), lightBlock(s),
         s.lamp.n ? `${s.lamp.n}${T('lightNUnit')} · ${s.lamp.bright}%` : T('lightOff'),
         'light lamp 灯光 射灯 亮度 角度 冷暖 灯数', '', ['wall', 'carousel']);
@@ -1964,7 +1964,7 @@ async function buildTab(tab, s) {
           <button class="bigbtn pri" id="btnDailyNow"${s.dailyNew ? '' : ' disabled'}>${esc(T('dailyNow'))}</button>
           <button class="bigbtn" id="btnDailyClear">${esc(T('dailyClear'))}</button>
         </div></div>`,
-      s.dailyNew ? `${A.daily} / 150` : '', 'daily commons 每日 新作', toggle('dailyNew', s.dailyNew)) +
+      s.dailyNew ? `${A.daily} / 150` : '', 'daily commons selection portfolio 每日 新作 画夹', toggle('dailyNew', s.dailyNew)) +
 
     grp('local', T('localLib'), libBlock(),
       A.libSrcs.length ? T('libSum', { n: A.libSrcs.length, w: A.lib }) : T('libNone2'),
@@ -3378,6 +3378,7 @@ function applyTips() {
   }
   $('.brand b').textContent = T('brandA');
   $('.brand i').textContent = T('brandB');
+  document.title = T('appName');            // 标签页上的名字也跟界面语言走
   updateFavBtn();
 }
 

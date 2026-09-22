@@ -1,14 +1,12 @@
 # Corridor · Art New Tab
 
-<sub>v1.22.2</sub>
+<sub>v1.23.0</sub>
 
 **English** · [简体中文](README.zh-CN.md)
 
 Turns every new tab into a wall in an art museum. 106 public-domain masterpieces (93 on display by default), bilingual curatorial notes,
 five display modes, works that change automatically or by hand, images fetched once and stored locally so it works offline, and a few more works added on its own every day.
 Connect your own model and the interface and artwork information can switch to **any two languages in the world** — one native, one foreign.
-
-> A few features have slightly different names in the current English interface: Circular Gallery appears as “Carousel”, Pause Gallery as “Pause”, Today's Selection as “Today's portfolio”, and the Library as “Collection”.
 
 ---
 
@@ -104,7 +102,7 @@ and the picture follows live as you drag. If you like the contemporary-museum wa
 
 ### Wall color and finish
 
-Ten gallery paint colors: Charcoal, Graphite, Dove grey, Warm grey, Plaster, Gallery white, Museum green, Burgundy, Prussian blue, Terracotta.
+Ten gallery paint colors: Charcoal, Graphite, Dove gray, Warm gray, Plaster, Gallery white, Museum green, Burgundy, Prussian blue, Terracotta.
 
 **Twenty-five wall finishes**, rebuilt in v1.5 to follow how real gallery walls are made.
 
@@ -155,7 +153,7 @@ When you choose a light wall, the interface automatically switches to dark icons
 
 Two styles, and neither ever sits on top of the painting:
 
-- **In bar**: `11:00 · Thu, Aug 20`, set in fine type at the right of the top bar; it takes no space from the painting in any mode.
+- **In bar**: `11:00 · Thu · August 20`, set in fine type at the right of the top bar; it takes no space from the painting in any mode.
 - **Grand**: appears only in Immersive, a thin serif + a hairline divider; when it is on, “Show whole work” automatically leaves room at the top,
   and the painting moves down, so the two never overlap. Switching to Gallery Wall mode automatically downgrades it to the top-bar style.
 
@@ -199,7 +197,7 @@ press it again to go back on show. The state **syncs across tabs and stays off e
 > once an extension has taken over, it cannot step aside from within the page and give way to the original one. Really stepping aside would mean going to
 > `chrome://extensions` and disabling the whole extension, which is hardly “temporary”.
 
-**Three layouts** (Settings → Display → Pause):
+**Three layouts** (Settings → Display → Pause Gallery):
 
 | | What it looks like |
 |---|---|
@@ -267,7 +265,7 @@ Every entry is a real link, so middle-click, Cmd-click and right-click → “Op
 - **Country · Region** (a group of its own since v1.4): France, United Kingdom, United States, Netherlands, Italy, China, Spain, Germany, Austria, Japan, Russia, Belgium, Vatican City, Poland, Norway, Puerto Rico, Sweden, Switzerland — sorted by number of works, each followed by its count
 - **Region**: Europe / East Asia / Americas
 - **Subject**: Portrait, Landscape, Night, Sea, Still life, Myth, Religion, War, Dance…
-- **By colour**: filter directly by a work's dominant color (Red / Gold / Yellow / Green / Teal / Blue / Purple / Pink / Neutral)
+- **By color**: filter directly by a work's dominant color (Red / Gold / Yellow / Green / Teal / Blue / Purple / Pink / Neutral)
 - **Search box**: title, artist, museum, date — in Chinese or English
 
 ### Palette
@@ -295,7 +293,7 @@ If a work hasn't been translated into the foreign language yet, the back falls b
 ---
 ## 3. Settings
 
-The settings drawer has **five tabs**: Display / Room / Rotation / Library / Storage. Each tab is made up of several **groups**;
+The settings drawer has **five tabs**: Display / Room / Rotation / Sources / Storage. Each tab is made up of several **groups**;
 **click a group heading to collapse it**; the current value is shown to the right of the heading (so you know what it's set to even when collapsed),
 and in groups that are switched on and off as a whole (daily additions, custom library, AI enrichment) the master switch sits right on the heading row.
 On the right of the title bar is a row of **sun / moon · This mode / All · Reset · Close** — four controls with the same height, corner radius and font size.
@@ -312,21 +310,21 @@ You can search in Chinese or English, and it also recognizes English words such 
 Clock (Off / In bar / Grand) · Slow drift (Ken Burns) · Pan handscrolls horizontally ·
 **Hide interface when idle** (nine separate items; whichever you check fades out: Toolbars / Clock / Counter /
 Title / Artist / Date & medium / Museum / Highlight / Palette; check all four artwork items and the whole wall label card is put away too) ·
-**Film stock** (Colour positive / Colour negative / Black & white / Slide mounts / Cine 35mm) · Edge print & frame numbers · Transport
+**Film stock** (Color positive / Color negative / Black & white / Slide mounts / Cine 35mm) · Edge print & frame numbers · Transport
 
 **Room** Frame (11 kinds) · Mount (the matting style, 5 kinds) · Mount width slider ·
-**Wall colour (15, in three groups, plus Custom)** · **Fine tune (Saturation, Temperature)** ·
+**Wall color (15, in three groups, plus Custom)** · **Fine tune (Saturation, Temperature)** ·
 **Wall texture (31 finishes in five groups: Gallery walls / Fabric-lined / Digital exhibition / Stone & hard finishes / Metal panels)** ·
 **Lighting (Lamps 0–4, Brightness, Angle, Warmth)** · Film stock (5 kinds)
 
-**Library** Daily additions · Custom library · **AI enrichment** (see section 5a)
+**Sources** Daily additions · Custom library · **AI enrichment** (see section 5a)
 
 **Storage** Offline cache · Export as image files · Where the cache lives · Chrome footer · About
 
 **Rotation** **New work on every new tab (a switch of its own)** ·
 Timed rotation: Manual only / 1, 5, 15 minutes / **25 minutes (Pomodoro)** / 1, 6 hours / daily (**timed rotation applies only to Gallery Wall and Immersive**) ·
-**Carousel pace** and **Film transport** (Off / 3, 5, 10, 15, 30 seconds / 1, 3, 5, 10, 30 minutes / Custom; the Circular Gallery defaults to 15 seconds, the Filmstrip to **3 seconds**) ·
-Order: Shuffled / Chronological · Show from: Whole collection / Saved only / Current filters ·
+**Circular Gallery pace** and **Film transport** (Off / 3, 5, 10, 15, 30 seconds / 1, 3, 5, 10, 30 minutes / Custom; the Circular Gallery defaults to 15 seconds, the Filmstrip to **3 seconds**) ·
+Order: Shuffled / Chronological · Show from: Whole collection / Favorites only / Current filters ·
 **Work-safe mode** (the 13 works containing nudity are left out of the rotation, but can still be opened individually in the Library) · Image quality
 
 > “New work on every new tab” and “Timed rotation” are two independent rules and can both be on at once:
@@ -353,13 +351,13 @@ Out of the box you get a fully arranged gallery room — complete without changi
 | | |
 |---|---|
 | Presentation mode | Gallery Wall |
-| Interface language | Chinese |
+| Interface language | Follows the browser: Chinese for a Chinese browser, English for any other |
 | Clock | In bar |
 | Hide interface when idle | On |
 | Frame | Ebony & gold |
 | Mount (matting style) | Mount (a card mat) |
 | Mount width | 0.90× |
-| Wall colour | Terracotta |
+| Wall color | Terracotta |
 | Wall texture | Velvet |
 | New work on every new tab | On |
 | Timed rotation | 25 minutes (Pomodoro) |
@@ -371,9 +369,9 @@ Out of the box you get a fully arranged gallery room — complete without changi
 | AI enrichment | Off |
 | Cache limit | 400 MB |
 
-> **The interface starts in Chinese.** For English, press `S` and on the first tab (呈现 · Display) find
-> 语言 (Language) → 界面用 (Interface in). Choose 跟随系统 (Follow system) and an English browser gets the
-> English interface, or choose 外语 (Second language), which is English by default.
+> **The language follows your browser on a new install**: a browser set to Chinese gets a Chinese interface with English as the second language;
+> any other browser gets English, with Chinese as the second language. To change it: Settings → Display → Language · Clock.
+> **Reset** puts everything else back but leaves your languages as they are.
 
 ---
 
@@ -397,7 +395,7 @@ Since v1.5 the Library also **grows on its own**:
   only the 106 built-in works have a note written for each one.
 - **The way in is on the top bar**: a portfolio icon; when there are new works you haven't seen, a gold ring around it quietly breathes and a small dot appears. Click it to open “Today's Selection” —
   a few pictures, as if just drawn from the portfolio, land on the table one after another with a slight random tilt and a shadow. Click any one to go straight to the Gallery Wall and see it large.
-- **You can choose the portfolio's background color**: Settings → Library → Daily additions → Portfolio ground. Three options: Follow the wall, Dark, or Pick one.
+- **You can choose the portfolio's background color**: Settings → Sources → Daily additions → Today's Selection background. Three options: Follow the wall, Dark, or Pick one.
   “Pick one” uses the same swatches as the wall, or you can type in a hex code. If you pick a light color, the heading and captions automatically turn dark.
 - **How both Chinese and English are covered**: Commons' structured data records “which artwork this image represents” (P6243) and the creator (P170);
   following those to Wikidata yields Chinese and English labels. **Artist names nearly always come with a Chinese form** (e.g. Katsushika Hokusai → 葛饰北斋, his name in Chinese),
@@ -405,13 +403,13 @@ Since v1.5 the Library also **grows on its own**:
   One update sends only three read-only requests.
 - **Once there are 150**: **anything you've favorited always stays**; the rest leave in the order they were added, oldest first, to make room for new arrivals.
   So to keep a particular work for good, just favorite it.
-- Don't want it? Turn it off: Settings → Library → Daily additions. Next to it are “Fetch now” and “Clear daily additions”.
+- Don't want it? Turn it off: Settings → Sources → Daily additions. Next to it are “Fetch now” and “Clear daily additions”.
 
 ---
 
 ## 5. Your own library (hang your own pictures)
 
-Settings → Library → **Custom library**. You can add **several sources**, of two kinds:
+Settings → Sources → **Custom library**. You can add **several sources**, of two kinds:
 
 | | |
 |---|---|
@@ -456,7 +454,7 @@ The entries that “Daily additions” fetches from Commons mostly have an empty
 the “Custom library” has it even worse — the title is just the file name, the artist just the parent folder's name, and a name like `IMG_2043`
 doesn't look good hanging on the Gallery Wall. This version lets you **connect your own multimodal model**, have it take a look at each image and fill in those fields.
 
-**Settings → Library → AI enrichment**, then fill in four things: API format, Endpoint, API key, Model.
+**Settings → Sources → AI enrichment**, then fill in four things: API format, Endpoint, API key, Model.
 
 | | |
 |---|---|
@@ -564,7 +562,7 @@ and a 400 of the “this model doesn't accept images” kind no longer triggers 
 
 Translation only needs text; enrichment needs to see the image. The two jobs can **each use their own endpoint and model**:
 
-Under **Settings → Library → Text & vision** there's a switch. Off = both jobs share the current profile (the default);
+Under **Settings → Sources → Text & vision** there's a switch. Off = both jobs share the current profile (the default);
 on = you get two dropdowns:
 
 | | |
@@ -653,7 +651,7 @@ Scheduled background runs are recorded in the same list, so the next time you op
 
 **The prompts are out in the open**
 
-Settings → Library → AI enrichment → **Prompts** (click the heading to expand): three boxes, holding exactly the text that gets sent:
+Settings → Sources → AI enrichment → **Prompts** (click the heading to expand): three boxes, holding exactly the text that gets sent:
 
 | | |
 |---|---|
@@ -710,7 +708,7 @@ Which two they are is up to you: pick from **78 languages**, and if yours isn't 
 | Interface in | Yours / Second / Follow system (uses whichever of the two is closer to the system language) |
 
 Chinese and English **can be chosen at any time**, with no endpoint needed. To switch to a third language,
-you first need **the profile used for text** to pass its test under “Library → AI enrichment” (passing the text step is enough;
+you first need **the profile used for text** to pass its test under “Sources → AI enrichment” (passing the text step is enough;
 whether the vision step passes makes no difference) —
 because the interface text and the artwork information both have to be translated on the spot. Until that test passes, the drop-downs offer only Chinese and English,
 with a line of explanation below them and a “Set up the endpoint” button that takes you straight there.
@@ -798,7 +796,7 @@ That's what backups are for.
 **The format is JSON**. This file is meant for machines to read: Markdown looks nice, but it has no types — arrays, booleans
 and nested structures get lost as soon as you convert, and reading it back in would come down to guesswork.
 
-**You tick which parts to take along**: Settings & endpoints / Saved & removed / History / Artwork translations /
+**You tick which parts to take along**: Settings & endpoints / Favorites & removed / History / Artwork translations /
 UI language packs / Daily finds / Gallery URL sources. Importing goes by the same set of ticks.
 
 **Three ways to handle API keys**:
@@ -973,7 +971,7 @@ See [`CHANGELOG.md`](../CHANGELOG.md) in the repository root: each version lists
 
 ## 12. Version and copyright
 
-**Corridor** v1.22.2
+**Corridor** v1.23.0
 
 By **Charles Chern** (**@yearnst**)
 

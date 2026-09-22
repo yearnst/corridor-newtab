@@ -108,9 +108,6 @@ Photos do not have to stay buried in folders. Some memories deserve to be hung o
 
 Hover the keyboard button at the bottom right to see them all.
 
-> A few features have slightly different names in the current English interface: Circular Gallery appears as “Carousel”,
-> Pause Gallery as “Pause”, Today's Selection as “Today's portfolio”, and the Library as “Collection”.
-
 ## Install
 
 ### From the Chrome Web Store (recommended)
@@ -119,9 +116,8 @@ Hover the keyboard button at the bottom right to see them all.
 
 Then open a new tab. Nothing else to set up.
 
-> **The interface starts in Chinese.** To switch to English, press `S` and, on the first tab (呈现 · Display),
-> set 语言 (Language) → 界面用 (Interface in) to 跟随系统 (Follow system) — an English browser then gets the
-> English interface — or to 外语 (Second language), which is English by default.
+> The interface follows your browser's language: English, or Chinese if your browser is set to Chinese.
+> To change it, press `S` and go to Display → Language · Clock.
 
 ### Load unpacked (if you want to change the source)
 
@@ -170,7 +166,7 @@ corridor-newtab/          The extension itself (choose this folder in Load unpac
 ├── README.md             Full manual (long; everything is in there)
 └── README.zh-CN.md       Full manual in Chinese
 
-media/                    Screenshots for the README and the project site (12 × 1280×800)
+media/                    Screenshots for the README and the project site (12 × 1280×800; the Chinese set is in media/zh-CN/)
 ```
 
 ## Development

@@ -97,7 +97,7 @@ There's no linter, and no plan to add one. Just write like the code around you:
 
 - Native ES modules; no framework, no bundler, no TypeScript
 - 2-space indentation, single quotes
-- **Comments are written in Chinese**, and say *why* rather than *what* —
+- **Comments can be in English or Chinese** (most of the existing ones are Chinese), and say *why* rather than *what* —
   the comments in this project are its documentation, and the passages in the source that read
   “it used to be written like this, this was wrong with it, so now it's like this” are there on purpose
 - No runtime dependencies. If you really need a small utility function, write it by hand in the file that uses it
@@ -227,7 +227,7 @@ git clone https://github.com/yearnst/corridor-newtab.git
 
 - 原生 ES 模块，无框架、无打包器、无 TypeScript
 - 缩进 2 空格，单引号
-- **注释写中文**，写「为什么」而不是「做了什么」——
+- **注释中英文都可以**（现有的多是中文），写「为什么」而不是「做了什么」——
   这个项目的注释本身就是文档，源码里那些「原来这么写，有什么毛病，所以改成这样」
   的段落是有意留下的
 - 不引入任何运行时依赖。真需要一个小工具函数，就手写进对应文件

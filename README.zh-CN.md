@@ -17,7 +17,7 @@
 
 [安装](#安装) · [它能做什么](#它能做什么) · [完整手册](corridor-newtab/README.zh-CN.md) · [隐私](PRIVACY.md) · [更新记录](CHANGELOG.md)
 
-<img src="media/1-wall.png" width="760" alt="美术馆展墙模式">
+<img src="media/zh-CN/1-wall.png" width="760" alt="美术馆展墙模式">
 
 </div>
 
@@ -35,16 +35,16 @@
 
 <table>
 <tr>
-<td width="50%"><img src="media/9-metal.png" alt="金箔背景板"></td>
-<td width="50%"><img src="media/6-carousel.png" alt="环形长廊"></td>
+<td width="50%"><img src="media/zh-CN/9-metal.png" alt="金箔背景板"></td>
+<td width="50%"><img src="media/zh-CN/6-carousel.png" alt="环形长廊"></td>
 </tr>
 <tr>
-<td width="50%"><img src="media/7-film.png" alt="胶卷模式"></td>
-<td width="50%"><img src="media/5-settings.png" alt="设置 · 墙色与色调"></td>
+<td width="50%"><img src="media/zh-CN/7-film.png" alt="胶卷模式"></td>
+<td width="50%"><img src="media/zh-CN/5-settings.png" alt="设置 · 墙色与色调"></td>
 </tr>
 <tr>
-<td width="50%"><img src="media/11-pause.png" alt="暂歇 · 展签墙"></td>
-<td width="50%"><img src="media/12-portfolio.png" alt="今日画夹"></td>
+<td width="50%"><img src="media/zh-CN/11-pause.png" alt="暂歇 · 展签墙"></td>
+<td width="50%"><img src="media/zh-CN/12-portfolio.png" alt="今日画夹"></td>
 </tr>
 </table>
 
@@ -115,6 +115,9 @@
 
 装完打开一个新标签页就行，不需要下面那些步骤。
 
+> 界面语言跟着浏览器：浏览器是中文就显示中文，其他语言一律显示英文。
+> 想换，按 `S` → 呈现 → 语言 · 时钟。
+
 ### 开发者模式加载（想改源码时用）
 
 ```bash
@@ -162,7 +165,7 @@ corridor-newtab/          扩展本体（加载已解压的扩展程序就选这
 ├── README.md             完整手册，英文（很长，什么都写了）
 └── README.zh-CN.md       完整手册，中文
 
-media/                    README 与项目主页用的截图（12 张 1280×800）
+media/                    README 与项目主页用的截图（12 张 1280×800，英文界面；中文界面的一套在 media/zh-CN/）
 ```
 
 ## 开发
