@@ -19,6 +19,29 @@ Every entry is in English first; the Chinese text is folded under **中文**.
 
 ---
 
+## [1.23.2] — 2026-09-22
+
+The built-in AI prompts now follow the interface language too.
+
+* Under “Settings → Sources → AI enrichment → Prompts”, the three built-in prompts were always in Chinese, whatever language the interface was in.
+  They now come in two sets: a Chinese interface sends the Chinese ones, every other interface sends the English ones. Switch the language and the boxes switch with it.
+* The clues filled into a prompt follow the same rule: a missing value reads “(none)” rather than “（无）”, and the vocabulary list and the length note are in English as well.
+* Prompts you have edited yourself are untouched — your version is still what gets sent. “Reset” puts back the built-in one for the language you are in.
+* This applies to background enrichment too, which reads the interface language from your settings.
+
+<details>
+<summary markdown="span">中文</summary>
+
+内置的 AI 提示词也跟着界面语言走了。
+
+* 「设置 → 图库 → AI 补全 → 提示词」里那三份内置提示词，以前不管界面是什么语言都是中文。
+  现在有中英两套：中文界面发中文那套，其余语言发英文那套。切换界面语言，框里的文字跟着换。
+* 填进提示词的线索也照这个规矩走：缺的值写成 “(none)” 而不是「（无）」，词表约束和字数要求一并用英文。
+* 自己改过的提示词不受影响，发出去的仍然是你改的那份；点「恢复默认」拿回的是当前界面语言的那一份。
+* 后台跑批同样跟着走 —— 它从设置里读界面语言。
+
+</details>
+
 ## [1.23.1] — 2026-09-22
 
 One more English name brought in line with the rest: the settings group where you add your own folders and gallery URLs is now called Custom sources.

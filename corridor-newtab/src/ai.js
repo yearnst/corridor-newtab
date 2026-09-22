@@ -12,6 +12,7 @@
 import * as S from './store.js';
 import * as NET from './localnet.js';
 import { MOVEMENTS, REGIONS, TAGS } from './i18n.js';
+import * as LG from './langs.js';
 
 /* 名作用的题材词表就是内置藏品那 20 个；通用图片再多一档日常题材，
    两边都只能从词表里挑，挑出来的值筛选面板认得，不会长出野生标签 */
@@ -252,6 +253,15 @@ async function imageOf(w) {
      {noteLen}   介绍字数要求，跟着「生成作品介绍」开关走
    改坏了不会出安全问题：词表是在代码里过滤的，不靠模型自觉。
    ---------------------------------------- */
+/* ---------------- 界面语言 ----------------
+   内置的三份提示词有中英两套，发出去哪一套，跟着界面语言走 —— 界面是中文就发中文那套，
+   其余语言一律发英文那套（模型读英文比读小语种稳）。
+   页面那边每次调用都把当前语言递进来；后台跑批时没有界面可问，
+   就在 runBatch / retryOne 里从设置里取一次记在这儿。 */
+let UI = (S.DEFAULTS && S.DEFAULTS.loc && S.DEFAULTS.loc.a === 'zh') ? 'zh' : 'en';
+const isZh = (l) => /^zh/i.test(String(l ?? ''));
+const langOf = (l) => (l === undefined || l === null || l === '' ? UI : l);
+
 export const DEFAULT_SYS = `你是美术馆的编目员，也懂摄影、设计与日常影像。你的工作是看图，为一张图片补全条目信息。
 铁律：
 1. 只依据图像本身和给出的线索。拿不准就留空字符串（数组留空数组），绝不编造人名、年代、机构、尺寸。
@@ -293,6 +303,49 @@ export const DEFAULT_ANY = `这是用户自己图库里的一张图片。它可�
 · note {noteLen}，写画面内容、构图、光线与色彩、给人的感觉。就事论事，不要拔高。
 {vocab}`;
 
+/* 同样三份的英文版：界面是英文（或别的非中文）时，内置提示词用这一套。
+   两边要求模型输出的是同一份 JSON 骨架，只是说明文字的语言不同。 */
+export const DEFAULT_SYS_EN = `You are a museum cataloger who also knows photography, design and everyday images. Your job is to look at a picture and fill in its catalog entry.
+Hard rules:
+1. Go only by the image itself and the clues given. When you are not sure, leave an empty string (an empty array for lists); never invent a name, a date, an institution or a size.
+2. Write the Chinese fields in Simplified Chinese and the English fields in natural English. Both say the same thing; they need not be word for word.
+3. Output one JSON object and nothing else. No code fences, no text before or after it.`;
+
+export const DEFAULT_ART_EN = `This is a painting. Clues (they may be wrong, feel free to correct them):
+Title: {title}
+Artist: {artist}
+Date: {year}
+Collection: {museum}
+Original file name: {file}
+
+Return JSON in this shape:
+{shape}
+How to write it:
+· title_zh: the established Chinese title, or, when there is none, a translation of what the picture shows. title_en: keep or correct the original title.
+· artist: fill this in only when you really recognize the artist; otherwise keep the name from the clues as it is.
+· look: one sentence of about twenty words on what is most worth looking at, one in Chinese and one in English.
+· note {noteLen}: what the painting shows, how it was painted and where it came from, like the text beside a wall label. No piles of adjectives.
+{vocab}`;
+
+export const DEFAULT_ANY_EN = `This is an image from the user's own library. It may be a photo, a screenshot, an illustration, a design, a poster, a word card, a flashcard, a game card or a scan — or it may be a painting. Work out what it actually is first; do not assume it is a famous artwork. Posters and book covers are named like 《**》电影海报 (film poster) or 《**》图书封面 (book cover); for artworks follow the fields below, and describe anything else in whatever way suits it best.
+Clues (mostly guessed from the file and folder names, and often meaningless):
+File name: {file}
+Current title: {title}
+Folder: {folder}
+Pixel size: {dims}
+Return JSON in this shape:
+{shape}
+How to write it:
+· title: say plainly what is in the picture, eight to sixteen words, the way you would name a photo in an album — not an art-catalog title.
+  A film title, book title, brand, place or event printed in the picture can go straight into the title; if you can read it, use it.
+· artist: only when the picture carries a clear signature, watermark or seal, or it really is a work you recognize; otherwise leave it empty. Never take the folder name for an author.
+· year: only when a date or a year appears in the picture; otherwise leave it empty.
+· medium: say what it is — photograph / digital illustration / watercolor / poster design / screenshot / 3D render and the like.
+· place: only when you can tell where it was taken; write it as “Country City” (for example: France Paris), or the city alone when you are unsure of the country. museum is usually empty.
+· look: one sentence of about twenty words on what catches the eye.
+· note {noteLen}: what is in the picture, the composition, the light and color, the feel of it. Plain description, no inflation.
+{vocab}`;
+
 const SHAPE = `{
  "kind": "",        // painting|drawing|print|photo|illustration|design|screenshot|other
  "title_zh": "", "title_en": "",
@@ -311,48 +364,64 @@ export const NOTE_LEN = {
   art: { on: '中文 120–200 字，英文 60–110 词', off: '留空' },
   any: { on: '中文 60–120 字，英文 30–70 词', off: '留空' }
 };
+export const NOTE_LEN_EN = {
+  art: { on: '120–200 characters in Chinese, 60–110 words in English', off: 'leave it empty' },
+  any: { on: '60–120 characters in Chinese, 30–70 words in English', off: 'leave it empty' }
+};
 export const PLACEHOLDERS = ['title', 'artist', 'year', 'museum', 'file', 'folder', 'dims',
   'shape', 'vocab', 'noteLen', 'movements', 'regions', 'tags'];
 
-function vocabText(tags) {
-  return `movement 只能取以下之一或留空：${MV.join(' / ')}
+function vocabText(tags, zh) {
+  if (zh) return `movement 只能取以下之一或留空：${MV.join(' / ')}
 region 只能取以下之一或留空：${RG.join(' / ')}
 tags 只能从以下里挑 1–5 个：${tags.join(' / ')}
 format 只能取：std（常规）/ tall（竖长）/ wide（横长）/ scroll（长卷），拿不准留空
 mature：画面有裸体、血腥或不适合在办公室屏幕上出现的内容时为 true，否则 false
 conf：你对这条判断的把握，0 到 1`;
+  return `movement must be one of these, or empty: ${MV.join(' / ')}
+region must be one of these, or empty: ${RG.join(' / ')}
+tags: pick 1–5 of these: ${tags.join(' / ')}
+format must be one of: std (standard) / tall / wide / scroll (handscroll); leave it empty when unsure
+mature: true when the picture has nudity, gore or anything you would not want on an office screen; otherwise false
+conf: how sure you are of this entry, 0 to 1`;
 }
 /* 只认得的占位符才替换，写错的原样留着，好让人一眼看出没生效 */
 const fill = (tpl, vars) => String(tpl).replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
 
-function varsOf(w, kind, note) {
+function varsOf(w, kind, note, lang) {
+  const zh = isZh(lang);
+  const none = zh ? '（无）' : '(none)';
   const t = w.title || {}, a = w.artist || {}, m = w.museum || {};
   const list = kind === 'art' ? ART_TAGS : ALL_TAGS;
-  const dims = w.img?.w ? `${w.img.w} × ${w.img.h}` : (w.dims || '（无）');
+  const dims = w.img?.w ? `${w.img.w} × ${w.img.h}` : (w.dims || none);
   return {
-    title: (kind === 'art' ? (t.en || t.zh) : (t.zh || t.en)) || '（无）',
-    artist: (a.en || a.zh) || '（无）',
-    folder: (a.zh || a.en) || '（无）',
-    year: w.year || '（无）',
-    museum: (m.en || m.zh) || '（无）',
-    file: w.img?.name || w.src?.file || '（无）',
+    title: (kind === 'art' ? (t.en || t.zh) : (t.zh || t.en)) || none,
+    artist: (a.en || a.zh) || none,
+    folder: (a.zh || a.en) || none,
+    year: w.year || none,
+    museum: (m.en || m.zh) || none,
+    file: w.img?.name || w.src?.file || none,
     dims,
     shape: SHAPE,
-    vocab: vocabText(list),
-    noteLen: NOTE_LEN[kind][note ? 'on' : 'off'],
+    vocab: vocabText(list, zh),
+    noteLen: (zh ? NOTE_LEN : NOTE_LEN_EN)[kind][note ? 'on' : 'off'],
     movements: MV.join(' / '), regions: RG.join(' / '), tags: list.join(' / ')
   };
 }
+/* 内置的那三份跟着界面语言走：中文界面用中文那套，其余一律英文 */
+export const defaultsOf = (lang) => (isZh(langOf(lang))
+  ? { sys: DEFAULT_SYS, art: DEFAULT_ART, any: DEFAULT_ANY }
+  : { sys: DEFAULT_SYS_EN, art: DEFAULT_ART_EN, any: DEFAULT_ANY_EN });
 /* 设置里留空就用内置的那份 */
-export const promptsOf = (ai) => ({
-  sys: S1(ai?.pSys) || DEFAULT_SYS,
-  art: S1(ai?.pArt) || DEFAULT_ART,
-  any: S1(ai?.pAny) || DEFAULT_ANY
-});
-export function buildPrompt(w, ai) {
+export const promptsOf = (ai, lang) => {
+  const d = defaultsOf(lang);
+  return { sys: S1(ai?.pSys) || d.sys, art: S1(ai?.pArt) || d.art, any: S1(ai?.pAny) || d.any };
+};
+export function buildPrompt(w, ai, lang) {
   const kind = w.local ? 'any' : 'art';
-  const p = promptsOf(ai);
-  return { kind, sys: p.sys, user: fill(kind === 'art' ? p.art : p.any, varsOf(w, kind, ai?.note !== false)) };
+  const L2 = langOf(lang);
+  const p = promptsOf(ai, L2);
+  return { kind, sys: p.sys, user: fill(kind === 'art' ? p.art : p.any, varsOf(w, kind, ai?.note !== false, L2)) };
 }
 /* 设置面板里的「看看实际发出去什么」：有待补的就拿真作品渲染，没有就用样例 */
 const SAMPLE = {
@@ -361,10 +430,11 @@ const SAMPLE = {
   any: { local: true, title: { zh: 'IMG_2043', en: 'IMG_2043' }, artist: { zh: 'Downloads', en: 'Downloads' },
         year: '', img: { name: 'IMG_2043.jpg', w: 3024, h: 4032 } }
 };
-export function previewPrompt(ai, kind, work) {
+export function previewPrompt(ai, kind, work, lang) {
   const w = work || SAMPLE[kind] || SAMPLE.art;
-  const p = promptsOf(ai);
-  return { sys: p.sys, user: fill(kind === 'art' ? p.art : p.any, varsOf(w, kind, ai?.note !== false)) };
+  const L2 = langOf(lang);
+  const p = promptsOf(ai, L2);
+  return { sys: p.sys, user: fill(kind === 'art' ? p.art : p.any, varsOf(w, kind, ai?.note !== false, L2)) };
 }
 
 /* ---------------- 结果落回作品 ---------------- */
@@ -540,6 +610,7 @@ export const isRunning = () => running;
 export async function runBatch(opt = {}) {
   const { scope = 'all', force = false, limit = 0, onProgress, signal } = opt;
   const set = await S.getSettings();
+  UI = LG.uiLangOf(set);                       // 后台没有界面，内置提示词用哪套在这儿定
   const ai = profOf(set, 'vision');            // 补全用的是识图那一档
   if (!configured(ai)) return { ok: false, reason: 'off', done: 0, fail: 0 };
   if (running) return { ok: false, reason: 'busy', done: 0, fail: 0 };
@@ -613,6 +684,7 @@ export async function runBatch(opt = {}) {
 /* 补全清单里点一行的重试：只补这一张，回一条新的记录 */
 export async function retryOne(id, box) {
   const set = await S.getSettings();
+  UI = LG.uiLangOf(set);
   const ai = profOf(set, 'vision');
   if (!configured(ai)) return { ok: false, reason: 'off' };
   if (!(await hasHost(ai.base))) return { ok: false, reason: 'perm' };

@@ -1930,9 +1930,9 @@ async function buildTab(tab, s) {
     const profs = ai.list || [];
     const cp = profs.find(p => p.id === ai.cur) || null;
     const cpLocal = !!(cp && NET.isLocal(cp.base));       // 本机模型这一档要多说两句
-    const P = AI.promptsOf(ai);
+    const P = AI.promptsOf(ai, A.lang);   // 内置那三份跟着界面语言走
     const prevW = A.aiPrev === 'art' ? (dSt?.works || [])[0] : A.aiPrev === 'any' ? (lSt?.works || [])[0] : null;
-    const prevTx = (ai.on && A.aiPrev) ? AI.previewPrompt(ai, A.aiPrev, prevW) : null;
+    const prevTx = (ai.on && A.aiPrev) ? AI.previewPrompt(ai, A.aiPrev, prevW, A.lang) : null;
     const prevAll = prevTx ? `— ${T('aiPSys')} —\n${prevTx.sys}\n\n— ${T('aiPUser')} —\n${prevTx.user}` : '';
     /* 提示词编辑框：框里始终是「真正会发出去的那份」，改回默认就存空，
        以后内置文案更新了还能跟着走 */
@@ -2051,6 +2051,7 @@ async function buildTab(tab, s) {
     (ai.on ? grp('aiprompt', T('aiPrompt'),
       `<div class="dblock"><div class="dbd phint">${esc(T('aiVars'))}${AI.PLACEHOLDERS.map(v => `<code>{${v}}</code>`).join(' ')}</div>
         <div class="dbd" style="margin-top:6px">${esc(T('aiVarsDesc'))}</div>
+        <div class="dbd" style="margin-top:6px">${esc(T('aiPLang'))}</div>
         ${ped('Sys', T('aiPSys'), '', P.sys, '')}
         ${ped('Art', T('aiPArt'), T('aiPArtDesc'), P.art, 'art')}
         ${ped('Any', T('aiPAny'), T('aiPAnyDesc'), P.any, 'any')}</div>` +
@@ -2888,11 +2889,14 @@ function bindAI(body) {
   });
   const pc = $('#btnAiPcopy', body);
   if (pc) pc.onclick = () => { navigator.clipboard?.writeText($('.aiprev', body)?.textContent || ''); toast(T('copied')); };
-  /* 改回和内置一字不差就存空，将来内置文案更新了还能跟着走 */
-  const DEF = { 'ai.pSys': AI.DEFAULT_SYS, 'ai.pArt': AI.DEFAULT_ART, 'ai.pAny': AI.DEFAULT_ANY };
+  /* 改回和内置一字不差就存空，将来内置文案更新了还能跟着走。
+     内置的有中英两份，跟哪一份对上都算「没改过」—— 存空了才会跟着界面语言换 */
+  const DZ = AI.defaultsOf('zh'), DE = AI.defaultsOf('en');
+  const DEF = { 'ai.pSys': [DZ.sys, DE.sys], 'ai.pArt': [DZ.art, DE.art], 'ai.pAny': [DZ.any, DE.any] };
   $$('[data-tar]', body).forEach(t => t.onchange = async () => {
     const k = t.dataset.tar, v = t.value.trim();
-    await applySetting(k, (!v || v === String(DEF[k] || '').trim()) ? '' : t.value);
+    const built = (DEF[k] || []).some(d => v === String(d).trim());
+    await applySetting(k, (!v || built) ? '' : t.value);
     renderDrawer();
   });
 

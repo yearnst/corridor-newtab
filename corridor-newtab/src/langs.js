@@ -167,3 +167,15 @@ export function guess(nav) {
 }
 /* 母语定了，外语给个像样的默认：中文配英文，别的一律配英文，英文配中文 */
 export const partnerOf = (a) => (a === 'en' ? 'zh' : 'en');
+
+/* 界面此刻用的是哪一门语言 —— 跟 app.js / options.js 里的 resolveLang 同一套规矩，
+   只是那两处要「主＋次」两门，这里只要排在前面的那一门。
+   后台（补全跑批）没有界面可问，就靠这个从设置里算出来。 */
+export function uiLangOf(set) {
+  const a = String(set?.loc?.a || 'zh'), b = String(set?.loc?.b || (a === 'en' ? 'zh' : 'en'));
+  if (set?.lang === 'native') return a;
+  if (set?.lang === 'foreign') return b;
+  const g = guess();
+  const near = (c) => (c === g ? 2 : (String(c).split('-')[0] === String(g).split('-')[0] ? 1 : 0));
+  return near(b) > near(a) ? b : a;
+}

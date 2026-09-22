@@ -1,6 +1,6 @@
 # Corridor · Art New Tab
 
-<sub>v1.23.1</sub>
+<sub>v1.23.2</sub>
 
 **English** · [简体中文](README.zh-CN.md)
 
@@ -678,8 +678,9 @@ The box always shows **the version actually in use**: if you haven't edited it, 
 > Breaking a prompt can't cause a safety problem: **vocabulary filtering is done in code**, so whatever labels the model returns have to pass an allowlist first,
 > and nothing you write in a prompt can pollute the filter panel. But delete `{shape}` and the model no longer knows what structure to reply with.
 >
-> All three prompts are written in Chinese and ask the model for both a Chinese and an English version of the results, so they work just as well with the English interface;
-> if you'd rather use English prompts, just rewrite them in the boxes.
+> The three built-in prompts come in two sets and **follow the interface language**: a Chinese interface sends the Chinese set, every other interface sends the English one.
+> Either way they ask the model for both a Chinese and an English version of the results, so the fields are filled in both languages whichever set is used.
+> Switch the interface language and the boxes switch with it — unless you have edited a prompt yourself, in which case your version keeps being sent.
 
 **Cost and safeguards**
 
@@ -971,7 +972,7 @@ See [`CHANGELOG.md`](../CHANGELOG.md) in the repository root: each version lists
 
 ## 12. Version and copyright
 
-**Corridor** v1.23.1
+**Corridor** v1.23.2
 
 By **Charles Chern** (**@yearnst**)
 
