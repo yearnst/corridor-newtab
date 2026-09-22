@@ -1,6 +1,6 @@
 # 长廊 Corridor · 艺术新标签页
 
-<sub>v1.23.0</sub>
+<sub>v1.23.1</sub>
 
 [English](README.md) · **简体中文**
 
@@ -972,7 +972,7 @@ corridor-newtab/
 
 ## 十二、版本与版权
 
-**长廊 Corridor** v1.23.0
+**长廊 Corridor** v1.23.1
 
 作者 **Charles Chern**（**@yearnst**）
 

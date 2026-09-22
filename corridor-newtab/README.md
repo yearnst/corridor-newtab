@@ -1,6 +1,6 @@
 # Corridor · Art New Tab
 
-<sub>v1.23.0</sub>
+<sub>v1.23.1</sub>
 
 **English** · [简体中文](README.zh-CN.md)
 
@@ -295,7 +295,7 @@ If a work hasn't been translated into the foreign language yet, the back falls b
 
 The settings drawer has **five tabs**: Display / Room / Rotation / Sources / Storage. Each tab is made up of several **groups**;
 **click a group heading to collapse it**; the current value is shown to the right of the heading (so you know what it's set to even when collapsed),
-and in groups that are switched on and off as a whole (daily additions, custom library, AI enrichment) the master switch sits right on the heading row.
+and in groups that are switched on and off as a whole (daily additions, custom sources, AI enrichment) the master switch sits right on the heading row.
 On the right of the title bar is a row of **sun / moon · This mode / All · Reset · Close** — four controls with the same height, corner radius and font size.
 “This mode” (the default) lists only the settings the current presentation mode can use — in Gallery Wall mode you won't see the film stock and transport settings,
 and in Filmstrip mode you won't see frames and matting; choose “All” and everything is listed. The choice is remembered.
@@ -317,7 +317,7 @@ Title / Artist / Date & medium / Museum / Highlight / Palette; check all four ar
 **Wall texture (31 finishes in five groups: Gallery walls / Fabric-lined / Digital exhibition / Stone & hard finishes / Metal panels)** ·
 **Lighting (Lamps 0–4, Brightness, Angle, Warmth)** · Film stock (5 kinds)
 
-**Sources** Daily additions · Custom library · **AI enrichment** (see section 5a)
+**Sources** Daily additions · Custom sources · **AI enrichment** (see section 5a)
 
 **Storage** Offline cache · Export as image files · Where the cache lives · Chrome footer · About
 
@@ -409,7 +409,7 @@ Since v1.5 the Library also **grows on its own**:
 
 ## 5. Your own library (hang your own pictures)
 
-Settings → Sources → **Custom library**. You can add **several sources**, of two kinds:
+Settings → Sources → **Custom sources**. You can add **several sources**, of two kinds:
 
 | | |
 |---|---|
@@ -451,7 +451,7 @@ and the images are presented the same way as the built-in works (palette, filter
 ## 5a. AI enrichment (optional, off by default)
 
 The entries that “Daily additions” fetches from Commons mostly have an empty movement, medium, dimensions and curatorial note;
-the “Custom library” has it even worse — the title is just the file name, the artist just the parent folder's name, and a name like `IMG_2043`
+**My library** has it even worse — the title is just the file name, the artist just the parent folder's name, and a name like `IMG_2043`
 doesn't look good hanging on the Gallery Wall. This version lets you **connect your own multimodal model**, have it take a look at each image and fill in those fields.
 
 **Settings → Sources → AI enrichment**, then fill in four things: API format, Endpoint, API key, Model.
@@ -568,7 +568,7 @@ on = you get two dropdowns:
 | | |
 |---|---|
 | Text | Translating artwork info and the interface language pack |
-| Vision | Looking at images to enrich daily additions and the custom library |
+| Vision | Looking at images to enrich daily additions and My library |
 
 A cheap small model for translation, with the expensive multimodal one stirring only when images need enriching, is a natural division of labor;
 so is local Ollama for translation and a cloud model for vision. Next to each dropdown hangs a small
@@ -585,10 +585,10 @@ Whether “multilingual” is unlocked depends on whether **the text profile** h
 **Three ways to trigger it**
 
 - **Manual**: click “Run now”; a progress bar and a per-image list appear below the button. Click again to stop.
-- **Automatic**: new works are enriched as soon as they arrive. Daily additions are enriched right after they're fetched; the custom library right after a folder is scanned,
+- **Automatic**: new works are enriched as soon as they arrive. Daily additions are enriched right after they're fetched; My library right after a folder is scanned,
   and whatever isn't finished continues the next time you open a new tab.
 - **Scheduled**: Off / Hourly / Every 6 hours / Every 12 hours / Daily / Every 3 days / **Custom** (minutes · hours · days, at least 15 minutes). The schedule is for **sweeping up whatever slipped through** —
-  daily additions are handled by the background service and run whether or not a tab is open; custom library images can only be read from inside the page
+  daily additions are handled by the background service and run whether or not a tab is open; images in My library can only be read from inside the page
   (the directory handle can't be passed to the background), so that part waits until you next open a new tab.
 
 **What it fills in**
@@ -597,7 +597,7 @@ Two sets of prompts, run separately:
 
 - **Daily additions** are cataloged as famous paintings: Chinese title, medium, movement, region, subject, highlight,
   and a curatorial note of 120–200 Chinese characters. What's already known — the original English title, the museum and so on — is **left alone**; only empty fields are filled.
-- The **custom library** is treated as **ordinary images** — the very first line of the prompt is “It may be a photo, a screenshot, an illustration,
+- **My library** is treated as **ordinary images** — the very first line of the prompt is “It may be a photo, a screenshot, an illustration,
   a design draft or a scan, or it may be a painting; look carefully at what it actually is first, and don't assume it's a famous painting.”
   The title is required to “say plainly, in one phrase, what is in the picture, eight to sixteen characters, like the name you'd give a photo in an album”,
   and the artist field is **filled only if the picture actually has a signature, watermark or inscription**; otherwise it's better left empty.
@@ -606,14 +606,14 @@ Two sets of prompts, run separately:
 
 - **The vocabularies are closed.** Movement can only be one of the 21 built in, region one of 7, subject one from the vocabulary
   — labels the model makes up are thrown away. That way the filter panel doesn't sprout a crop of wild tags.
-  The custom library gets an extra set of everyday subjects (Architecture / Food / Plants / Sky / Mountains / Forest / Vehicles / Objects /
+  My library gets an extra set of everyday subjects (Architecture / Food / Plants / Sky / Mountains / Forest / Vehicles / Objects /
   Pattern / Typography / Sport / Fashion / Cosmos / Machines); the built-in collection doesn't use them, and they appear only when recognized.
 - **By default only empty fields are filled**; whatever is already there is left alone. To overwrite, you have to turn on “Overwrite existing fields” yourself.
 - **Titles** has three settings: **Machine names** (the default) only touches `IMG_2043`, `DSC00123`,
   `Screenshot 2024-01-01 at 12.30.45`, `微信图片_20240101` (a WeChat image), `截屏2024-01-01 下午3.20` (a screenshot on a Chinese system)
   and other “prefix + string of digits” names; titles with real content, such as `Photo of a cat` or `奶奶家的院子` (“Grandma's courtyard”), are left alone.
   The other two settings are “Always” (always rewrite) and “Never” (leave titles alone).
-- **Artist**: in the custom library the “artist” is really the parent folder's name. Obviously meaningless ones like `Downloads`, `新建文件夹` (Windows' “New folder”) or
+- **Artist**: in My library the “artist” is really the parent folder's name. Obviously meaningless ones like `Downloads`, `新建文件夹` (Windows' “New folder”) or
   `截图` (“Screenshots”) are cleared; meaningful ones like `2019 京都` (“2019 Kyoto”) are kept.
 - **The Work-safe flag only moves in the safe direction**: if the model says “this one isn't suitable for the office”, it gets flagged;
   if it says “suitable”, that won't clear a flag that's already set.
@@ -657,7 +657,7 @@ Settings → Sources → AI enrichment → **Prompts** (click the heading to exp
 |---|---|
 | System prompt | The few hard rules both sets share |
 | Artwork prompt | Used for daily additions |
-| General image prompt | Used for the custom library |
+| General image prompt | Used for your own images |
 
 Anything in curly braces in the boxes is a **placeholder**, replaced with the real thing before sending:
 
@@ -717,7 +717,7 @@ with a line of explanation below them and a “Set up the endpoint” button tha
 
 - **Artwork information** — title, artist, medium, museum, location, highlight, the curatorial note,
   plus the qualifiers in dates and life spans such as “c. / century / after”.
-  You can set **Which works** (Everything / Built-in collection / Daily additions / Custom library) and **Works per run**,
+  You can set **Which works** (Everything / Built-in collection / Daily additions / My library) and **Works per run**,
   as well as **Works per request** (packing more into one request costs less; packing fewer is more reliable).
   While it translates, there's a progress bar and an item-by-item list, the same look as for AI enrichment.
 - **Interface text** — the settings panel, button tooltips, and the whole filter vocabulary for movement / region / subject / color family / wall color / wall finish / frame:
@@ -736,7 +736,7 @@ with a line of explanation below them and a “Set up the endpoint” button tha
 - **Right-to-left languages** (Arabic, Hebrew, Persian, Urdu) flip the writing direction of the whole page.
 
 **Where the translations are stored** — in a separate “overlay” layer that leaves the original data alone. The built-in collection is read-only static JSON,
-and the daily additions and the custom library shouldn't be bloated with translations either; switching languages never touches the original data, and clearing the translations out is a one-step job
+and daily additions and My library shouldn't be bloated with translations either; switching languages never touches the original data, and clearing the translations out is a one-step job
 (“Clear translations” wipes both the artwork translations and the interface language packs for the two languages in one go).
 
 **New works are picked up on their own** — with “Translate the artwork texts too” switched on, every time you open a new tab,
@@ -859,11 +859,11 @@ chosen automatically for your screen resolution, so no bandwidth is wasted.
 ## 9. Privacy
 
 - No data is collected or uploaded; there is no analytics code, no account and no remote configuration.
-- By default, network requests go only to `upload.wikimedia.org` (fetching images), `commons.wikimedia.org` (the public API and source pages for daily additions) and `www.wikidata.org` (filling in Chinese and English names). Settings, favorites, history, the cache and the custom library are all stored on this machine.
+- By default, network requests go only to `upload.wikimedia.org` (fetching images), `commons.wikimedia.org` (the public API and source pages for daily additions) and `www.wikidata.org` (filling in Chinese and English names). Settings, favorites, history, the cache and your custom sources are all stored on this machine.
 - **The only exception is “AI enrichment”, which you turn on yourself**: once it's on, the images being enriched are shrunk to JPEGs of at most 1024px
   and sent to **the endpoint address you entered yourself**, with no third party in between. The key is stored only on this machine, in `chrome.storage.local`,
   and is sent only with requests to that one address. **Leave the address empty and nothing is sent at all.**
-  If your custom library contains private photos, use your own judgment about whether to turn this on, and whether to use a local model
+  If your own images include private photos, use your own judgment about whether to turn this on, and whether to use a local model
   (something like `http://localhost:11434/v1`, where the images never even leave your computer).
 - Permissions: `storage`/`unlimitedStorage` hold settings and the image cache; `alarms` is for background prefetching and scheduled enrichment;
   `downloads` is for “Download original”, exporting images and saving backup files; `host_permissions` is limited to three domains:
@@ -902,7 +902,7 @@ corridor-newtab/
 │   ├── app.js             Main program: playback, rendering, drawers, zoom
 │   ├── modes.js           Masonry / Circular Gallery / Filmstrip
 │   ├── daily.js           Daily additions: Commons category crawling, bilingual fill-in from Wikidata, palette calculation
-│   ├── local.js           Custom library: directory handles, scanning and indexing, on-demand reads
+│   ├── local.js           Custom sources: directory handles, scanning and indexing, on-demand reads
 │   ├── ai.js              AI enrichment: dual-format OpenAI / Anthropic client, editable prompt templates, vocabulary constraints, enrichment report
 │   ├── diag.js            Endpoint error diagnosis: turns HTTP 4xx into “what's wrong, and what to do”
 │   ├── localnet.js        Local model: rewrites the Origin of requests sent to localhost to the local address
@@ -971,7 +971,7 @@ See [`CHANGELOG.md`](../CHANGELOG.md) in the repository root: each version lists
 
 ## 12. Version and copyright
 
-**Corridor** v1.23.0
+**Corridor** v1.23.1
 
 By **Charles Chern** (**@yearnst**)
 

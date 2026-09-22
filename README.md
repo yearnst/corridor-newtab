@@ -195,7 +195,7 @@ The extension makes only three kinds of network request, all of them optional:
 3. AI requests or online gallery pages to **the address you typed in yourself** — leave it blank and not one request is made
 
 Any API key you enter is sent only as a request header to that address, nowhere else.
-Local images in your custom library are never copied, uploaded or cached; they are read once, at the moment they are shown.
+Local images from your custom sources are never copied, uploaded or cached; they are read once, at the moment they are shown.
 
 Pause Gallery reads Chrome's most-visited list and your open tabs through two optional permissions (`topSites`, `tabs`):
 not requested at install, asked for only when you turn that source on, and revocable any time. It sees only site names

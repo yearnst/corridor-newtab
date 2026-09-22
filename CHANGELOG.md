@@ -19,6 +19,29 @@ Every entry is in English first; the Chinese text is folded under **中文**.
 
 ---
 
+## [1.23.1] — 2026-09-22
+
+One more English name brought in line with the rest: the settings group where you add your own folders and gallery URLs is now called Custom sources.
+
+* It holds several sources and sits on the Sources tab, so “Custom library” read oddly there.
+  The pictures you add are called My library throughout (the tab in the Library already had that name), and the buttons now say “Remove source” and “Remove all sources”.
+* The count beside the heading no longer says “1 sources”; it reads “Sources: 1 · Images: 0”.
+
+The Chinese interface is unchanged.
+
+<details>
+<summary markdown="span">中文</summary>
+
+英文界面又统一了一个叫法：添加自己的文件夹与在线图库的那一组，从 Custom library 改叫 Custom sources。
+
+* 这一组里本来就能放好几个来源，又在 Sources 那一页下，叫 “Custom library” 读着别扭。
+  加进来的图，英文里统一叫 My library（藏品库里那一页原来就叫这个）；按钮也改成 “Remove source” 和 “Remove all sources”。
+* 标题旁边的计数不再写成 “1 sources”，改成 “Sources: 1 · Images: 0”。
+
+中文界面没有变化。
+
+</details>
+
 ## [1.23.0] — 2026-09-22
 
 English users now get an English interface out of the box, and the English interface uses the same names as the docs.

@@ -20,7 +20,7 @@ Corridor collects nothing. There is no server, no account, and no analytics. Eve
 | Settings (mode, frame, language…) | `chrome.storage.local` | No |
 | Favorites and history | `chrome.storage.local` | No |
 | Cached artwork images | IndexedDB allocated to this extension | No |
-| Folder handles for your custom library | IndexedDB | No |
+| Folder handles for your custom sources | IndexedDB | No |
 | Any API key you enter | `chrome.storage.local` | Only to **the endpoint you typed in**, nowhere else |
 | AI-generated translations and fields | `chrome.storage.local` | No |
 | Sites you pin or remove in Pause Gallery, and the order of their labels | `chrome.storage.local` | No |
@@ -53,7 +53,7 @@ Nothing else. No analytics, no telemetry, no ads, no third-party SDKs.
 
 - Uses the browser's standard File System Access API. The extension can read only the folder you picked.
 - Images are **never copied, uploaded, or cached** — they are read at the moment they are displayed.
-- They are sent to your own endpoint only if you turn on AI enrichment *and* enable it for the custom library. If the folder holds private photos, think twice before enabling it.
+- They are sent to your own endpoint only if you turn on AI enrichment *and* enable it for your custom sources. If the folder holds private photos, think twice before enabling it.
 - Remove the source in settings and the extension loses access. Your files are never modified.
 
 ### About the sites shown in Pause Gallery
