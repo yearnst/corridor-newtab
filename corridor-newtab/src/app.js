@@ -49,6 +49,9 @@ function resolveLang(set) {
 
 const A = {                       // 应用状态
   cat: [], byId: new Map(), set: null, favs: [], hist: [], gone: [],
+  /* 存在过的全部作品，与「每日新作」「自定义图库」两个开关无关 ——
+     已移除清单要靠它分辨「这幅真的没了」和「只是来源此刻关着」 */
+  everById: new Map(),
   /* 备份面板的临时状态：勾了哪几块、密钥怎么带、选中的那份文件 —— 都不进设置 */
   bk: { parts: { settings: true, marks: true, history: false, tr: false, packs: false, daily: false, libsrc: true },
         keys: 'none', pass: '', file: null, sum: null, mode: 'replace', pass2: '', msg: '' },
@@ -2079,7 +2082,7 @@ async function buildTab(tab, s) {
       fmtBytes(st.bytes), 'cache offline 缓存 离线') +
     grp('gone', T('goneTitle'), goneBlock(),
       A.gone.length ? String(A.gone.length) : T('goneNone'),
-      'gone hidden removed 移除 去除 隐藏 恢复') +
+      'gone hidden removed clear stale cache 移除 去除 隐藏 恢复 清理 失效 缓存') +
     grp('backup', T('bkTitle'), backupBlock(),
       T('bkHint'), 'backup restore export import 备份 恢复 导出 导入 迁移 json') +
     grp('export', T('exportTitle'),
@@ -2423,8 +2426,9 @@ function backupBlock() {
 function goneBlock() {
   const ids = A.gone || [];
   if (!ids.length) return `<div class="dblock"><div class="dbd">${esc(T('goneEmpty'))}</div></div>`;
+  const lost = goneLost();
   const rows = ids.slice(0, 200).map(id => {
-    const w = A.byId.get(id);
+    const w = A.everById.get(id);
     const name = w ? tx(w.title) : id;
     const who = w ? [tx(w.artist), dtw(w, 'year')].filter(Boolean).join(' · ') : T('goneLost');
     return `<div class="gonerow"><b>${esc(name)}</b><i>${esc(who)}</i>
@@ -2433,8 +2437,14 @@ function goneBlock() {
   return `<div class="dblock"><div class="dbd">${esc(T('goneDesc'))}</div>
     <div class="gonelist">${rows}</div>
     ${ids.length > 200 ? `<div class="dbd" style="margin-top:6px">${esc(T('goneMore', { n: ids.length - 200 }))}</div>` : ''}
-    <div class="dbc btnrow"><button class="bigbtn" id="btnGoneAll">${esc(T('goneBackAll'))}</button></div></div>`;
+    ${lost.length ? `<div class="dbd" style="margin-top:8px">${esc(T('goneLostDesc'))}</div>` : ''}
+    <div class="dbc btnrow"><button class="bigbtn" id="btnGoneAll">${esc(T('goneBackAll'))}</button>
+      ${lost.length ? `<button class="bigbtn" id="btnGoneLost">${esc(T('goneClearLost', { n: lost.length }))}</button>` : ''}
+    </div></div>`;
 }
+/* 失效记录：作品本身已经彻底不在了（来源撤了、每日新作换过），放回也回不来。
+   只是「来源开关关着」的不算 —— 那些 everById 里还找得到。 */
+const goneLost = () => (A.gone || []).filter(id => !A.everById.get(id));
 
 /* 「每 6 小时」这种人话 */
 function schedTxt(m) {
@@ -2777,6 +2787,15 @@ async function renderDrawer(toTop = false) {
     renderDrawer();
     toast(T('hideBack'));
   });
+  const gL = $('#btnGoneLost', body);
+  if (gL) gL.onclick = async () => {
+    const lost = goneLost();
+    if (!lost.length) return;
+    const r = await S.cacheDropIds(lost);                 // 先把它们留在缓存里的图删掉
+    A.gone = await S.setGone((A.gone || []).filter(id => A.everById.get(id)));
+    renderDrawer();
+    toast(r.bytes ? `${T('goneLostDone')} · ${fmtBytes(r.bytes)}` : T('goneLostDone'));
+  };
   const gA = $('#btnGoneAll', body);
   if (gA) gA.onclick = async () => {
     A.gone = await S.clearGone();
@@ -3564,9 +3583,14 @@ function buildCatalog(all) {
 }
 
 /* 每日新作变动后，重建目录与播放列表 */
-const mergeAll = (cat, daily, lib, set) => applyTr(cat
-  .concat(set.dailyNew ? (daily.works || []) : [])
-  .concat(set.localLib ? (lib.works || []) : []));
+function mergeAll(cat, daily, lib, set) {
+  const every = applyTr(cat.concat(daily.works || []).concat(lib.works || []));
+  A.everById = new Map(every.map(w => [w.id, w]));
+  /* 两个开关关掉时那一批不进目录 —— 但它们并没有消失，everById 里还留着 */
+  const off = new Set([...(set.dailyNew ? [] : (daily.works || [])),
+                       ...(set.localLib ? [] : (lib.works || []))].map(w => w.id));
+  return off.size ? every.filter(w => !off.has(w.id)) : every;
+}
 
 /* ---------------- 译文覆盖层 ----------------
    译文单独存一层，不写回作品本身 —— 内置馆藏是只读的静态 JSON，

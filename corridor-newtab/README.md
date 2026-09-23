@@ -1,6 +1,6 @@
 # Corridor · Art New Tab
 
-<sub>v1.23.2</sub>
+<sub>v1.24.0</sub>
 
 **English** · [简体中文](README.zh-CN.md)
 
@@ -184,6 +184,9 @@ Work-safe mode only “skips it during rotation” and the Library still lists e
 
 It is not deletion: all that is stored is a list, and not a single byte of the artwork data is touched.
 **Settings → Storage → Removed** lists every removed work; you can “Put back” works one at a time, or “Put them all back”.
+A work whose source has gone away — a gallery URL you deleted, a daily selection that has since moved on — shows as
+“no longer in the current catalog”, and putting it back brings nothing. When there are entries like that, a second button appears,
+**“Clear stale entries”**: it drops those records and deletes whatever they still hold in the image cache. Works you removed on purpose stay listed.
 
 No confirmation dialog appears after you click; instead a bar lights up at the bottom, “Removed ‘XX’ · Undo”, and **you can change your mind within five seconds** —
 so tidying up the collection in one go isn't interrupted by a string of confirmation dialogs, and a slip of the hand can still be undone.
@@ -972,7 +975,7 @@ See [`CHANGELOG.md`](../CHANGELOG.md) in the repository root: each version lists
 
 ## 12. Version and copyright
 
-**Corridor** v1.23.2
+**Corridor** v1.24.0
 
 By **Charles Chern** (**@yearnst**)
 

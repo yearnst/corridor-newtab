@@ -19,6 +19,42 @@ Every entry is in English first; the Chinese text is folded under **中文**.
 
 ---
 
+## [1.24.0] — 2026-09-23
+
+The Removed list can now be tidied up: stale entries clear out, and the images they were still holding go with them.
+
+### Added
+
+* **“Clear stale entries”, in Settings → Storage → Removed**
+  A removed work whose source has gone away — a gallery URL you deleted, a daily selection that has since moved on —
+  shows as “no longer in the current catalog”, and putting it back brings nothing.
+  The new button drops exactly those records and deletes whatever they still hold in the image cache. It only appears when there are such entries.
+  Works you removed on purpose are left alone, and nothing is put back into the rotation.
+
+### Fixes and improvements
+
+* A removed work whose source is merely switched off — Today's Selection or Custom sources turned off in settings —
+  used to read “no longer in the current catalog” as well. It now keeps its title, and it is never counted as stale.
+
+<details>
+<summary markdown="span">中文</summary>
+
+「已移除」这份清单可以清理了：失效的记录连同它们还占着的图一起清掉。
+
+### 新增
+
+* **「清理失效记录」，在 设置 → 存储 → 已移除**
+  来源已经撤掉的那些去除记录——删过的在线图库、换过的每日新作——会标成「这幅已不在当前目录里」，放回也回不来。
+  新按钮只清这一类记录，连同它们留在图片缓存里的图一起删掉；没有这类记录时按钮不出现。
+  你有意去除的作品一律不动，也不会有谁被放回轮换。
+
+### 修复与优化
+
+* 只是把来源开关关掉的作品——设置里关掉「每日新作」或「自定义图库」——以前在这份清单里也显示成
+  「这幅已不在当前目录里」。现在照常显示作品名，也绝不会被当成失效记录清掉。
+
+</details>
+
 ## [1.23.2] — 2026-09-22
 
 The built-in AI prompts now follow the interface language too.

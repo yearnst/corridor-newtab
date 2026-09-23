@@ -634,6 +634,24 @@ export async function cacheClear() {
     const m = await mtx('readwrite'); await wrap(m.clear());
   } catch {}
 }
+/* 按作品 id 删缓存。某些作品已经彻底不在了 —— 来源撤了、每日新作换过 ——
+   它们的图还占着地方。清「已移除」里的失效记录时顺手把这些图带走。
+   本机文件夹的图不走缓存库（fetchImage 里 local: 直接读盘），所以只会命中网络来的那些。 */
+export async function cacheDropIds(ids) {
+  await ensureMeta();
+  const want = new Set((Array.isArray(ids) ? ids : []).map(x => String(x || '')).filter(Boolean));
+  if (!want.size) return { removed: 0, bytes: 0 };
+  try {
+    const m = await mtx('readonly');
+    const all = await wrap(m.getAll());
+    const dead = all.filter(r => want.has(r.id));
+    if (dead.length) {
+      const si = await tx('readwrite'), mi = await mtx('readwrite');
+      for (const r of dead) { si.delete(r.url); mi.delete(r.url); }
+    }
+    return { removed: dead.length, bytes: dead.reduce((n, r) => n + (r.size || 0), 0) };
+  } catch { return { removed: 0, bytes: 0 }; }
+}
 /* 超过上限就按「最久没看过的先删」，一直删到上限的 90%，留出余量少折腾 */
 export async function cacheTrim(limitBytes) {
   await ensureMeta();
