@@ -380,17 +380,17 @@ footer .sig{font-family:var(--serif);letter-spacing:.1em;color:var(--ink-dim)}
   <div class="wrap">
     <div class="sec-head center">
       <p class="kicker"><span class="i18n-zh">一分钟看懂</span><span class="i18n-en">See it in motion</span></p>
-      <h2><span class="i18n-zh">六十秒，走一遍长廊</span><span class="i18n-en">Sixty seconds in the Corridor</span></h2>
+      <h2><span class="i18n-zh">九十秒，走一遍长廊</span><span class="i18n-en">Ninety seconds in the Corridor</span></h2>
     </div>
     <div class="video" id="video">
-      <button class="vplay" type="button" data-yt="QJ4zLwx7_eY" aria-label="Play the 60-second film / 播放 60 秒短片">
+      <button class="vplay" type="button" data-yt="5JPgNeUHIpg" aria-label="Play the 90-second film / 播放 90 秒短片">
         <img loading="lazy" src="media/video-poster.jpg" width="1600" height="900"
              alt="A browser opens a new tab and Corridor shows The Starry Night on a terracotta wall">
       </button>
     </div>
     <p class="vnote">
-      <span class="i18n-zh">点播放后才从 YouTube（youtube-nocookie.com）加载，之前这一页不连 YouTube。也可以<a href="https://youtu.be/QJ4zLwx7_eY">在 YouTube 上看</a>。</span>
-      <span class="i18n-en">The film loads from YouTube (youtube-nocookie.com) only when you press play; until then this page makes no request to YouTube. Or <a href="https://youtu.be/QJ4zLwx7_eY">watch it on YouTube</a>.</span>
+      <span class="i18n-zh">就在这一页里播放。点播放之后才从 YouTube（youtube-nocookie.com）加载，之前这一页不连 YouTube。</span>
+      <span class="i18n-en">It plays right here on the page. The player loads from YouTube (youtube-nocookie.com) only when you press play; until then this page makes no request to YouTube.</span>
     </p>
   </div>
 </section>
@@ -681,7 +681,7 @@ footer .sig{font-family:var(--serif);letter-spacing:.1em;color:var(--ink-dim)}
     b.addEventListener('click',function(){
       var f=document.createElement('iframe');
       f.src='https://www.youtube-nocookie.com/embed/'+b.getAttribute('data-yt')+'?autoplay=1&rel=0&modestbranding=1&playsinline=1';
-      f.title='Corridor · Art New Tab — 60-second film';
+      f.title='Corridor · Art New Tab — 90-second film';
       f.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';
       f.allowFullscreen=true; f.referrerPolicy='strict-origin-when-cross-origin';
       b.parentNode.replaceChild(f,b);
