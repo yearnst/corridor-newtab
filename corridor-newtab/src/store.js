@@ -35,7 +35,7 @@ export const DEFAULTS = {
   order: 'shuffle',           // shuffle | sequential
   scope: 'all',               // all | fav | filter
   quality: 'auto',            // auto | saver | high | max
-  fit: 'cover',               // smart | cover | contain  沉浸式画面适配（默认铺满屏幕）
+  fit: 'smart',               // smart | cover | contain  沉浸式画面适配（默认智能；1.22.1–1.24.0 曾是 cover）
   frame: 'ebony',             // laurel|salon|baroque|rococo|ebony|walnut|oak|boxblack|thingold|float|none
   wall: 'terracotta',         // 墙面颜色（custom = 用下面这个自定义色）
   wallCustom: '#8A4B36',      // 自定义色板

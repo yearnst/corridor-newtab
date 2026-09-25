@@ -1,6 +1,6 @@
 # Corridor · Art New Tab
 
-<sub>v1.24.0</sub>
+<sub>v1.24.1</sub>
 
 **English** · [简体中文](README.zh-CN.md)
 
@@ -354,6 +354,7 @@ Out of the box you get a fully arranged gallery room — complete without changi
 | | |
 |---|---|
 | Presentation mode | Gallery Wall |
+| Immersive framing | Smart |
 | Interface language | Follows the browser: Chinese for a Chinese browser, English for any other |
 | Clock | In bar |
 | Hide interface when idle | On |
@@ -975,7 +976,7 @@ See [`CHANGELOG.md`](../CHANGELOG.md) in the repository root: each version lists
 
 ## 12. Version and copyright
 
-**Corridor** v1.24.0
+**Corridor** v1.24.1
 
 By **Charles Chern** (**@yearnst**)
 

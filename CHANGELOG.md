@@ -19,6 +19,25 @@ Every entry is in English first; the Chinese text is folded under **中文**.
 
 ---
 
+## [1.24.1] — 2026-09-25
+
+Immersive goes back to Smart framing by default.
+
+* On a new install (or after **Reset**), Settings → Display → Framing starts on **Smart** again, as it did before 1.22.1:
+  landscape works close to the screen's proportions fill it, while portrait and very wide works are shown whole on a soft-focus backdrop of the same painting.
+* Existing setups are left as they are — the framing you have now is kept. To switch, pick Smart under Settings → Display → Framing.
+
+<details>
+<summary markdown="span">中文</summary>
+
+沉浸式的「画面适配」默认改回「智能」。
+
+* 新装（或点过「重置」）时，设置 → 呈现 → 画面适配 重新默认为 **智能**，跟 1.22.1 之前一样：
+  比例接近屏幕的横幅铺满，竖幅和超宽幅完整显示，背后垫一层同一幅画的柔焦放大。
+* 已经在用的设置不动 —— 你现在是哪一档就还是哪一档。想换，到 设置 → 呈现 → 画面适配 选「智能」。
+
+</details>
+
 ## [1.24.0] — 2026-09-23
 
 The Removed list can now be tidied up: stale entries clear out, and the images they were still holding go with them.
