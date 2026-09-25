@@ -15,9 +15,13 @@
 
 [English](README.md) · **简体中文**
 
-[安装](#安装) · [它能做什么](#它能做什么) · [完整手册](corridor-newtab/README.zh-CN.md) · [隐私](PRIVACY.md) · [更新记录](CHANGELOG.md)
+[安装](#安装) · [它能做什么](#它能做什么) · [短片](https://youtu.be/QJ4zLwx7_eY) · [完整手册](corridor-newtab/README.zh-CN.md) · [隐私](PRIVACY.md) · [更新记录](CHANGELOG.md)
 
 <img src="media/zh-CN/1-wall.png" width="760" alt="美术馆展墙模式">
+
+<a href="https://youtu.be/QJ4zLwx7_eY"><img src="media/video-poster.jpg" width="760" alt="在 YouTube 上观看 60 秒短片"></a>
+
+▶ **[在 YouTube 上观看 60 秒短片](https://youtu.be/QJ4zLwx7_eY)**（英文）
 
 </div>
 

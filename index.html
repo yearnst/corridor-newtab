@@ -146,10 +146,9 @@ h1 .en-name{display:block;font-size:.26em;letter-spacing:.42em;color:var(--ink-f
 }
 .poem .ln{display:block}
 .poem .ln+.ln{margin-top:7px}
-@media(max-width:560px){.poem{line-height:1.95;text-align:left}}
+@media(max-width:560px){.poem{line-height:1.95}}
 /* 「办一个自己的画展」那两句：比导言大一号，颜色也提亮，当这一节的标题用 */
 .poem.yours{margin-top:6px;font-size:clamp(20px,2.4vw,26px);line-height:1.8;color:var(--ink)}
-@media(max-width:560px){.poem.yours{text-align:center}}
 
 /* 展签：出口处那张说明牌，两种主题下都是同一张纸 */
 .plaque{
@@ -190,6 +189,17 @@ h1 .en-name{display:block;font-size:.26em;letter-spacing:.42em;color:var(--ink-f
 }
 .shot img{width:100%}
 .shot-cap{margin:20px 0 0;font-size:12.5px;letter-spacing:.1em;color:var(--ink-faint)}
+
+/* ---------- 视频：点了才从 YouTube 加载，之前只是一张本地图 ---------- */
+.film .video{position:relative;max-width:980px;margin:0 auto;aspect-ratio:16/9;border-radius:10px;overflow:hidden;
+  border:1px solid var(--shot-edge);box-shadow:var(--shadow-hero);background:#140c08}
+.film .vplay{all:unset;display:block;width:100%;height:100%;cursor:pointer}
+.film .vplay img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .5s var(--ease),filter .3s var(--ease)}
+.film .vplay:hover img,.film .vplay:focus-visible img{transform:scale(1.012);filter:brightness(1.06)}
+.film .vplay:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.film iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.film .vnote{margin:18px auto 0;max-width:46em;text-align:center;font-size:12.5px;letter-spacing:.04em;color:var(--ink-faint)}
+.film .vnote a{color:var(--ink-dim)}
 
 /* ---------- 通用区块 ---------- */
 section{padding:clamp(64px,9vw,112px) 0;scroll-margin-top:62px}
@@ -301,6 +311,7 @@ footer .sig{font-family:var(--serif);letter-spacing:.1em;color:var(--ink-dim)}
   <div class="wrap">
     <a class="brand" href="#top">长&thinsp;廊 <small>Corridor</small></a>
     <nav>
+      <a class="hide-s" href="#film"><span class="i18n-zh">短片</span><span class="i18n-en">Film</span></a>
       <a class="hide-s" href="#what"><span class="i18n-zh">它能做什么</span><span class="i18n-en">Features</span></a>
       <a class="hide-s" href="#modes"><span class="i18n-zh">呈现方式</span><span class="i18n-en">Modes</span></a>
       <a href="#install"><span class="i18n-zh">安装</span><span class="i18n-en">Install</span></a>
@@ -362,6 +373,25 @@ footer .sig{font-family:var(--serif);letter-spacing:.1em;color:var(--ink-dim)}
         <span class="i18n-en">Gallery Wall · ebony-and-gilt frame · card mount · terracotta wall</span>
       </p>
     </div>
+  </div>
+</section>
+
+<section id="film" class="film">
+  <div class="wrap">
+    <div class="sec-head center">
+      <p class="kicker"><span class="i18n-zh">一分钟看懂</span><span class="i18n-en">See it in motion</span></p>
+      <h2><span class="i18n-zh">六十秒，走一遍长廊</span><span class="i18n-en">Sixty seconds in the Corridor</span></h2>
+    </div>
+    <div class="video" id="video">
+      <button class="vplay" type="button" data-yt="QJ4zLwx7_eY" aria-label="Play the 60-second film / 播放 60 秒短片">
+        <img loading="lazy" src="media/video-poster.jpg" width="1600" height="900"
+             alt="A browser opens a new tab and Corridor shows The Starry Night on a terracotta wall">
+      </button>
+    </div>
+    <p class="vnote">
+      <span class="i18n-zh">点播放后才从 YouTube（youtube-nocookie.com）加载，之前这一页不连 YouTube。也可以<a href="https://youtu.be/QJ4zLwx7_eY">在 YouTube 上看</a>。</span>
+      <span class="i18n-en">The film loads from YouTube (youtube-nocookie.com) only when you press play; until then this page makes no request to YouTube. Or <a href="https://youtu.be/QJ4zLwx7_eY">watch it on YouTube</a>.</span>
+    </p>
   </div>
 </section>
 
@@ -619,8 +649,10 @@ footer .sig{font-family:var(--serif);letter-spacing:.1em;color:var(--ink-dim)}
 <script>
 (function(){
   var btn=document.getElementById('lang'),body=document.body,saved=null;
-  try{saved=localStorage.getItem('corridor-lang')}catch(e){}
-  /* English first; Chinese only when the visitor has picked it with the button */
+  try{saved=localStorage.getItem('corridor-site-lang')}catch(e){}
+  /* English first; Chinese only when the visitor has picked it with the button.
+     The key was renamed from 'corridor-lang' so a Chinese choice saved by older versions
+     of this page (which followed the browser language) no longer overrides the English default. */
   var lang=(saved==='zh')?'zh':'en';
   var TITLE={en:'Corridor · Open a new tab. See a work of art.',zh:'长廊 Corridor · 打开新标签页，看见一幅画'};
   function apply(l){
@@ -641,7 +673,19 @@ footer .sig{font-family:var(--serif);letter-spacing:.1em;color:var(--ink-dim)}
   btn.addEventListener('click',function(){
     lang=(lang==='en'?'zh':'en');
     apply(lang);
-    try{localStorage.setItem('corridor-lang',lang)}catch(e){}
+    try{localStorage.setItem('corridor-site-lang',lang)}catch(e){}
+  });
+
+  /* 视频：点一下才把封面换成 YouTube 播放器（nocookie 域名，自动播放） */
+  Array.prototype.forEach.call(document.querySelectorAll('.vplay[data-yt]'),function(b){
+    b.addEventListener('click',function(){
+      var f=document.createElement('iframe');
+      f.src='https://www.youtube-nocookie.com/embed/'+b.getAttribute('data-yt')+'?autoplay=1&rel=0&modestbranding=1&playsinline=1';
+      f.title='Corridor · Art New Tab — 60-second film';
+      f.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';
+      f.allowFullscreen=true; f.referrerPolicy='strict-origin-when-cross-origin';
+      b.parentNode.replaceChild(f,b);
+    });
   });
 
   /* 明暗切换：head 里已经定过一次，这里只管点击之后的事 */

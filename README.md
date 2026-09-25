@@ -15,9 +15,13 @@ One beam of light, one atmosphere.
 
 **English** · [简体中文](README.zh-CN.md)
 
-[Install](#install) · [Features](#features) · [Manual](corridor-newtab/README.md) · [Privacy](PRIVACY.md) · [Changelog](CHANGELOG.md)
+[Install](#install) · [Features](#features) · [Film](https://youtu.be/QJ4zLwx7_eY) · [Manual](corridor-newtab/README.md) · [Privacy](PRIVACY.md) · [Changelog](CHANGELOG.md)
 
 <img src="media/1-wall.png" width="760" alt="Gallery Wall mode">
+
+<a href="https://youtu.be/QJ4zLwx7_eY"><img src="media/video-poster.jpg" width="760" alt="Watch the 60-second film on YouTube"></a>
+
+▶ **[Watch the 60-second film on YouTube](https://youtu.be/QJ4zLwx7_eY)**
 
 </div>
 
