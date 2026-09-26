@@ -190,14 +190,14 @@ h1 .en-name{display:block;font-size:.26em;letter-spacing:.42em;color:var(--ink-f
 .shot img{width:100%}
 .shot-cap{margin:20px 0 0;font-size:12.5px;letter-spacing:.1em;color:var(--ink-faint)}
 
-/* ---------- 视频：点了才从 YouTube 加载，之前只是一张本地图 ---------- */
+/* ---------- 视频：点了才加载本站的 mp4，之前只是一张本地图 ---------- */
 .film .video{position:relative;max-width:980px;margin:0 auto;aspect-ratio:16/9;border-radius:10px;overflow:hidden;
   border:1px solid var(--shot-edge);box-shadow:var(--shadow-hero);background:#140c08}
 .film .vplay{all:unset;display:block;width:100%;height:100%;cursor:pointer}
 .film .vplay img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .5s var(--ease),filter .3s var(--ease)}
 .film .vplay:hover img,.film .vplay:focus-visible img{transform:scale(1.012);filter:brightness(1.06)}
 .film .vplay:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-.film iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.film video{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;object-fit:contain}
 .film .vnote{margin:18px auto 0;max-width:46em;text-align:center;font-size:12.5px;letter-spacing:.04em;color:var(--ink-faint)}
 .film .vnote a{color:var(--ink-dim)}
 
@@ -379,18 +379,18 @@ footer .sig{font-family:var(--serif);letter-spacing:.1em;color:var(--ink-dim)}
 <section id="film" class="film">
   <div class="wrap">
     <div class="sec-head center">
-      <p class="kicker"><span class="i18n-zh">一分钟看懂</span><span class="i18n-en">See it in motion</span></p>
+      <p class="kicker"><span class="i18n-zh">一分半钟看懂</span><span class="i18n-en">See it in motion</span></p>
       <h2><span class="i18n-zh">九十秒，走一遍长廊</span><span class="i18n-en">Ninety seconds in the Corridor</span></h2>
     </div>
     <div class="video" id="video">
-      <button class="vplay" type="button" data-yt="5JPgNeUHIpg" aria-label="Play the 90-second film / 播放 90 秒短片">
+      <button class="vplay" type="button" data-src="media/corridor-film-90s.mp4" aria-label="Play the 90-second film / 播放 90 秒短片">
         <img loading="lazy" src="media/video-poster.jpg" width="1600" height="900"
              alt="A browser opens a new tab and Corridor shows The Starry Night on a terracotta wall">
       </button>
     </div>
     <p class="vnote">
-      <span class="i18n-zh">就在这一页里播放。点播放之后才从 YouTube（youtube-nocookie.com）加载，之前这一页不连 YouTube。</span>
-      <span class="i18n-en">It plays right here on the page. The player loads from YouTube (youtube-nocookie.com) only when you press play; until then this page makes no request to YouTube.</span>
+      <span class="i18n-zh">1080p，直接从本站播放，不经过任何第三方。想看 4K：<a href="https://youtu.be/5JPgNeUHIpg" target="_blank" rel="noopener">在 YouTube 上看 4K 版 ↗</a></span>
+      <span class="i18n-en">1080p, played straight from this site with no third-party player. For 4K, <a href="https://youtu.be/5JPgNeUHIpg" target="_blank" rel="noopener">watch it on YouTube ↗</a></span>
     </p>
   </div>
 </section>
@@ -676,15 +676,16 @@ footer .sig{font-family:var(--serif);letter-spacing:.1em;color:var(--ink-dim)}
     try{localStorage.setItem('corridor-site-lang',lang)}catch(e){}
   });
 
-  /* 视频：点一下才把封面换成 YouTube 播放器（nocookie 域名，自动播放） */
-  Array.prototype.forEach.call(document.querySelectorAll('.vplay[data-yt]'),function(b){
+  /* 视频：点一下才把封面换成本站的 mp4 播放器（之前一个字节都不下载） */
+  Array.prototype.forEach.call(document.querySelectorAll('.vplay[data-src]'),function(b){
     b.addEventListener('click',function(){
-      var f=document.createElement('iframe');
-      f.src='https://www.youtube-nocookie.com/embed/'+b.getAttribute('data-yt')+'?autoplay=1&rel=0&modestbranding=1&playsinline=1';
-      f.title='Corridor · Art New Tab — 90-second film';
-      f.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';
-      f.allowFullscreen=true; f.referrerPolicy='strict-origin-when-cross-origin';
-      b.parentNode.replaceChild(f,b);
+      var v=document.createElement('video');
+      v.src=b.getAttribute('data-src');
+      v.controls=true; v.playsInline=true; v.preload='auto';
+      v.setAttribute('playsinline','');
+      v.setAttribute('aria-label','Corridor · Art New Tab — 90-second film');
+      b.parentNode.replaceChild(v,b);
+      var p=v.play(); if(p&&p.catch) p.catch(function(){});
     });
   });
 
