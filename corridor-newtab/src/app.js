@@ -26,6 +26,7 @@ const HIDE_PARTS = [
   { k: 'chrome',  m: MODE_KEYS },
   { k: 'clock',   m: MODE_KEYS },
   { k: 'counter', m: MODE_KEYS },
+  { k: 'label',   m: ['immersive', 'wall', 'carousel', 'film'] },      // 整张展签
   { k: 'title',   m: MODE_KEYS },
   { k: 'artist',  m: MODE_KEYS },
   { k: 'meta',    m: ['immersive', 'wall', 'carousel', 'film', 'masonry'] },
@@ -58,7 +59,7 @@ const A = {                       // 应用状态
   list: [], idx: 0, cur: null, seed: 1,
   timer: null, tick: null, paused: false, layer: 'A',
   lang: 'zh', other: 'en', objUrls: new Set(), libTab: 'all', libQ: '', busy: false,
-  dtab: 'show', hover: null, lastDl: null, painted: null, daily: 0, fresh: 0, lib: 0, libName: '',
+  dtab: 'show', hover: null, moreOpen: new Set(), lastDl: null, painted: null, daily: 0, fresh: 0, lib: 0, libName: '',
   aiEye: false, aiAbort: null, aiPrev: null, aiReport: null,
   /* 分组折叠状态：提示词与 Chrome 页脚默认收着，别一开就是一屏文本 */
   fold: { aiprompt: true, chrome: true }, dq: '', labFlip: false,
@@ -223,6 +224,7 @@ function fadeSwap(el, fn) {
 }
 function paintMeta(w) {
   A.cur = w;
+  $('#btnZoom').style.display = w.video ? 'none' : '';
   document.documentElement.style.setProperty('--accent', uiAccent(w.vis.accent));
   document.documentElement.style.setProperty('--accent-lt', uiAccent(w.vis.accent, true));
   document.documentElement.style.setProperty('--accent-raw', w.vis.accent);
@@ -274,6 +276,7 @@ async function show(w, dir = 1) {
   paintMeta(w);
 
   const mode = A.set.mode;
+  stopOtherVideos(mode);
   if (mode === 'masonry' || mode === 'carousel' || mode === 'film') {
     if (A.painted !== mode) { await MODES.paintMode(mode); A.painted = mode; }
     else if (mode === 'carousel') MODES.syncCarousel(A.idx);
@@ -286,6 +289,21 @@ async function show(w, dir = 1) {
 
   const px = pickSize(w, targetWidthFor(w, mode));
   const url = imgUrl(w, px);
+
+  /* 视频：只在沉浸式与展墙里真的放。本机文件给一个 blob: 地址（浏览器按需读盘），
+     网址来源直接串流；拿不到就退回静帧，至少有画 */
+  if (w.video) {
+    let vsrc = '';
+    try { const m = await S.mediaURL(w.img.base); vsrc = m.url; if (m.own) A.objUrls.add(vsrc); } catch { }
+    if (A.cur !== w) { revoke(vsrc); return; }          // 取地址的工夫里又换了一幅
+    if (mode === 'wall') await paintWall(w, vsrc, true);
+    else await paintImmersive(w, vsrc, dir, true);
+    $('#boot').classList.add('gone');
+    S.pushHistory(w.id).then(h => A.hist = h);
+    startTimer();
+    prefetchAhead();
+    return;
+  }
 
   // 先用 LQIP 占位，避免空白
   let src = w.vis.lqip, cached = false;
@@ -305,20 +323,35 @@ async function show(w, dir = 1) {
 
   $('#boot').classList.add('gone');
   S.pushHistory(w.id).then(h => A.hist = h);
-  resetProgress();
+  startTimer();                 // 每换一幅重新计时：手动翻过去也从头算，和进度条对得上
   prefetchAhead();
   if (!cached) S.cacheTrim(A.set.cacheLimitMB * 1048576);
 }
 
-function paintImmersive(w, src, dir) {
+function paintImmersive(w, src, dir, vid = false) {
   return new Promise(res => {
     const next = A.layer === 'A' ? 'B' : 'A';
     const el = $('#lay' + next), img = $('img', el), old = $('#lay' + A.layer);
     const fit = fitMode(w);
-    const scrolling = w.format === 'scroll' && A.set.scrollPan;
+    const scrolling = !vid && w.format === 'scroll' && A.set.scrollPan;
     el.classList.toggle('contain', fit === 'contain' && !scrolling);
     el.classList.toggle('scrolling', scrolling);
-    $('.imm-bg', el).style.backgroundImage = (fit === 'contain' || scrolling) ? `url("${src}")` : 'none';
+    el.classList.toggle('vid', vid);
+    /* 视频的模糊底用那张 20px 的占位图就够了：糊到 52px 之后看不出差别 */
+    $('.imm-bg', el).style.backgroundImage = (fit === 'contain' || scrolling) ? `url("${vid ? w.vis.lqip : src}")` : 'none';
+    const oldVid = $('.imm-vid', old);
+    if (oldVid) oldVid.muted = true;               // 淡出的那一层先别出声
+    if (vid) {
+      const v = $('.imm-vid', el);
+      loadVideo(v, src).then(() => {
+        /* 放不了（编码不认、文件挪走了）：退回那张模糊的占位图，计时也回到按间隔 */
+        if (v._bad) { el.classList.remove('vid'); stopVideo(v); img.src = w.vis.lqip || ''; }
+        el.classList.add('on'); old.classList.remove('on'); A.layer = next;
+        setTimeout(() => { if (A.layer !== old.id.slice(3)) { stopVideo(oldVid); if (!$('.imm-vid', old).src) revoke($('img', old).src), $('img', old).removeAttribute('src'); } }, 1300);
+        res();
+      });
+      return;
+    }
     const oldSrc = $('img', old).src;
     const r = mulberry(hashStr(w.id))();
     el.style.setProperty('--kx1', (-0.8 + r * 0.5).toFixed(2) + '%');
@@ -341,7 +374,8 @@ function paintImmersive(w, src, dir) {
     }
     const done = () => {
       el.classList.add('on'); old.classList.remove('on'); A.layer = next;
-      setTimeout(() => { if ($('img', old).src !== img.src) revoke(oldSrc); }, 1300);
+      stopVideo($('.imm-vid', el));                // 这一层上回放过视频的话，收掉
+      setTimeout(() => { if ($('img', old).src !== img.src) revoke(oldSrc); if (A.layer !== old.id.slice(3)) stopVideo(oldVid); }, 1300);
       res();
     };
     img.onload = done; img.onerror = done;
@@ -349,17 +383,139 @@ function paintImmersive(w, src, dir) {
   });
 }
 
-function paintWall(w, src) {
+function paintWall(w, src, vid = false) {
   return new Promise(res => {
-    const wall = $('#wall'), img = $('#wallImg');
+    const wall = $('#wall'), img = $('#wallImg'), v = $('#wallVid'), bev = img.parentElement;
     const oldSrc = img.src;
+    if (v) v.muted = true;
     wall.classList.add('fading');
     setTimeout(() => {
+      if (vid) {
+        const oldV = v.src;
+        loadVideo(v, src).then(() => {
+          if (v._bad) { stopVideo(v); bev.classList.remove('vid'); img.src = w.vis.lqip || ''; wall.classList.remove('fading'); revoke(oldSrc); res(); return; }
+          bev.classList.add('vid'); img.removeAttribute('src');
+          wall.classList.remove('fading'); revoke(oldSrc); if (oldV !== v.src) revoke(oldV); res();
+        });
+        return;
+      }
       img.classList.toggle('scrollimg', w.format === 'scroll');
-      img.onload = img.onerror = () => { wall.classList.remove('fading'); revoke(oldSrc); res(); };
+      img.onload = img.onerror = () => { bev.classList.remove('vid'); stopVideo(v); wall.classList.remove('fading'); revoke(oldSrc); res(); };
       img.src = src;
     }, 380);
   });
+}
+
+/* ---------------- 视频 ----------------
+   沉浸式两层各有一个 <video>，展墙一个。装片子时先静音，等第一帧出来再揭开；
+   出声、循环、播放还是暂停，统一交给 startTimer 里的 syncVideo 决定。 */
+function loadVideo(v, src) {
+  return new Promise(res => {
+    let fin = false;
+    const done = () => { if (fin) return; fin = true; clearTimeout(t); v.removeEventListener('loadeddata', done); v.removeEventListener('error', bad); res(); };
+    const bad = () => { v._bad = true; done(); };
+    const t = setTimeout(done, 8000);
+    const old = v.src;
+    v._bad = false; v.muted = true; v.loop = true; v.playsInline = true;
+    v.addEventListener('loadeddata', done); v.addEventListener('error', bad);
+    if (!src) { bad(); return; }
+    v.src = src;
+    if (old && old !== src && old.startsWith('blob:') && !$$('video').some(x => x !== v && x.src === old)) revoke(old);
+  });
+}
+function stopVideo(v) {
+  if (!v || !v.getAttribute('src')) return;
+  const u = v.src;
+  v.pause(); v.removeAttribute('src'); try { v.load(); } catch { }
+  if (!$$('video').some(x => x.src === u)) revoke(u);
+}
+/* 当前这一幅若是视频，而且画面上正在放，返回那个 <video> */
+function curVideo() {
+  if (!A.cur?.video || pausedOn()) return null;
+  const v = A.set.mode === 'immersive' ? $('#lay' + A.layer + ' .imm-vid')
+    : A.set.mode === 'wall' ? $('#wallVid') : null;
+  return v && v.getAttribute('src') ? v : null;
+}
+/* 这一幅的停留时长交给视频自己：设成「播完整段」、开着定时轮换、没暂停、片子读得出时长 */
+function videoDrives(v) {
+  return !!v && !v._bad && A.set.videoLen === 'full' && A.set.intervalMs > 0 && !A.paused
+    && Number.isFinite(v.duration) && v.duration > 0;
+}
+function syncVideo() {
+  const v = curVideo(); if (!v) { paintVol(); return; }
+  v.loop = !videoDrives(v);
+  if (A.paused || document.hidden) { v.pause(); paintVol(); return; }
+  applyVol(v);
+  v.play().catch(() => {
+    /* 浏览器不让自动出声：先静音放着，底栏那颗喇叭亮起来；用户在页面上点一下就把声音打开 */
+    if (!v.muted) { A.soundBlocked = true; v.muted = true; v.play().catch(() => { }); paintVol(); }
+  });
+  paintVol();
+}
+/* 音量：设置里存的是 0–100 与一个「静音」开关；浏览器挡着出声时先静音 */
+const wantMuted = () => !!A.set.videoMute || !A.set.videoVol;
+function applyVol(v) {
+  if (!v) return;
+  v.volume = Math.min(1, Math.max(0, (A.set.videoVol ?? 60) / 100));
+  v.muted = wantMuted() || !!A.soundBlocked;
+}
+/* 底栏的喇叭：当前是视频才露面；图标、音量条、提示跟着状态走 */
+function paintVol() {
+  const wrap = $('#volWrap'); if (!wrap) return;
+  const v = curVideo();
+  wrap.hidden = !v;
+  if (!v) return;
+  const off = wantMuted() || A.soundBlocked;
+  const b = $('#btnVol');
+  b.innerHTML = `<svg><use href="#i-${off ? 'vol-off' : 'vol'}"></use></svg>`;
+  b.classList.toggle('blocked', !!A.soundBlocked && !wantMuted());
+  const tip = A.soundBlocked && !wantMuted() ? T('videoSoundBlocked') : off ? T('videoUnmute') : T('videoMuteBtn');
+  b.setAttribute('aria-label', tip); b.title = tip;
+  const r = $('#volRange'), vol = A.set.videoMute ? 0 : (A.set.videoVol ?? 60);
+  if (document.activeElement !== r) r.value = vol;
+  r.style.setProperty('--fill', vol + '%');
+  r.setAttribute('aria-label', T('videoVol'));
+  $('#volVal').textContent = vol + '%';
+}
+/* 改音量：先让片子立刻变，再落到设置里（拖动过程中不落盘） */
+let volSaveT = null;
+function setVol(vol, save = true) {
+  vol = Math.min(100, Math.max(0, Math.round(vol)));
+  A.set = { ...A.set, videoVol: vol, videoMute: vol === 0 ? A.set.videoMute : false };
+  applyVol(curVideo()); paintVol();
+  clearTimeout(volSaveT);
+  if (save) volSaveT = setTimeout(async () => { A.set = await S.setSettings({ videoVol: A.set.videoVol, videoMute: A.set.videoMute }); }, 250);
+}
+async function toggleMute() {
+  if (A.soundBlocked) { unlockSound(); return; }
+  /* 音量是 0 时点喇叭：直接回到 60%，不然「取消静音」了还是没声音 */
+  const patch = wantMuted() ? { videoMute: false, videoVol: A.set.videoVol || 60 } : { videoMute: true };
+  A.set = await S.setSettings(patch);
+  applyVol(curVideo()); paintVol();
+  if (drawerOpen()) renderDrawer();
+}
+/* 用户点了页面：浏览器从这一刻起允许出声 */
+function unlockSound() {
+  if (!A.soundBlocked) return false;
+  if (navigator.userActivation && !navigator.userActivation.isActive) return false;   // Esc 之类不算数
+  A.soundBlocked = false;
+  const v = curVideo(); applyVol(v);
+  if (v && !A.paused) v.play().catch(() => {
+    /* 还是不让：退回静音接着放，喇叭继续亮着 */
+    A.soundBlocked = true; v.muted = true; v.play().catch(() => { }); paintVol();
+  });
+  paintVol();
+  return true;
+}
+/* 换到别的看法时，把不归它管的那几个 <video> 收掉，别在底下接着放 */
+function stopOtherVideos(mode) {
+  if (mode !== 'wall') { stopVideo($('#wallVid')); $('#wallImg')?.parentElement.classList.remove('vid'); }
+  if (mode !== 'immersive') $$('.imm-vid').forEach(stopVideo);
+}
+function toggleVideo() {
+  /* 这一下点击刚刚替用户把声音打开了，就别再顺带把片子暂停 */
+  if (Date.now() - (A.unlockAt || 0) < 700) return;
+  A.paused = !A.paused; MODES.setPaused(A.paused); startTimer(); toast(A.paused ? T('videoPaused') : T('videoPlaying'));
 }
 
 function paintCard(w) {
@@ -485,7 +641,8 @@ async function paintPaused() {
 
   /* 暂歇时停掉轮换与各模式的动画：不展画就别在后台空转 */
   MODES.stopLoops(); MODES.setPaused(true);
-  clearInterval(A.timer); A.timer = null;               // 不展画就别在后台空转
+  clearTimeout(A.timer); A.timer = null;               // 不展画就别在后台空转
+  $$('#stage video').forEach(v => v.pause());          // 视频也停下，别在长廊背后接着出声
   const style = PAUSE.styleOf(A.set);
   wrap.dataset.style = style;
   document.body.dataset.offstyle = style;      // 告示与索引那两种要把墙也撤掉
@@ -732,20 +889,46 @@ function resetProgress() {
   bar.style.transition = 'none'; bar.style.width = '0';
   void bar.offsetWidth;
   const live = !['masonry', 'carousel', 'film'].includes(A.set.mode);
-  if (live && A.set.intervalMs > 0 && !A.paused) {
+  const v = curVideo();
+  if (live && videoDrives(v)) {
+    /* 视频说了算：进度条跟着片子走，从已经放到的地方接着走完剩下那一段 */
+    const left = Math.max(0, v.duration - v.currentTime) * 1000 / (v.playbackRate || 1);
+    bar.style.width = (v.currentTime / v.duration * 100).toFixed(2) + '%';
+    void bar.offsetWidth;
+    if (v.paused) { bar.style.transition = 'none'; return; }
+    bar.style.transition = `width ${Math.round(left)}ms linear`;
+    bar.style.width = '100%';
+  } else if (live && A.set.intervalMs > 0 && !A.paused) {
     bar.style.transition = `width ${A.set.intervalMs}ms linear`;
     bar.style.width = '100%';
   } else bar.style.transition = 'width .3s';
 }
+/* 每换一幅重新起一次表（setTimeout，不是 setInterval）：
+   这一幅停多久，要看它是图片还是视频、视频设成播完还是按间隔 */
 function startTimer() {
-  clearInterval(A.timer); A.timer = null;
+  clearTimeout(A.timer); A.timer = null;
   const still = !['masonry', 'carousel', 'film'].includes(A.set.mode);
-  if (still && A.set.intervalMs > 0 && !A.paused) A.timer = setInterval(() => go(1), A.set.intervalMs);
+  const v = still ? curVideo() : null;
+  syncVideo();
+  if (still && A.set.intervalMs > 0 && !A.paused && !videoDrives(v)) A.timer = setTimeout(() => go(1), A.set.intervalMs);
   $('#btnPlay').innerHTML = `<svg><use href="#i-${A.paused ? 'play' : 'pause'}"></use></svg>`;
-  $('#btnPlay').dataset.tip = A.paused ? T('play') : T('pause');
-  $('#btnPlay').style.display = (A.set.intervalMs > 0 || ['masonry', 'carousel'].includes(A.set.mode)) ? '' : 'none';
+  $('#btnPlay').dataset.tip = v ? (A.paused ? T('videoPlay') : T('videoPause')) : A.paused ? T('play') : T('pause');
+  $('#btnPlay').style.display = (A.set.intervalMs > 0 || ['masonry', 'carousel'].includes(A.set.mode) || v) ? '' : 'none';
   resetProgress();
 }
+/* 视频播完：设成「播完整段」时由它来翻到下一幅；读不出时长或出错时回到按间隔 */
+function onVideoEnded(e) {
+  const v = e.target;
+  if (v !== curVideo() || !videoDrives(v)) return;
+  go(1);
+}
+function onVideoTrouble(e) {
+  const v = e.target;
+  if (e.type === 'error') v._bad = true;
+  if (v === curVideo()) startTimer();
+}
+/* 片子卡住又接上、或者被暂停又继续时，进度条从当下的位置接着走 */
+function onVideoPlaying(e) { if (e.target === curVideo()) resetProgress(); }
 
 /* 展厅：画框、墙色、纹理、浅色墙的界面反色 */
 function frameDef(k) { return FRAMES.find(f => f.k === k) || FRAMES[0]; }
@@ -997,6 +1180,8 @@ function renderFilters() {
   });
 }
 
+/* 缩略图角上那个小小的播放标记，带时长 */
+const vbadge = (w) => `<span class="vbadge" title="${esc(T('videoItem'))}"><svg viewBox="0 0 10 10"><path d="M2.5 1.5v7l6-3.5z"/></svg>${w.dur ? esc(LOCAL.fmtDur(w.dur)) : ''}</span>`;
 function renderGrid() {
   const list = libFiltered(), g = $('#libGrid');
   $('#libTitle').textContent = T('library') + '  ' + list.length;
@@ -1007,6 +1192,7 @@ function renderGrid() {
       <img class="real" data-id="${w.id}" data-src="${esc(imgUrl(w, w.img.sizes.includes(330) ? 330 : w.img.sizes[0]))}" alt="">
       ${A.favs.includes(w.id) ? '<span class="star"><svg><use href="#i-star"></use></svg></span>' : ''}
       ${A.set.workSafe && w.mature ? `<span class="skipbadge" title="${esc(T('skipTip'))}">${esc(T('skipBadge'))}</span>` : ''}
+      ${w.video ? vbadge(w) : ''}
       <div class="cap"><b>${esc(tx(w.title))}</b><span>${esc([tx(w.artist), dtw(w, 'year')].filter(Boolean).join(' · '))}</span></div>
     </div>`).join('');
   $$('.cell', g).forEach(c => c.onclick = async () => { closeSheets(); await jumpTo(c.dataset.id, viewMode()); });
@@ -1097,6 +1283,8 @@ function zoomAt(f, cx, cy) {
   clampZ(); applyZ();
 }
 async function zoomOpen(w) {
+  /* 视频没有放大这一说；在环形长廊、胶卷、瀑布流里点开一段视频，就挂到展墙上去放 */
+  if (w.video) { if (!['immersive', 'wall'].includes(A.set.mode)) jumpTo(w.id, 'wall'); return; }
   openSheet('#zoomSheet'); Z.on = true;
   $('#zoomTitle').textContent = tx(w.title) + ' — ' + tx(w.artist);
   $('#zoomSize').textContent = w.img.w + ' × ' + w.img.h;
@@ -1305,11 +1493,28 @@ const drawerOpen = () => document.body.classList.contains('drawer-open');
 
 /* 统一的设置区块 */
 const dsec = (t) => `<div class="dsec">${esc(t)}</div>`;
+/* ---------------- 说明文字 ----------------
+   每一项只常显一句短的；需要多说的放进「详细」：标题旁一个 ⓘ，点开在短句下面展开，再点收起。
+   详细写在 i18n 里同名加 More 的那一条（localDesc → localDescMore）。
+   调用处传 K('xxxDesc') 表示「这条可能有详细」；直接传字符串的就只是一句话。 */
+const K = (k) => ({ k });
+const moreOf = (k) => { const m = k ? T(k + 'More') : ''; return m === k + 'More' ? '' : m; };
+const infoBtn = (k) => `<button class="dinfo${A.moreOpen.has(k) ? ' on' : ''}" type="button" data-more="${k}"
+  aria-expanded="${A.moreOpen.has(k)}" title="${esc(T('moreInfo'))}" aria-label="${esc(T('moreInfo'))}"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5"/><path d="M8 7.3v4.2M8 4.7v.3"/></svg></button>`;
+const moreBox = (k) => `<div class="dmore" data-morebox="${k}"${A.moreOpen.has(k) ? '' : ' hidden'}>${esc(moreOf(k))}</div>`;
+const dS = (d) => d && typeof d === 'object' ? T(d.k) : (d || '');
+const dK = (d) => d && typeof d === 'object' && moreOf(d.k) ? d.k : '';
+/* 一段没有标题的说明：短句末尾挂 ⓘ */
+const dnote = (k, attrs = '') => { const m = moreOf(k);
+  return `<div class="dbd"${attrs}>${esc(T(k))}${m ? infoBtn(k) : ''}</div>${m ? moreBox(k) : ''}`; };
+/* 标题 + 短说明（+ ⓘ 挂在标题旁） */
+const dhead = (title, desc) => { const k = dK(desc);
+  return `<div class="dbt">${esc(title)}${k ? infoBtn(k) : ''}</div>${dS(desc) ? `<div class="dbd">${esc(dS(desc))}</div>` : ''}${k ? moreBox(k) : ''}`; };
 const dblock = (title, desc, ctrl) => `<div class="dblock">
-  <div class="dbt">${esc(title)}</div>${desc ? `<div class="dbd">${esc(desc)}</div>` : ''}
+  ${dhead(title, desc)}
   <div class="dbc">${ctrl}</div></div>`;
 const dinline = (title, desc, ctrl) => `<div class="dblock inline">
-  <div class="dbl"><div class="dbt">${esc(title)}</div>${desc ? `<div class="dbd">${esc(desc)}</div>` : ''}</div>
+  <div class="dbl">${dhead(title, desc)}</div>
   ${ctrl}</div>`;
 /* 芯片底色：自带本色的材质就用它自己的本色 —— 一眼看得出黄铜是黄铜、木头是木头 */
 const texChip = (x, cur) => `<button class="texchip${cur === x.k ? ' on' : ''}" data-pick="tex" data-k="${x.k}">
@@ -1325,7 +1530,8 @@ function texGrid(cur) {
       <div class="texgrid">${items.map(x => texChip(x, cur)).join('')}</div>`;
   }).join('');
 }
-const dctrl = (desc, ctrl) => `<div class="dblock">${desc ? `<div class="dbd nt">${esc(desc)}</div>` : ''}<div class="dbc">${ctrl}</div></div>`;
+const dctrl = (desc, ctrl) => { const k = dK(desc);
+  return `<div class="dblock">${dS(desc) ? `<div class="dbd nt">${esc(dS(desc))}${k ? infoBtn(k) : ''}</div>${k ? moreBox(k) : ''}` : ''}<div class="dbc">${ctrl}</div></div>`; };
 
 /* ---------------- 墙面颜色 ----------------
    色卡按「中性 / 展厅色 / 柔彩」分三排，末尾一格是自定义色板。
@@ -1545,8 +1751,8 @@ async function scanOne(src, opt = {}) {
       say(r.err === 'noperm' || r.err === 'nohandle' ? T('libNeedGrant') : r.err);
       return r;
     }
-    await S.setLibSource({ ...src, err: '' }, r.works);
-    say(`${T('libDone')} ${r.works.length}`);
+    await S.setLibSource({ ...src, err: '', skip: r.skip || {} }, r.works);
+    say(`${T('libDone')} ${r.works.length}` + skipTxt(r.skip, ' · '));
     return r;
   } catch (e) {
     if (e && e.name === 'AbortError') return { ok: false };
@@ -1728,15 +1934,20 @@ function srcCard(x) {
         ${isUrl ? '' : `<button class="bigbtn sm" data-srcrepick="${esc(x.id)}">${esc(T('libRepick'))}</button>`}
         <button class="bigbtn sm" data-srcdrop="${esc(x.id)}">${esc(T('libRemove'))}</button>
       </div>
-      <div class="dbd srcstat" data-srcstat="${esc(x.id)}">${esc(x.at ? T('libLast', { n: x.n || 0 }) : '')}</div>
+      <div class="dbd srcstat" data-srcstat="${esc(x.id)}">${esc(x.at ? T('libLast', { n: x.n || 0 }) + skipTxt(x.skip, ' · ') : '')}</div>
     </div></div>
   </div>`;
 }
 
+/* 扫描时浏览器解不了、只好跳过的那些：「跳过 3 个 HEIC、1 个 JXL（这个浏览器打不开）」 */
+function skipTxt(skip, lead = '') {
+  const e = Object.entries(skip || {}).filter(([, n]) => n > 0);
+  if (!e.length) return '';
+  return lead + T('libSkip', { list: e.map(([k, n]) => `${n} ${k.toUpperCase()}`).join(LG.isCJK(A.lang) ? '、' : ', ') });
+}
 function libBlock() {
   const list = A.libSrcs || [];
-  return `<div class="dblock"><div class="dbd">${esc(T('localDesc'))}</div>
-    <div class="dbd" style="margin-top:6px">${esc(T('libTip'))}</div>
+  return `<div class="dblock">${dnote('localDesc')}
     ${list.length ? `<div class="srclist">${list.map(srcCard).join('')}</div>`
       : `<div class="dbd srcempty">${esc(T('libNone2'))}</div>`}
     <div class="dbc btnrow" style="margin-top:10px">
@@ -1774,7 +1985,7 @@ function roleBlock(ai, profs) {
     return `<i class="rbadge ${okk ? 'ok' : 'no'}">${esc(okk ? T('pbTested') : T('pbUntested'))}</i>`;
   };
   return `<div class="dblock inline">
-      <div class="dbl"><div class="dbt">${esc(T('aiSplit'))}</div><div class="dbd">${esc(T('aiSplitDesc'))}</div></div>
+      <div class="dbl">${dhead(T('aiSplit'), K('aiSplitDesc'))}</div>
       ${toggle('ai.split', ai.split)}
     </div>` +
     (ai.split ? `<div class="dblock"><div class="aigrid rolegrid">
@@ -1805,11 +2016,11 @@ function langBlock(s) {
         <div class="tinrow"><input class="tin" id="langNewIn" placeholder="${esc(T('langCustomTip'))}"
           spellcheck="false" autocomplete="off"><button class="bigbtn sm pri" id="langNewOk">${esc(T('apply'))}</button></div></div>` : ''}
       <div class="dbd lphint">${esc(open ? T('langFlipTip') : T('langBuiltinOnly'))}</div>
-      ${open ? '' : `<div class="dbd lplock"><s>!</s><span>${esc(T('langLocked'))}</span>
-        <button class="bigbtn sm" id="btnLangGoAi">${esc(T('langGoAi'))}</button></div>`}
+      ${open ? '' : `<div class="dbd lplock"><s>!</s><span>${esc(T('langLocked'))}${infoBtn('langLocked')}</span>
+        <button class="bigbtn sm" id="btnLangGoAi">${esc(T('langGoAi'))}</button></div>${moreBox('langLocked')}`}
     </div>` +
     (custom ? `<div class="dblock trbox">
-      <div class="dbl"><div class="dbt">${esc(T('trOn'))}</div><div class="dbd">${esc(T('trDesc'))}</div></div>
+      <div class="dbl">${dhead(T('trOn'), K('trDesc'))}</div>
       ${toggle('loc.tr', s.loc.tr)}
     </div>` + (s.loc.tr ? `<div class="dblock">
       <div class="aigrid trgrid">
@@ -1822,7 +2033,7 @@ function langBlock(s) {
         <div>${numSel('loc.per', s.loc.per, [1, 2, 4, 6, 8].map(v => ({ v, t: String(v) })), null, 1, 10, T('trWorks'))}</div>
       </div>
       <div class="dblock inline" style="padding:0;margin-top:4px">
-        <div class="dbl"><div class="dbt">${esc(T('trPack'))}</div><div class="dbd">${esc(T('trPackDesc'))}</div></div>
+        <div class="dbl">${dhead(T('trPack'), K('trPackDesc'))}</div>
         ${toggle('loc.pack', s.loc.pack)}
       </div>
       <div class="dbc btnrow" style="margin-top:10px">
@@ -1865,7 +2076,7 @@ async function buildTab(tab, s) {
         `</div>`) : ''),
       '', 'motion animation 动效 隐藏') +
     grp('film', T('filmStyle'),
-      dctrl(T('filmStyleDesc'), seg('film', FILMS.map(f => ({ v: f.k, t: T('film_' + f.k) })), s.film)) +
+      dctrl(K('filmStyleDesc'), seg('film', FILMS.map(f => ({ v: f.k, t: T('film_' + f.k) })), s.film)) +
       dinline(T('filmEdge'), T('filmEdgeDesc'), toggle('filmEdge', s.filmEdge)) +
       dblock(T('filmRun'), '', seg('filmRun', [{ v: 'glide', t: T('filmGlide') }, { v: 'step', t: T('filmStep') }], s.filmRun)),
       T('film_' + s.film), 'film 胶卷 胶片', '', ['film']) +
@@ -1906,8 +2117,11 @@ async function buildTab(tab, s) {
     return grp('interval', T('interval'),
       dinline(T('newTab'), T('newTabDesc'), toggle('newTabAdvance', s.newTabAdvance)) +
       mo(['wall', 'immersive'], dblock(T('timed'), T('timedDesc'), `<select class="sel" data-sel="intervalMs">${ivOpts.map(o => `<option value="${o.v}"${String(o.v) === String(s.intervalMs) ? ' selected' : ''}>${esc(o.t)}</option>`).join('')}</select>`)) +
+      mo(['wall', 'immersive'], dblock(T('videoLen'), K('videoLenDesc'), seg('videoLen', [{ v: 'full', t: T('videoLenFull') }, { v: 'interval', t: T('videoLenInterval') }], s.videoLen)) +
+        dblock(T('videoVol'), K('videoVolDesc'), slider('videoVol', 0, 100, 5, s.videoVol, s.videoVol + '%')) +
+        dinline(T('videoMute'), '', toggle('videoMute', s.videoMute))) +
       dblock(T('order'), '', seg('order', [{ v: 'shuffle', t: T('shuffle') }, { v: 'sequential', t: T('sequential') }], s.order)),
-      ivNow ? ivNow.t : '', 'interval timer 轮换 定时') +
+      ivNow ? ivNow.t : '', 'interval timer video sound 轮换 定时 视频 声音') +
     grp('pace', T('carInt') + ' · ' + T('filmInt'),
       dblock(T('carInt'), T('carIntDesc'), paceSel('carouselMs', s.carouselMs)) +
       dblock(T('filmInt'), T('filmIntDesc'), paceSel('filmMs', s.filmMs)),
@@ -1949,7 +2163,7 @@ async function buildTab(tab, s) {
         <div class="dbc"><button class="bigbtn sm" id="btnAiPcopy">${esc(T('copy'))}</button></div>` : ''}`;
 
     return grp('daily', T('daily'),
-      `<div class="dblock"><div class="dbd">${esc(T('dailyDesc'))}</div></div>` +
+      `<div class="dblock">${dnote('dailyDesc')}</div>` +
       dblock(T('dailyN'), T('dailyNDesc'), numSel('dailyN', s.dailyN,
         [1, 2, 3, 5, 8].map(v => ({ v, t: String(v) })), null, 1, 12, T('aiWorks'))) +
       dblock(T('rvWall'), T('rvWallDesc'), seg('rvWall', [
@@ -1975,7 +2189,7 @@ async function buildTab(tab, s) {
       toggle('localLib', s.localLib)) +
 
     grp('ai', T('ai'),
-      `<div class="dblock"><div class="dbd">${esc(T('aiDesc'))}</div></div>` +
+      `<div class="dblock">${dnote('aiDesc')}</div>` +
       (ai.on ? `<div class="dblock">
         <div class="dbt">${esc(T('aiProfile'))}</div>
         <div class="dbc profrow">
@@ -1996,7 +2210,7 @@ async function buildTab(tab, s) {
           <div>${seg('pf.fmt', [{ v: 'auto', t: T('aiFmtAuto') }, { v: 'openai', t: 'OpenAI' }, { v: 'anthropic', t: 'Anthropic' }], cp.fmt)}</div>
           <label>${esc(T('aiBase'))}</label>
           <div>${tin('pf.base', cp.base, 'https://api.openai.com/v1')}<i class="tint">${esc(T('aiBaseTip'))}</i>
-            ${cpLocal ? `<i class="tint">${esc(T('aiLocalNote'))}</i>` : ''}</div>
+            ${cpLocal ? `<i class="tint">${esc(T('aiLocalNote'))}${infoBtn('aiLocalNote')}</i>${moreBox('aiLocalNote')}` : ''}</div>
           <label>${esc(T('aiKey'))}</label>
           <div class="tinrow">${tin('pf.key', cp.key, cpLocal ? T('aiKeyLocalPh') : 'sk-…', A.aiEye ? 'text' : 'password')}
             <button class="bigbtn sm" id="btnAiEye">${esc(A.aiEye ? T('aiHide') : T('aiShow'))}</button></div>
@@ -2039,27 +2253,27 @@ async function buildTab(tab, s) {
       dinline(T('scopeDaily'), '', toggle('ai.forDaily', ai.forDaily)) +
       dinline(T('localLib'), '', toggle('ai.forLocal', ai.forLocal)) +
       dinline(T('aiAuto'), T('aiAutoDesc'), toggle('ai.auto', ai.auto)) +
-      dblock(T('aiSched'), T('aiSchedDesc'), numSel('ai.sched', ai.sched, SCHED_OPTS(), SCHED_UNITS(), 15, 43200)) +
+      dblock(T('aiSched'), K('aiSchedDesc'), numSel('ai.sched', ai.sched, SCHED_OPTS(), SCHED_UNITS(), 15, 43200)) +
       dblock(T('aiRename'), T('aiRenameDesc'), seg('ai.rename', [
         { v: 'auto', t: T('aiRenameAuto') }, { v: 'always', t: T('aiRenameAlways') }, { v: 'never', t: T('aiRenameNever') }], ai.rename)) +
       dinline(T('aiNote'), T('aiNoteDesc'), toggle('ai.note', ai.note)) +
       dinline(T('aiOver'), T('aiOverDesc'), toggle('ai.over', ai.over)) +
       dblock(T('aiBatch'), '', numSel('ai.batch', ai.batch, [5, 10, 20, 50, 100, 200].map(v => ({ v, t: String(v) })), null, 1, 2000, T('aiWorks'))) +
       dblock(T('aiConcur'), T('aiConcurDesc'), numSel('ai.concur', ai.concur, [1, 2, 3, 4].map(v => ({ v, t: String(v) })), null, 1, 8)) +
-      dblock(T('aiRetry'), T('aiRetryDesc'), numSel('ai.retry', ai.retry, [
+      dblock(T('aiRetry'), K('aiRetryDesc'), numSel('ai.retry', ai.retry, [
         { v: 0, t: T('aiRetry0') }, { v: 1, t: '1 ' + T('aiTimes') }, { v: 2, t: '2 ' + T('aiTimes') },
         { v: 3, t: '3 ' + T('aiTimes') }, { v: -1, t: T('aiRetryInf') }], null, 0, 20, T('aiTimes'))),
       ai.sched ? schedTxt(ai.sched) : T('aiSchedOff'), 'schedule batch retry 定时 张数 并发 重试') : '') +
 
     (ai.on ? grp('aiprompt', T('aiPrompt'),
       `<div class="dblock"><div class="dbd phint">${esc(T('aiVars'))}${AI.PLACEHOLDERS.map(v => `<code>{${v}}</code>`).join(' ')}</div>
-        <div class="dbd" style="margin-top:6px">${esc(T('aiVarsDesc'))}</div>
-        <div class="dbd" style="margin-top:6px">${esc(T('aiPLang'))}</div>
+        ${dnote('aiVarsDesc', ' style="margin-top:6px"')}
+        ${dnote('aiPLang', ' style="margin-top:6px"')}
         ${ped('Sys', T('aiPSys'), '', P.sys, '')}
         ${ped('Art', T('aiPArt'), T('aiPArtDesc'), P.art, 'art')}
         ${ped('Any', T('aiPAny'), T('aiPAnyDesc'), P.any, 'any')}</div>` +
-      `<div class="dblock"><div class="dbd">${esc(T('aiPrivacy'))}</div>
-        <div class="dbd" style="margin-top:6px;opacity:.7">${esc(T('aiRedoDesc'))}</div></div>`,
+      `<div class="dblock">${dnote('aiPrivacy')}
+        ${dnote('aiRedoDesc', ' style="margin-top:6px;opacity:.7"')}</div>`,
       (S1(ai.pSys) || S1(ai.pArt) || S1(ai.pAny)) ? T('aiEdited') : T('aiDefault'),
       'prompt 提示词 模板') : '');
   }
@@ -2091,7 +2305,7 @@ async function buildTab(tab, s) {
           <button class="bigbtn pri" id="btnExport">${esc(T('exportBtn'))}</button>
           <button class="bigbtn" id="btnOpenFolder">${esc(T('openFolder'))}</button>
         </div></div>` +
-      `<div class="dblock"><div class="dbt">${esc(T('cachePath'))}</div><div class="dbd">${esc(T('cachePathDesc'))}</div>
+      `<div class="dblock">${dhead(T('cachePath'), K('cachePathDesc'))}
         <div class="pathbox"><code id="dbPath">${esc(dbPath())}</code><button id="btnCopyPath">${esc(T('copyPath'))}</button></div></div>`,
       '', 'export download 导出 下载 路径') +
     grp('chrome', 'Chrome',
@@ -2316,7 +2530,7 @@ async function offBlock(s) {
   const rows = links.map((x, i) => `<div class="offrow">
       <b>${esc(x.name || PAUSE.hostOf(x.url))}</b><i>${esc(x.url)}</i>
       <button class="bigbtn sm" data-offdel="${i}">${esc(T('offDel'))}</button></div>`).join('');
-  return `<div class="dblock"><div class="dbd">${esc(T('offDesc'))}</div></div>` +
+  return `<div class="dblock">${dnote('offDesc')}</div>` +
     dblock(T('offStyle'), T('offStyleDesc'), seg('offStyle', [
       { v: 'tag', t: T('offStyleTag') }, { v: 'notice', t: T('offStyleNotice') }, { v: 'index', t: T('offStyleIndex') }], s.offStyle)) +
     (s.offStyle === 'tag' ? dblock(T('offSkin'), T('offSkinDesc'), seg('offTagSkin', [
@@ -2341,7 +2555,7 @@ async function offBlock(s) {
           ? `${toggle('offTabs', s.offTabs)}<button class="bigbtn sm" id="offTabDrop">${esc(T('offDropPerm'))}</button>`
           : `<button class="bigbtn pri" id="offTabGrant">${esc(T('offTabsAsk'))}</button>`}
       </div>
-      <div class="dbd" style="margin-top:7px;opacity:.75">${esc(T('offTabsNote'))}</div>
+      ${dnote('offTabsNote', ' style="margin-top:7px;opacity:.75"')}
     </div>` +
     dblock(T('offN'), T('offNDesc'), numSel('offN', s.offN, [4, 6, 8, 10, 12].map(v => ({ v, t: String(v) })), null, 1, 24, T('offUnit'))) +
     `<div class="dblock">
@@ -2355,8 +2569,7 @@ async function offBlock(s) {
       </div>
     </div>
     <div class="dblock">
-      <div class="dbt">${esc(T('offHidden'))}</div>
-      <div class="dbd">${esc(T('offHiddenDesc'))}</div>
+      ${dhead(T('offHidden'), K('offHiddenDesc'))}
       ${hidden.length ? `<div class="offlist">${hidden.map(e => `<div class="offrow">
         <b>${esc(e.h)}</b><i>${esc(e.r != null ? T('offHidRank', { n: e.r + 1 }) : e.n ? T('offHidTabs', { n: e.n }) : '')}</i>
         <button class="bigbtn sm" data-offback="${esc(e.h)}">${esc(T('offBack'))}</button>
@@ -2366,8 +2579,7 @@ async function offBlock(s) {
         : `<div class="dbd" style="opacity:.6">${esc(T('offHiddenNone'))}</div>`}
     </div>` +
     (blocked.length ? `<div class="dblock">
-      <div class="dbt">${esc(T('offBlocked'))}</div>
-      <div class="dbd">${esc(T('offBlockedDesc'))}</div>
+      ${dhead(T('offBlocked'), K('offBlockedDesc'))}
       <div class="offlist">${blocked.map(h => `<div class="offrow">
         <b>${esc(h)}</b><i></i>
         <button class="bigbtn sm" data-offunblock="${esc(h)}">${esc(T('offUnblock'))}</button></div>`).join('')}</div>
@@ -2389,8 +2601,8 @@ function backupBlock() {
       { v: 'none', t: T('bkKeysNone') }, { v: 'enc', t: T('bkKeysEnc') }, { v: 'plain', t: T('bkKeysPlain') }], b.keys)}</div>
     ${b.keys === 'enc' ? `<div class="dbc tinrow">${tin('bk.pass', b.pass, T('bkPassPh'), A.bkEye ? 'text' : 'password')}
       <button class="bigbtn sm" id="btnBkEye">${esc(A.bkEye ? T('aiHide') : T('aiShow'))}</button></div>
-      <div class="dbd">${esc(T('bkEncNote'))}</div>` : ''}
-    ${b.keys === 'plain' ? `<div class="bkwarn">${esc(T('bkPlainWarn'))}</div>` : ''}
+      ${dnote('bkEncNote')}` : ''}
+    ${b.keys === 'plain' ? `<div class="bkwarn">${esc(T('bkPlainWarn'))}${infoBtn('bkPlainWarn')}</div>${moreBox('bkPlainWarn')}` : ''}
   </div>`;
 
   const why = ['notjson', 'notours', 'newer'].includes(sum && sum.why) ? sum.why : 'notours';
@@ -2402,12 +2614,12 @@ function backupBlock() {
         <ul class="bklist">${sum.rows.map(r => `<li><b>${esc(T('bkP_' + r.k))}</b><i>${r.n}</i></li>`).join('')}</ul>
         ${sum.needPass ? `<div class="dbc">${tin('bk.pass2', b.pass2, T('bkPassPh'), 'password')}</div>` : ''}
         <div class="dbc">${seg('bk.mode', [{ v: 'replace', t: T('bkModeReplace') }, { v: 'merge', t: T('bkModeMerge') }], b.mode)}</div>
-        <div class="dbd">${esc(b.mode === 'replace' ? T('bkModeReplaceDesc') : T('bkModeMergeDesc'))}</div>
+        ${dnote(b.mode === 'replace' ? 'bkModeReplaceDesc' : 'bkModeMergeDesc')}
         <div class="dbc btnrow"><button class="bigbtn pri" id="btnBkApply">${esc(T('bkApply'))}</button>
           <button class="bigbtn" id="btnBkDrop">${esc(T('bkDrop'))}</button></div>
       </div>`;
 
-  return `<div class="dblock"><div class="dbd">${esc(T('bkDesc'))}</div></div>` +
+  return `<div class="dblock">${dnote('bkDesc')}</div>` +
     dctrl(T('bkPick'), chks('bk.parts', partOpts, b.parts)) +
     keyRow +
     `<div class="dblock"><div class="dbc btnrow">
@@ -2417,7 +2629,7 @@ function backupBlock() {
     </div>
     ${b.msg ? `<div class="dbd" style="margin-top:8px">${esc(b.msg)}</div>` : ''}
     ${imp}</div>` +
-    `<div class="dblock"><div class="dbd">${esc(T('bkNotIncluded'))}</div></div>`;
+    `<div class="dblock">${dnote('bkNotIncluded')}</div>`;
 }
 
 /* ---------------- 已移除的那些 ----------------
@@ -2437,7 +2649,7 @@ function goneBlock() {
   return `<div class="dblock"><div class="dbd">${esc(T('goneDesc'))}</div>
     <div class="gonelist">${rows}</div>
     ${ids.length > 200 ? `<div class="dbd" style="margin-top:6px">${esc(T('goneMore', { n: ids.length - 200 }))}</div>` : ''}
-    ${lost.length ? `<div class="dbd" style="margin-top:8px">${esc(T('goneLostDesc'))}</div>` : ''}
+    ${lost.length ? dnote('goneLostDesc', ' style="margin-top:8px"') : ''}
     <div class="dbc btnrow"><button class="bigbtn" id="btnGoneAll">${esc(T('goneBackAll'))}</button>
       ${lost.length ? `<button class="bigbtn" id="btnGoneLost">${esc(T('goneClearLost', { n: lost.length }))}</button>` : ''}
     </div></div>`;
@@ -2539,6 +2751,16 @@ async function renderDrawer(toTop = false) {
   });
 
   $$('[data-seg2]', body).forEach(b => b.onclick = async () => { await applySetting(b.dataset.seg2, b.dataset.v); renderDrawer(); });
+  /* ⓘ：在短句下面展开 / 收起详细说明；重画抽屉后保持原样 */
+  $$('[data-more]', body).forEach(b => b.onclick = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const k = b.dataset.more, box = $(`[data-morebox="${CSS.escape(k)}"]`, body);
+    if (!box) return;
+    const open = box.hidden;
+    box.hidden = !open;
+    b.classList.toggle('on', open); b.setAttribute('aria-expanded', String(open));
+    if (open) A.moreOpen.add(k); else A.moreOpen.delete(k);
+  });
   $$('[data-seg] button', body).forEach(b => b.onclick = async () => {
     const k = b.closest('[data-seg]').dataset.seg;
     if (k.startsWith('pf.')) { await saveProf({ [k.slice(3)]: b.dataset.v }); renderDrawer(); return; }
@@ -2730,6 +2952,8 @@ async function renderDrawer(toTop = false) {
     return s2;
   };
   liveSlider('wallSat', 0, 200, pctFmt, v => previewSet({ wallSat: v }), 'wallSat');
+  /* 视频音量：拖的时候片子的音量跟着变 */
+  liveSlider('videoVol', 0, 100, v => v + '%', v => { const cv = curVideo(); if (cv) { cv.volume = v / 100; cv.muted = !v || !!A.set.videoMute || !!A.soundBlocked; } }, 'videoVol');
   liveSlider('wallTemp', -100, 100, v => signFmt(v, T('cool'), T('warm')), v => previewSet({ wallTemp: v }), 'wallTemp');
   liveSlider('lampBright', 0, 200, pctFmt, v => previewSet({ lamp: { bright: v } }), 'lamp.bright');
   liveSlider('lampAngle', -60, 60, v => v + '°', v => previewSet({ lamp: { angle: v } }), 'lamp.angle');
@@ -3204,8 +3428,8 @@ const AI_BOOL = ['on', 'forDaily', 'forLocal', 'auto', 'over', 'note', 'split'];
 async function applySetting(key, val) {
   /* src.<来源 id>.<字段> 走的不是设置，而是图库那份存储 */
   if (String(key).startsWith('src.')) return applySrc(key, val);
-  if (['kenburns', 'autohide', 'workSafe', 'scrollPan', 'newTabAdvance', 'dailyNew', 'localLib', 'filmEdge', 'off', 'offTop'].includes(key)) val = !!val;
-  if (['intervalMs', 'cacheLimitMB', 'matScale', 'carouselMs', 'filmMs', 'wallSat', 'wallTemp'].includes(key)) val = Number(val);
+  if (['kenburns', 'autohide', 'workSafe', 'scrollPan', 'newTabAdvance', 'dailyNew', 'localLib', 'filmEdge', 'off', 'offTop', 'videoMute'].includes(key)) val = !!val;
+  if (['intervalMs', 'cacheLimitMB', 'matScale', 'carouselMs', 'filmMs', 'wallSat', 'wallTemp', 'videoVol'].includes(key)) val = Number(val);
   /* 嵌套设置（ai.base 这种）写成一层层的补丁，交给 setSettings 深合并 */
   if (String(key).includes('.')) {
     const ks = String(key).split('.');
@@ -3230,6 +3454,9 @@ async function applySetting(key, val) {
     if (!val) { A.painted = null; await show(A.list[A.idx] || A.list[0]); MODES.setPaused(A.paused); startTimer(); armIdle(); }
     return; }
   if (['rvWall', 'rvWallCustom'].includes(key)) { tintReveal(A.set); return; }
+  /* 视频的两项：不用重画，重新算一次这一幅该停多久、该不该出声 */
+  if (key === 'videoLen') { startTimer(); return; }
+  if (key === 'videoMute' || key === 'videoVol') { applyVol(curVideo()); paintVol(); return; }
   if (key === 'ui' && pausedOn()) await paintPaused();
   if (key === 'ai') { try { chrome.runtime.sendMessage({ type: 'ai-arm' }); } catch { } }
   [A.lang, A.other] = resolveLang(A.set);
@@ -3423,8 +3650,31 @@ function wire() {
   $('#btnHide').onclick = () => hideCurrent();
   $('#btnPause').onclick = () => togglePause();
   $('#btnZoom').onclick = () => A.cur && zoomOpen(A.cur);
-  $('.frame-wrap').onclick = () => A.cur && zoomOpen(A.cur);
-  $$('.imm-img').forEach(i => i.onclick = () => { if (A.set.mode === 'immersive') A.cur && zoomOpen(A.cur); });
+  $('.frame-wrap').onclick = () => A.cur && (A.cur.video ? toggleVideo() : zoomOpen(A.cur));
+  $$('.imm-img').forEach(i => i.onclick = () => { if (A.set.mode === 'immersive' && A.cur) A.cur.video ? toggleVideo() : zoomOpen(A.cur); });
+  /* 视频：点画面＝暂停 / 继续；播完、出错、卡顿后接上，都回头问一次该怎么计时 */
+  $$('#stage video').forEach(v => {
+    v.addEventListener('ended', onVideoEnded);
+    v.addEventListener('error', onVideoTrouble);
+    v.addEventListener('playing', onVideoPlaying);
+    if (v.classList.contains('imm-vid')) v.onclick = () => { if (A.set.mode === 'immersive' && A.cur?.video) toggleVideo(); };
+  });
+  /* 切到别的标签页就停下，回来接着放（也省得几个标签页一起出声） */
+  document.addEventListener('visibilitychange', () => { if (curVideo()) { syncVideo(); resetProgress(); } });
+  /* 设了出声、浏览器却只肯静音自动播放：用户在页面上点的第一下，顺手把声音打开 */
+  addEventListener('pointerdown', (e) => {
+    if (!A.soundBlocked || e.target.closest?.('#volWrap')) return;
+    if (unlockSound()) A.unlockAt = Date.now();
+  }, { capture: true });
+  addEventListener('keydown', () => { if (A.soundBlocked) unlockSound(); }, { capture: true });
+  /* 底栏的喇叭：点一下静音 / 出声；鼠标停上去冒出音量条；滚轮也能调 */
+  $('#btnVol').onclick = () => toggleMute();
+  $('#volRange').oninput = (e) => setVol(Number(e.target.value), false);
+  $('#volRange').onchange = (e) => { setVol(Number(e.target.value)); if (drawerOpen()) renderDrawer(); };
+  $('#volWrap').addEventListener('wheel', (e) => {
+    e.preventDefault();
+    setVol((A.set.videoMute ? 0 : A.set.videoVol) + (e.deltaY < 0 ? 5 : -5));
+  }, { passive: false });
   $('#btnInfo').onclick = () => { if (!A.cur) return; A.infoAlt = false; renderInfo(A.cur); openSheet('#infoSheet'); };
   $('#btnLang').onclick = () => { if (!A.cur) return; A.infoAlt = !A.infoAlt; renderInfo(A.cur); };
   $('#btnDl').onclick = () => A.cur && download(A.cur);
@@ -3517,6 +3767,13 @@ function wire() {
       case 'ArrowLeft': case 'k': if (!Z.on) { e.preventDefault(); go(-1); } break;
       case 'Escape': if (open) { e.preventDefault(); closeSheets(); } else if (drawerOpen()) { e.preventDefault(); closeDrawer(); } break;
       case ' ': if (!open) { e.preventDefault(); A.paused = !A.paused; startTimer(); } break;
+      /* ↑ ↓：当前是视频时调音量 */
+      case 'ArrowUp': case 'ArrowDown': if (!open && !Z.on && curVideo()) {
+        e.preventDefault();
+        if (A.soundBlocked) unlockSound();
+        setVol((A.set.videoMute ? 0 : A.set.videoVol) + (e.key === 'ArrowUp' ? 10 : -10));
+        toast(T('videoVol') + ' ' + (A.set.videoMute ? 0 : A.set.videoVol) + '%');
+      } break;
       /* 字母快捷键一律 preventDefault：藏品库一打开就把焦点给了搜索框，
          不拦住的话这个字母会接着被打进那个框里（按 L 打开，框里就先躺了个 l）。
          上面已经把「焦点在输入框里」的情况提前 return 掉了，这里拦不到正常打字。 */
@@ -3658,6 +3915,8 @@ async function init() {
     S.getTr(), S.getPacks(), S.getGone()
   ]);
   S.setLocalReader(LOCAL.readFile);
+  S.setPosterMaker(LOCAL.videoPoster);
+  S.setImageConverter(LOCAL.displayBlob);
   A.set = set; A.tr = tr || {}; [A.lang, A.other] = resolveLang(set); A.favs = favs; A.hist = hist; A.gone = gone;
   /* 界面语言包：非中英的语言，文案是模型译好存在本机的，这里灌回词表 */
   for (const [c, pk] of Object.entries(packs || {})) if (c === A.lang || c === A.other) applyPack(c, pk);
@@ -3690,7 +3949,7 @@ async function init() {
   await S.setCursor({ idx: A.idx, at: Date.now(), sig: listSig() });
 
   MODES.setupModes({
-    S, A, imgUrl, pickSize, stageW, esc, tx, dt, dtw, capHTML,
+    S, A, imgUrl, pickSize, stageW, esc, tx, dt, dtw, capHTML, vbadge,
     T, jumpTo, setIndex,
     zoomCurrent: () => A.cur && zoomOpen(A.cur)
   });

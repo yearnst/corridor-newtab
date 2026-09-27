@@ -28,8 +28,16 @@ function applyDir() {
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = n => n < 1048576 ? (n / 1024).toFixed(0) + ' KB' : n < 1073741824 ? (n / 1048576).toFixed(1) + ' MB' : (n / 1073741824).toFixed(2) + ' GB';
 function toast(m) { const e = $('#toast'); e.textContent = m; e.classList.add('on'); setTimeout(() => e.classList.remove('on'), 1800); }
-const row = (l, s, c) => `<div class="row"><div class="lab"><b>${esc(l)}</b>${s ? `<span>${esc(s)}</span>` : ''}</div>${c}</div>`;
-const block = (l, s, c) => `<div class="row" style="display:block"><div class="lab" style="margin-bottom:8px"><b>${esc(l)}</b>${s ? `<span>${esc(s)}</span>` : ''}</div>${c}</div>`;
+/* 说明：短句常显；传 K('xxxDesc') 且词表里有 xxxDescMore 的，标题旁挂 ⓘ，点开看详细（与新标签页抽屉同一套） */
+const K = (k) => ({ k });
+const moreOf = (k) => { const m = T(k + 'More'); return m === k + 'More' ? '' : m; };
+const dS = (d) => d && typeof d === 'object' ? T(d.k) : (d || '');
+const dK = (d) => d && typeof d === 'object' && moreOf(d.k) ? d.k : '';
+const info = (d) => dK(d) ? `<button class="dinfo" type="button" data-more="${dK(d)}" aria-expanded="false" title="${esc(T('moreInfo'))}"
+  aria-label="${esc(T('moreInfo'))}"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5"/><path d="M8 7.3v4.2M8 4.7v.3"/></svg></button>` : '';
+const box = (d) => dK(d) ? `<div class="dmore" data-morebox="${dK(d)}" hidden>${esc(moreOf(dK(d)))}</div>` : '';
+const row = (l, s, c) => `<div class="row"><div class="lab"><b>${esc(l)}${info(s)}</b>${dS(s) ? `<span>${esc(dS(s))}</span>` : ''}${box(s)}</div>${c}</div>`;
+const block = (l, s, c) => `<div class="row" style="display:block"><div class="lab" style="margin-bottom:8px"><b>${esc(l)}${info(s)}</b>${dS(s) ? `<span>${esc(dS(s))}</span>` : ''}${box(s)}</div>${c}</div>`;
 const seg = (id, o, cur) => `<div class="seg" data-seg="${id}">${o.map(x => `<button data-v="${esc(x.v)}" class="${String(x.v) === String(cur) ? 'on' : ''}">${esc(x.t)}</button>`).join('')}</div>`;
 const tg = (id, on) => `<button class="sw-toggle${on ? ' on' : ''}" data-tg="${id}" role="switch" aria-checked="${!!on}"></button>`;
 function dbPath() {
@@ -75,15 +83,20 @@ async function render() {
     `<div class="sectitle">${esc(T('interval'))}</div>` +
     row(T('newTab'), T('newTabDesc'), tg('newTabAdvance', set.newTabAdvance)) +
     row(T('timed'), T('timedDesc'), `<select class="sel" data-sel="intervalMs">${ivOpts.map(o => `<option value="${o.v}"${String(o.v) === String(set.intervalMs) ? ' selected' : ''}>${esc(o.t)}</option>`).join('')}</select>`) +
+    row(T('videoLen'), K('videoLenDesc'), seg('videoLen', [{ v: 'full', t: T('videoLenFull') }, { v: 'interval', t: T('videoLenInterval') }], set.videoLen)) +
+    block(T('videoVol'), K('videoVolDesc'),
+      `<div class="slider"><input type="range" id="videoVol" min="0" max="100" step="5" value="${set.videoVol}"
+         style="--fill:${set.videoVol}%"><b id="videoVolVal">${set.videoVol}%</b></div>`) +
+    row(T('videoMute'), '', tg('videoMute', set.videoMute)) +
     row(T('carInt'), T('carIntDesc'), `<select class="sel" data-sel="carouselMs">${paceOpts(set.carouselMs)}</select>`) +
     row(T('filmInt'), T('filmIntDesc'), `<select class="sel" data-sel="filmMs">${paceOpts(set.filmMs)}</select>`) +
     row(T('order'), '', seg('order', [{ v: 'shuffle', t: T('shuffle') }, { v: 'sequential', t: T('sequential') }], set.order)) +
     row(T('quality'), '', `<select class="sel" data-sel="quality">${[['auto', 'qAuto'], ['saver', 'qSaver'], ['high', 'qHigh'], ['max', 'qMax']].map(([v, k]) => `<option value="${v}"${set.quality === v ? ' selected' : ''}>${esc(T(k))}</option>`).join('')}</select>`) +
     row(T('workSafe'), '', tg('workSafe', set.workSafe)) +
-    row(T('daily'), T('dailyDesc'), tg('dailyNew', set.dailyNew)) +
-    row(T('localLib'), T('localDesc'), tg('localLib', set.localLib)) +
-    `<div class="row" style="display:block"><div class="lab"><b>${esc(T('ai'))}</b>
-      <span>${esc(T('aiDesc'))}</span></div>
+    row(T('daily'), K('dailyDesc'), tg('dailyNew', set.dailyNew)) +
+    row(T('localLib'), K('localDesc'), tg('localLib', set.localLib)) +
+    `<div class="row" style="display:block"><div class="lab"><b>${esc(T('ai'))}${info(K('aiDesc'))}</b>
+      <span>${esc(T('aiDesc'))}</span>${box(K('aiDesc'))}</div>
       <div class="lab" style="margin-top:7px"><span>${esc(T('aiOptHint'))}</span></div></div>` +
 
     `<div class="sectitle">${esc(T('mode_wall'))}</div>` +
@@ -106,7 +119,7 @@ async function render() {
          <s>${esc(lx(x, lang))}</s></button>`).join('')}</div>` : '';
     }).join('')) +
     `<div class="sectitle">${esc(T('mode_film'))}</div>` +
-    row(T('filmStyle'), T('filmStyleDesc'), seg('film', ['positive','negative','bw','slide','cine'].map(k => ({ v: k, t: T('film_' + k) })), set.film)) +
+    row(T('filmStyle'), K('filmStyleDesc'), seg('film', ['positive','negative','bw','slide','cine'].map(k => ({ v: k, t: T('film_' + k) })), set.film)) +
     row(T('filmRun'), '', seg('filmRun', [{ v: 'glide', t: T('filmGlide') }, { v: 'step', t: T('filmStep') }], set.filmRun)) +
     row(T('filmEdge'), T('filmEdgeDesc'), tg('filmEdge', set.filmEdge)) +
 
@@ -122,7 +135,7 @@ async function render() {
        <div style="display:flex;gap:8px"><button class="bigbtn pri" id="pf">${esc(T('cacheAll'))}</button>
        <button class="bigbtn" id="cl">${esc(T('cacheClear'))}</button></div></div>` +
     row(T('cacheLimit'), '', `<select class="sel" data-sel="cacheLimitMB">${[200, 400, 600, 1000, 2000].map(v => `<option value="${v}"${set.cacheLimitMB === v ? ' selected' : ''}>${v} MB</option>`).join('')}</select>`) +
-    `<div class="row" style="display:block"><div class="lab"><b>${esc(T('cachePath'))}</b><span>${esc(T('cachePathDesc'))}</span></div>
+    `<div class="row" style="display:block"><div class="lab"><b>${esc(T('cachePath'))}${info(K('cachePathDesc'))}</b><span>${esc(T('cachePathDesc'))}</span>${box(K('cachePathDesc'))}</div>
        <div class="pathbox"><code>${esc(dbPath())}</code><button id="cp">${esc(T('copyPath'))}</button></div>
        <div style="display:flex;gap:8px;margin-top:11px"><button class="bigbtn" id="of">${esc(T('openFolder'))}</button></div></div>` +
 
@@ -143,6 +156,11 @@ async function render() {
        <span style="display:block;margin-top:6px;opacity:.8">© ${new Date().getFullYear()} Charles Chern · MIT License</span></div>`;
 
   $$('[data-seg] button').forEach(b => b.onclick = () => save(b.closest('[data-seg]').dataset.seg, b.dataset.v));
+  $$('[data-more]').forEach(b => b.onclick = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const bx = $(`[data-morebox="${CSS.escape(b.dataset.more)}"]`); if (!bx) return;
+    bx.hidden = !bx.hidden; b.classList.toggle('on', !bx.hidden); b.setAttribute('aria-expanded', String(!bx.hidden));
+  });
   $$('[data-tg]').forEach(b => b.onclick = () => save(b.dataset.tg, !set[b.dataset.tg]));
   $$('[data-sel]').forEach(s => s.onchange = () => save(s.dataset.sel, s.value));
   $$('[data-pick]').forEach(b => b.onclick = () => save(b.dataset.pick, b.dataset.k));
@@ -154,6 +172,11 @@ async function render() {
       $('#matScaleVal').textContent = v.toFixed(2) + '×';
     };
     ms.onchange = () => save('matScale', Number(ms.value));
+  }
+  const vv = $('#videoVol');
+  if (vv) {
+    vv.oninput = () => { vv.style.setProperty('--fill', vv.value + '%'); $('#videoVolVal').textContent = vv.value + '%'; };
+    vv.onchange = () => save('videoVol', Number(vv.value));
   }
   $('#cp').onclick = () => { navigator.clipboard?.writeText(dbPath()); toast(T('copied')); };
   $('#of').onclick = async () => {
@@ -170,8 +193,8 @@ async function render() {
   };
 }
 async function save(k, v) {
-  if (['workSafe', 'kenburns', 'newTabAdvance', 'dailyNew', 'localLib', 'filmEdge'].includes(k)) v = !!v;
-  if (['intervalMs', 'cacheLimitMB', 'matScale', 'carouselMs', 'filmMs'].includes(k)) v = Number(v);
+  if (['workSafe', 'kenburns', 'newTabAdvance', 'dailyNew', 'localLib', 'filmEdge', 'videoMute'].includes(k)) v = !!v;
+  if (['intervalMs', 'cacheLimitMB', 'matScale', 'carouselMs', 'filmMs', 'videoVol'].includes(k)) v = Number(v);
   set = await S.setSettings({ [k]: v }); [lang, other] = resolveLang(set);
   await loadPacks(); applyDir();
   document.body.dataset.frame = set.frame;

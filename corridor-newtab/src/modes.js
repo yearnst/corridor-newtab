@@ -54,7 +54,7 @@ export function paintMasonry() {
      挂在它身上的占位图会跟着一起被藏起来，格子就是一块纯色 —— 那正是
      「刚进瀑布流时上面一片空白」的原因。 */
   const cell = (w) => `<div class="mcell${w.id === C.A.cur?.id ? ' cur' : ''}" data-id="${w.id}" style="aspect-ratio:${w.img.ar};background-image:url(${C.esc(w.vis.lqip || '')})">
-      <img data-id="${w.id}" data-px="500" alt="">
+      <img data-id="${w.id}" data-px="500" alt="">${w.video && C.vbadge ? C.vbadge(w) : ''}
       <div class="mcap"><b>${C.esc(C.tx(w.title))}</b><span>${C.esc([C.tx(w.artist), C.dtw(w, 'year')].filter(Boolean).join(' · '))}</span></div>
     </div>`;
   // 内容复制一份，实现无缝循环滚动

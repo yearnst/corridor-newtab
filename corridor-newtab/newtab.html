@@ -17,6 +17,8 @@
   <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.6v.6"/></symbol>
   <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.2"/></symbol>
   <symbol id="i-set" viewBox="0 0 24 24"><path d="M10.39 2.84L13.61 2.84L13.08 5.18L16.06 6.42L17.33 4.38L19.62 6.67L17.58 7.94L18.82 10.92L21.16 10.39L21.16 13.61L18.82 13.08L17.58 16.06L19.62 17.33L17.33 19.62L16.06 17.58L13.08 18.82L13.61 21.16L10.39 21.16L10.92 18.82L7.94 17.58L6.67 19.62L4.38 17.33L6.42 16.06L5.18 13.08L2.84 13.61L2.84 10.39L5.18 10.92L6.42 7.94L4.38 6.67L6.67 4.38L7.94 6.42L10.92 5.18Z" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.1"/></symbol>
+  <symbol id="i-vol" viewBox="0 0 24 24"><path d="M4 9.4h3.4L12 5.6v12.8l-4.6-3.8H4z"/><path d="M15.4 9.2a4 4 0 010 5.6M17.9 6.7a7.6 7.6 0 010 10.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-vol-off" viewBox="0 0 24 24"><path d="M4 9.4h3.4L12 5.6v12.8l-4.6-3.8H4z"/><path d="M15.6 9.6l4.8 4.8M20.4 9.6l-4.8 4.8" stroke-linecap="round"/></symbol>
   <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9.5 5v14M14.5 5v14"/></symbol>
   <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.8l12 7.2-12 7.2z"/></symbol>
   <symbol id="i-frame" viewBox="0 0 24 24"><rect x="3.2" y="4.2" width="17.6" height="15.6" rx="1.4"/><path d="M6.4 7.4h11.2v9.2H6.4z"/></symbol>
@@ -43,8 +45,8 @@
 </svg>
 
 <div id="stage">
-  <div class="layer" id="layA"><div class="imm-bg"></div><img class="imm-img" alt=""></div>
-  <div class="layer" id="layB"><div class="imm-bg"></div><img class="imm-img" alt=""></div>
+  <div class="layer" id="layA"><div class="imm-bg"></div><img class="imm-img" alt=""><video class="imm-vid" muted playsinline preload="auto" disablepictureinpicture></video></div>
+  <div class="layer" id="layB"><div class="imm-bg"></div><img class="imm-img" alt=""><video class="imm-vid" muted playsinline preload="auto" disablepictureinpicture></video></div>
   <div id="wall">
     <div id="walltex"><i></i></div>
     <div id="wallmottle"></div>
@@ -55,7 +57,7 @@
       <div class="frame-wrap">
         <div class="frame">
           <span class="lip"></span>
-          <div class="mat"><span class="bevel"><img id="wallImg" alt=""><span class="artshade"></span></span></div>
+          <div class="mat"><span class="bevel"><img id="wallImg" alt=""><video id="wallVid" muted playsinline preload="auto" disablepictureinpicture></video><span class="artshade"></span></span></div>
         </div>
       </div>
       <div class="lb-slot">
@@ -128,6 +130,7 @@
     <span id="counter"></span>
     <button class="iconbtn" id="btnPrev" data-tip=""><svg><use href="#i-left"></use></svg></button>
     <button class="iconbtn" id="btnPlay" data-tip=""><svg><use href="#i-pause"></use></svg></button>
+    <span class="volwrap" id="volWrap" hidden><button class="iconbtn" id="btnVol" aria-label=""><svg><use href="#i-vol"></use></svg></button><span class="volpop"><input type="range" id="volRange" min="0" max="100" step="5" value="60" aria-label=""><b id="volVal"></b></span></span>
     <button class="iconbtn" id="btnNext" data-tip=""><svg><use href="#i-right"></use></svg></button>
     <button class="iconbtn" id="btnFav"  data-tip=""><svg><use href="#i-star"></use></svg></button>
     <button class="iconbtn" id="btnHide" data-tip=""><svg><use href="#i-hide"></use></svg></button>

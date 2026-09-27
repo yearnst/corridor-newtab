@@ -218,7 +218,7 @@ export async function ask(ai, sys, user, dataURL, signal, maxTok) {
 
 /* ---------------- 图片 ---------------- */
 async function toJPEG(blob, px = MAXPX) {
-  const bmp = await createImageBitmap(blob);
+  const bmp = await S.bitmapOf(blob);            // svg 走 <img>，别的直接解
   const k = Math.min(1, px / Math.max(bmp.width, bmp.height));
   const w = Math.max(1, Math.round(bmp.width * k)), h = Math.max(1, Math.round(bmp.height * k));
   const c = new OffscreenCanvas(w, h);

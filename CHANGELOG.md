@@ -19,6 +19,80 @@ Every entry is in English first; the Chinese text is folded under **中文**.
 
 ---
 
+## [1.25.0] — 2026-09-27
+
+Videos join the rotation: the ones in your Custom sources now play alongside your images. SVG, TIFF, HEIC and JPEG XL can come in too.
+
+### Added
+
+* **Videos in your folders and online galleries come in too**
+  mp4, m4v, webm and mov are recognized. Videos play in Immersive and on the Gallery Wall, where they hang inside the frame.
+  Masonry, the Circular Gallery, the Filmstrip and the Library show a still with a ▶ and the length in the corner; open one and it goes up on the Gallery Wall to play.
+* **You decide how long a video stays**
+  Settings → Rotation → Video length. By default it's “Play to the end”: the next work comes up when the video finishes, and the progress bar follows the video.
+  Choose “Follow interval” and videos change on the same timer as images: short clips loop until it's time, long ones are cut off.
+* **Sound, with a volume you can set**
+  Videos play with sound at 60% by default. While one plays, a speaker next to the play button mutes and unmutes it, and hovering over it brings up a volume bar (drag or scroll); the ↑ ↓ keys work too.
+  The same volume and a “Mute” switch are in Settings → Rotation. If the browser won't let a new page start with sound, the video plays muted and the speaker lights up; one click anywhere on the page brings the sound in.
+* Click the picture, press Space or use the pause button to pause a video. It stops when you switch to another tab and picks up when you come back.
+* **“Label” under Hide interface when idle**
+  Tick it and the whole label fades out after a few idle seconds: the wall label on the Gallery Wall, the info card in Immersive, and the label under the Circular Gallery and the Filmstrip. It's unticked by default.
+* **More image formats: SVG, TIFF, HEIC, JPEG XL**
+  SVG hangs at its own proportions. TIFF (.tif / .tiff, up to 200 MB), HEIC / HEIF and JPEG XL go to the browser first;
+  what it can't open is decoded on your computer by decoders that ship with the extension, in the background so the page doesn't stall.
+  iPhone photos come out the right way up. Files that can't be opened at all are skipped, and the source card says how many.
+* Folders you added before need one “Rescan” for their videos and new formats to show up. If all seven image formats were checked, the new ones are checked for you; if you had picked only some, nothing changes.
+
+### Fixes and improvements
+
+* **Shorter notes in Settings**
+  Each setting now carries one short line. Where there's more to say, an ⓘ next to the title opens the details, and a second click closes them. The Options page works the same way.
+* After you move to another work by hand, Timed rotation now starts counting from zero. Before, the timer kept its old count, so a work could change before the progress bar reached the end.
+
+### Privacy and permissions
+
+* No new permissions. The page's security policy changes in two places: it may play video from the same places images already come from (the extension itself, local files you picked, https addresses and local servers),
+  and it may run the extension's own image decoders in a background worker, including their WebAssembly parts. Nothing is loaded from outside the extension.
+  Local images and videos are still never copied, uploaded or cached.
+
+<details>
+<summary markdown="span">中文</summary>
+
+视频也能轮播了：自定义图库里的视频，和图片一起上墙；SVG、TIFF、HEIC、JPEG XL 也能收进来。
+
+### 新增
+
+* **文件夹与在线图库里的视频会一起收进来**
+  认 mp4、m4v、webm、mov。视频在沉浸式和展墙里播放，展墙上它装在画框里挂着。
+  瀑布流、环形长廊、胶卷和藏品库里是一张静帧，角上标着 ▶ 和时长；点开它，就挂到展墙上去放。
+* **视频停留多久，由你来定**
+  设置 → 轮换 → 视频停留多久。默认「播完整段」：放完才换下一幅，进度条跟着片子走。
+  选「按轮换间隔」，视频就和图片一样到点就换：短片循环着等，长片到点就切。
+* **有声音，音量可调**
+  视频默认有声，音量 60%。放视频时，底栏播放键旁边多一个喇叭：点一下静音 / 出声，鼠标停上去冒出音量条（拖动或滚轮），↑ ↓ 键也能调。
+  设置 → 轮换 里有同一个音量和「静音」开关。浏览器不让新页面自动出声时，视频先静音放着，喇叭亮起来；在页面上随便点一下，声音就出来了。
+* 点画面、按空格或点暂停键，可以暂停视频。切到别的标签页时自动停下，回来接着放。
+* **「静止时隐藏界面」多了「展签」**
+  勾上后，静止几秒整张展签一起淡出：展墙的墙签、沉浸式的信息卡、环形长廊与胶卷的展签。默认不勾。
+* **更多图片格式：SVG、TIFF、HEIC、JPEG XL**
+  SVG 按它自己的比例挂上墙。TIFF（.tif / .tiff，最大 200 MB）、HEIC / HEIF、JPEG XL 先让浏览器解；
+  它解不了的，由扩展自带的解码器在本机后台解开，页面不卡。iPhone 竖拍的照片会摆正。实在打不开的扫描时跳过，来源卡片上写着跳过了几个。
+* 以前加的文件夹，要点一次「重扫」视频和新格式才会进来。那时 7 种图片格式全勾着的，新格式会自动勾上；只勾了其中几种的，照原样不动。
+
+### 修复与优化
+
+* **设置里的说明短了**
+  每一项只留一句话。需要多说的，标题旁有个 ⓘ，点开看详细，再点收起。选项页也一样。
+* 手动换到别的作品之后，定时轮换从头计时。以前计时器不跟着重来，进度条还没走完，画就可能被换掉。
+
+### 隐私与权限
+
+* 没有新增权限。页面的安全策略改了两处：允许播放视频，来源和图片一样（扩展自己、你选的本机文件、https 网址和本机服务）；
+  允许扩展自带的图片解码器在后台 worker 里运行，包括它们的 WebAssembly 部分。不从扩展以外加载任何东西。
+  本机图片和视频照样不复制、不上传、不进缓存。
+
+</details>
+
 ## [1.24.1] — 2026-09-25
 
 Immersive goes back to Smart framing by default.

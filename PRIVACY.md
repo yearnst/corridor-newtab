@@ -35,7 +35,7 @@ Only in these cases, all of which you control:
 1. **Artwork images** — requests to `upload.wikimedia.org` for public-domain paintings. No identifying information is attached.
 2. **Daily additions** (on by default) — metadata queries to `commons.wikimedia.org` and `www.wikidata.org`.
 3. **AI enrichment / multilingual** (off by default, needs your own endpoint) — sends a JPEG downscaled to at most 1024px, plus the prompt, to **the endpoint address you entered**. Leave it blank and not a single request is made.
-4. **Online gallery sources** (off by default, needs a URL from you) — requests the page and images from **the URL you entered**. Chrome asks you for permission for that host the first time.
+4. **Online gallery sources** (off by default, needs a URL from you) — requests the page, images and videos from **the URL you entered**. Chrome asks you for permission for that host the first time.
 
 The Pause Gallery screen makes no network requests and fetches no site icons. If your model runs on your own machine (`localhost` and the like), its requests never leave that machine.
 
@@ -52,7 +52,7 @@ Nothing else. No analytics, no telemetry, no ads, no third-party SDKs.
 ### About local folders
 
 - Uses the browser's standard File System Access API. The extension can read only the folder you picked.
-- Images are **never copied, uploaded, or cached** — they are read at the moment they are displayed.
+- Images and videos are **never copied, uploaded, or cached** — they are read at the moment they are displayed. The still frame shown as a video's thumbnail stays in memory only while the page is open.
 - They are sent to your own endpoint only if you turn on AI enrichment *and* enable it for your custom sources. If the folder holds private photos, think twice before enabling it.
 - Remove the source in settings and the extension loses access. Your files are never modified.
 
@@ -123,7 +123,7 @@ Charles Chern · achillesmars@gmail.com
 1. **取画作图片** —— 向 `upload.wikimedia.org` 请求公有领域画作的图片文件。这是扩展默认就有的能力，请求里不带任何身份信息。
 2. **每日新作**（默认开启）—— 向 `commons.wikimedia.org` 与 `www.wikidata.org` 查询公有领域画作的元数据。
 3. **AI 补全 / 多语言**（默认关闭，需要你自己填接口）—— 把图片缩成不超过 1024px 的 JPEG，连同提示词发往**你自己填写的那个接口地址**。你不填，一个请求都不会发。
-4. **在线图库**（默认关闭，需要你自己填网址）—— 向**你自己填写的那个网址**请求页面与图片。第一次使用时浏览器会弹窗向你要这个域名的权限。
+4. **在线图库**（默认关闭，需要你自己填网址）—— 向**你自己填写的那个网址**请求页面、图片与视频。第一次使用时浏览器会弹窗向你要这个域名的权限。
 
 暂歇那一屏不发任何网络请求，也不取站点图标。接的如果是本机模型（`localhost` 这类地址），请求不出这台电脑。
 
@@ -140,7 +140,7 @@ Charles Chern · achillesmars@gmail.com
 ### 关于本机文件夹
 
 - 用的是浏览器标准的 File System Access API。你选哪个文件夹，扩展就只能读哪个文件夹。
-- **图片不复制、不上传、不进缓存库**，只在显示那一刻读一次。
+- **图片和视频不复制、不上传、不进缓存库**，只在显示那一刻读一次。视频缩略图用的那一帧只在页面打开时放在内存里。
 - 只有当你主动打开「AI 补全」并把「补自定义图库」勾上时，这些图片才会被缩图后发往你自己填的接口。有私人照片的话，请想清楚再开。
 - 在设置里删掉这个来源，扩展就再也读不到它；你的文件一个都不会动。
 

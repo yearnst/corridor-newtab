@@ -13,7 +13,7 @@
 import * as S from './store.js';
 import * as AI from './ai.js';
 import * as LG from './langs.js';
-import { packSource, enDate } from './i18n.js';
+import { packSource, enDate, PACK_REV, staleKeys } from './i18n.js';
 
 const S1 = (v) => String(v ?? '').trim();
 const short = (m) => S1(m).replace(/https?:\/\/\S+/g, '').replace(/\s+/g, ' ').trim().slice(0, 90) || '未知错误';
@@ -258,6 +258,8 @@ export async function translatePack(lang, opt = {}) {
   const have = force ? null : await S.getPack(lang);
   const done0 = {};
   if (have) for (const ns of Object.keys(have)) if (have[ns] && typeof have[ns] === 'object') done0[ns] = { ...have[ns] };
+  /* 原文改过的键：旧译文作废，这一轮重译 */
+  if (have && done0.ui) for (const k of staleKeys(have.rev)) delete done0.ui[k];
   const need = src.filter(e => !S1(done0[e.ns]?.[e.k]));
 
   const chunks = [];
@@ -290,7 +292,7 @@ export async function translatePack(lang, opt = {}) {
   });
 
   const total = Object.values(out).reduce((n, o) => n + Object.keys(o || {}).length, 0);
-  const pack = { at: Date.now(), n: total, m: src.length, model: S1(ai.model), ...out };
+  const pack = { at: Date.now(), n: total, m: src.length, model: S1(ai.model), ...out, rev: PACK_REV };
   if (total) await S.setPack(lang, pack);
   return { ok: !!total, n: total, got, fail: bad, total: src.length, pack,
            err: lastErr, raw: lastRaw, status: lastStatus };
@@ -301,7 +303,8 @@ export async function packProgress(lang) {
   if (LG.isBuiltin(lang)) return { n: packSource().length, m: packSource().length, full: true };
   const p = await S.getPack(lang);
   const m = packSource().length;
+  const stale = p ? staleKeys(p.rev) : new Set();
   const n = p ? Object.entries(p).filter(([k]) => typeof p[k] === 'object')
-    .reduce((a, [, o]) => a + Object.keys(o || {}).length, 0) : 0;
+    .reduce((a, [ns, o]) => a + Object.keys(o || {}).filter(k => !(ns === 'ui' && stale.has(k))).length, 0) : 0;
   return { n, m, full: n >= m, at: p?.at || 0 };
 }

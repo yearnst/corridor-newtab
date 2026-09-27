@@ -32,6 +32,12 @@ export const DEFAULTS = {
   mode: 'wall',          // immersive | wall | film  【默认展墙；胶卷作第三种呈现方式】
   intervalMs: 1500000,        // 25 min（番茄钟）；0 = 仅手动
   newTabAdvance: true,        // 每次打开新标签页换一幅
+  /* 视频（只来自自定义图库）：full 播完整段再换（默认），interval 照轮换间隔换 —— 短的循环着等，长的到点就切 */
+  videoLen: 'full',
+  /* 声音：默认开着，音量 60%。videoMute 是「静音」那个开关，音量拨到 0 也等于静音。
+     浏览器不让新页面自动出声时先静音放着，点一下页面就有声音 */
+  videoMute: false,
+  videoVol: 60,
   order: 'shuffle',           // shuffle | sequential
   scope: 'all',               // all | fav | filter
   quality: 'auto',            // auto | saver | high | max
@@ -56,6 +62,7 @@ export const DEFAULTS = {
   autohide: true,
   /* 勾选＝静止几秒后淡出。分得细一点，每一项对应画面上一处实实在在的东西 */
   hideParts: { chrome: true, clock: false, counter: true,
+               label: false,                // 整张展签（展墙墙签、沉浸式信息卡、环形长廊与胶卷的展签）
                title: false, artist: false, meta: false, museum: false,
                look: false, palette: false },
   carouselMs: 15000,          // 环形长廊每格停留；0 = 不自动转
@@ -231,6 +238,10 @@ export async function getSettings() {
   const pace = (v, d) => { v = Number(v); return v === 0 ? 0 : (Number.isFinite(v) && v >= 1000 && v <= 3600000) ? Math.round(v) : d; };
   s.carouselMs = pace(s.carouselMs, 15000);
   s.filmMs = pace(s.filmMs, 3000);
+  if (!['full', 'interval'].includes(s.videoLen)) s.videoLen = 'full';
+  s.videoMute = !!s.videoMute;
+  { const vv = Number(s.videoVol); s.videoVol = Number.isFinite(vv) ? Math.min(100, Math.max(0, Math.round(vv))) : 60; }
+  delete s.videoSound;                     // 1.25.0 开发中用过的旧开关，没发布过
   if (!['positive', 'negative', 'bw', 'slide', 'cine'].includes(s.film)) s.film = 'positive';
   if (!['glide', 'step'].includes(s.filmRun)) s.filmRun = 'glide';
   s.filmEdge = !!s.filmEdge;
@@ -398,13 +409,25 @@ export async function clearDaily() { await area().set({ daily: { day: '', at: 0,
    老版本存的是 { name, at, works }（只有一个文件夹），读的时候迁成第一个来源，
    id 就叫 root —— 正好跟老句柄的键对上，用户不用重新授权。
    ---------------------------------------- */
-const LIB_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif', 'bmp'];
+/* 视频后缀：local.js 与这里共用一份（store 不能反过来引 local.js） */
+export const VIDEO_EXTS = ['mp4', 'm4v', 'webm', 'mov'];
+const VID_RE = new RegExp('\\.(' + VIDEO_EXTS.join('|') + ')$', 'i');
+export const isVideoURL = (u) => VID_RE.test(String(u || '').split(/[?#]/)[0]);
+/* 图片后缀。前 7 种浏览器直接显示；svg 要补上宽高，tif/tiff 要解码转换（见下面 fetchImage）；
+   tif/tiff、heic/heif、jxl 先让浏览器解，解不了交给自带的解码工人 */
+const OLD_IMG = ['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif', 'bmp'];
+export const IMG_EXTS = OLD_IMG.concat(['svg', 'tif', 'tiff', 'heic', 'heif', 'jxl']);
+const LIB_EXTS = IMG_EXTS.concat(VIDEO_EXTS);
 function normSrc(x, i) {
   const s = x && typeof x === 'object' ? x : {};
   const kind = s.kind === 'url' ? 'url' : 'dir';
   const f = (s.f && typeof s.f === 'object') ? s.f : {};
-  const ext = (Array.isArray(f.ext) ? f.ext : LIB_EXTS)
+  let ext = (Array.isArray(f.ext) ? f.ext : LIB_EXTS)
     .map(v => String(v || '').toLowerCase().replace(/^\./, '')).filter(v => LIB_EXTS.includes(v));
+  /* 1.25 以前只有图片那 7 种。那时 7 种全勾着的来源，意思就是「全都要」——
+     升上来顺手把新加的格式（视频、svg、tiff、heic、jxl）都勾上；只勾了其中几种的，照原样留着。
+     fv 记下已经迁过，之后再取消掉哪一种也不会被勾回来。 */
+  if ((Number(f.fv) || 0) < 2 && OLD_IMG.every(e => ext.includes(e))) ext = [...new Set(ext.concat(LIB_EXTS))];
   return {
     id: String(s.id || 's' + (i + 1)).slice(0, 24),
     kind,
@@ -413,12 +436,16 @@ function normSrc(x, i) {
     at: Math.max(0, Math.round(Number(s.at) || 0)),
     n: Math.max(0, Math.round(Number(s.n) || 0)),
     err: String(s.err || '').slice(0, 160),
+    /* 上一次扫描时，因为浏览器解不了而跳过的：{ heic: 3, jxl: 1 } */
+    skip: Object.fromEntries(Object.entries(s.skip && typeof s.skip === 'object' ? s.skip : {})
+      .filter(([k, v]) => LIB_EXTS.includes(k) && Number(v) > 0).slice(0, 8).map(([k, v]) => [k, Math.round(Number(v))])),
     on: s.on === undefined ? true : !!s.on,
     f: {
       inc: String(f.inc || '').slice(0, 200),
       exc: String(f.exc || '').slice(0, 200),
       rx: !!f.rx,
       ext: ext.length ? ext : LIB_EXTS.slice(),
+      fv: 2,
       minPx: Math.min(4000, Math.max(0, Math.round(Number(f.minPx) ?? 200)))
     }
   };
@@ -692,17 +719,90 @@ let localReader = null;
 /* app 启动时注入本地文件读取器，store 本身不依赖 File System API */
 export function setLocalReader(fn) { localReader = fn; }
 
+/* ---------------- 视频 ----------------
+   视频作品的地址和图片一样（local:… 或网址），只是后缀不同。
+   要图的地方（瀑布流、缩略图、放大、AI 识图）照旧调 fetchImage，
+   拿到的是从片子里取出的一帧；真正放视频的只有沉浸式与展墙，它们走 mediaURL。 */
+let posterMaker = null;
+/* 取帧要用 <video>，后台 service worker 里没有；由页面注入 */
+export function setPosterMaker(fn) { posterMaker = fn; }
+const posters = new Map();                 // 本页内存里的静帧：地址 → Blob
+const posterWait = new Map();              // 同一段片子别同时取好几次
+async function fetchPoster(url, meta) {
+  if (posters.has(url)) return { blob: posters.get(url), fromCache: true };
+  const local = url.startsWith('local:');
+  const key = 'poster:' + url;
+  /* 网址来源的静帧和那边的图片一样进缓存库；本机视频的只留在内存里 ——
+     本机的东西扩展不复制，这一条对取出来的帧也算数 */
+  if (!local) { const hit = await cacheGet(key); if (hit) { posters.set(url, hit); return { blob: hit, fromCache: true }; } }
+  if (!posterMaker) throw new Error('poster maker unavailable');
+  if (!posterWait.has(url)) posterWait.set(url, (async () => {
+    let src = url;
+    if (local) {
+      if (!localReader) throw new Error('local reader unavailable');
+      src = await localReader(url.slice(6));
+    }
+    const blob = await posterMaker(src);
+    if (posters.size > 60) posters.delete(posters.keys().next().value);
+    posters.set(url, blob);
+    if (!local) cachePut(key, blob, meta);
+    return blob;
+  })().finally(() => posterWait.delete(url)));
+  return { blob: await posterWait.get(url), fromCache: false };
+}
+/* 放视频用的地址：本机文件做成 blob: 地址（浏览器按需从硬盘读，不整段读进内存），
+   网址来源直接用原地址串流。调用方负责在不用时 revoke 本机那一种。 */
+export async function mediaURL(url) {
+  if (url.startsWith('local:')) {
+    if (!localReader) throw new Error('local reader unavailable');
+    return { url: URL.createObjectURL(await localReader(url.slice(6))), own: true };
+  }
+  return { url, own: false };
+}
+
+/* ---------------- 要先转一道才能放进 <img> 的图 ----------------
+   svg：补上宽高（只有 viewBox 的 svg 没有固有尺寸，画框会量不准）；
+   tif / tiff、heic / heif、jxl：浏览器自己解得了就原样用，解不了由解码工人解开再编码成 JPEG（带透明的用 PNG）。
+   转换要用到页面里的 Image / 画布，由页面注入；本机文件转出来的只放在内存里，不写进缓存库。 */
+const CONVERT_RE = /\.(svg|tiff?|heic|heif|jxl)$/i;
+export const needsConvert = (u) => CONVERT_RE.test(String(u || '').split(/[?#]/)[0]);
+let imageConverter = null;
+export function setImageConverter(fn) { imageConverter = fn; }
+const converted = new Map();
+const nameOf = (u) => { const p = String(u || '').split(/[?#]/)[0]; return decodeURIComponent(p.slice(p.lastIndexOf('/') + 1).split('|').pop()); };
+async function convertBlob(blob, url) {
+  if (!imageConverter) throw new Error('image converter unavailable');
+  return imageConverter(blob, nameOf(url));
+}
+/* svg 与其它非位图也要能画到画布上：createImageBitmap 不认 svg，走一趟 <img> */
+export async function bitmapOf(blob) {
+  if (!/svg/i.test(blob.type || '')) return createImageBitmap(blob);
+  const u = URL.createObjectURL(blob);
+  try {
+    const im = new Image(); im.src = u; await im.decode();
+    return await createImageBitmap(im);
+  } finally { URL.revokeObjectURL(u); }
+}
+
 export async function fetchImage(url, meta = {}) {
+  if (isVideoURL(url)) return fetchPoster(url, meta);
   if (url.startsWith('local:')) {                 // 本机图片：直接读，不进缓存库
     if (!localReader) throw new Error('local reader unavailable');
     const file = await localReader(url.slice(6));
-    return { blob: file, fromCache: true };
+    if (!needsConvert(url)) return { blob: file, fromCache: true };
+    const key = url + '|' + file.size + '|' + file.lastModified;
+    if (converted.has(key)) return { blob: converted.get(key), fromCache: true };
+    const blob = await convertBlob(file, url);
+    if (converted.size > 8) converted.delete(converted.keys().next().value);   // 转出来的可能很大，只留几张
+    converted.set(key, blob);
+    return { blob, fromCache: true };
   }
   const hit = await cacheGet(url);
   if (hit) return { blob: hit, fromCache: true };
   const resp = await fetch(url, { credentials: 'omit', cache: 'force-cache' });
   if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + url);
-  const blob = await resp.blob();
+  let blob = await resp.blob();
+  if (needsConvert(url)) blob = await convertBlob(blob, url);
   cachePut(url, blob, meta);
   maybeTrim(blob.size);
   return { blob, fromCache: false };

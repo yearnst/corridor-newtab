@@ -1,5 +1,5 @@
 /* ============================================================
-   自定义图库：把你自己的图片接进藏品库。
+   自定义图库：把你自己的图片（和视频）接进藏品库。
 
    来源可以有好几个，两种：
      · 文件夹 —— 本机目录。用浏览器的 File System Access API，
@@ -13,8 +13,16 @@
    ============================================================ */
 import * as S from './store.js';
 
-export const EXTS = ['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif', 'bmp'];
+/* 图片：前 7 种浏览器直接认；svg 补上宽高再显示；tif/tiff、heic/heif、jxl 浏览器解得了就直接用，
+   解不了交给 vendor/ 里的解码工人（见下面 rasterBitmap） */
+export const IMG_EXTS = S.IMG_EXTS;
+const SVG_RE = /\.svg$/i, TIFF_RE = /\.tiff?$/i;
+/* 视频：Chrome 自己放得了的几种。mov 能不能放看里面的编码 ——
+   H.264 与（Mac 上的）HEVC 都行，ProRes 不行；放不了的扫描时就跳过了，不会进库。 */
+export const VIDEO_EXTS = S.VIDEO_EXTS;
+export const EXTS = IMG_EXTS.concat(VIDEO_EXTS);
 const EXT_RE = new RegExp('\\.(' + EXTS.join('|') + ')$', 'i');
+export const isVideoName = (n) => S.isVideoURL(n);
 export const MAX_FILES = 800;          // 一个来源最多收录这么多张
 const SKIP_DIR = /^(\.|__MACOSX|node_modules|thumbs?$|\.thumbnails)/i;
 const S1 = (v) => String(v ?? '').trim();
@@ -168,6 +176,11 @@ export function pickFromHTML(html, baseUrl) {
       }
       add(im.getAttribute('src') || im.getAttribute('data-src') || im.getAttribute('data-original'), im.getAttribute('alt'));
     }
+    /* 页面里直接嵌着的视频：<video src> 或它里面的 <source src> */
+    for (const v of doc.querySelectorAll('video[src], video source[src]')) {
+      const s = v.getAttribute('src');
+      if (EXT_RE.test((s || '').split('?')[0])) add(s, (v.closest('video') || v).getAttribute('title'));
+    }
     for (const a of doc.querySelectorAll('a[href]')) {
       const h = a.getAttribute('href');
       if (EXT_RE.test((h || '').split('?')[0])) add(h, a.textContent);
@@ -193,7 +206,7 @@ export async function listURL(url, signal) {
   catch (e) { return { ok: false, err: '取不到这个网址 · ' + S1(e.message).slice(0, 60), items: [] }; }
   if (!r.ok) return { ok: false, err: `HTTP ${r.status}`, items: [] };
   const ct = S1(r.headers.get('content-type')).toLowerCase();
-  if (ct.startsWith('image/')) return { ok: true, items: [{ u, t: '' }] };
+  if (ct.startsWith('image/') || ct.startsWith('video/')) { try { r.body?.cancel(); } catch { } return { ok: true, items: [{ u, t: '' }] }; }
   const body = await r.text();
   let items = [];
   if (ct.includes('json') || /^\s*[[{]/.test(body)) {
@@ -222,9 +235,194 @@ async function* walk(dir, prefix = '', depth = 0) {
 const cleanTitle = (n) => n.replace(EXT_RE, '').replace(/[_]+/g, ' ')
   .replace(/^\d{1,4}[\s.\-–]+/, '').replace(/\s{2,}/g, ' ').trim();
 
+/* ---------------- 视频：取一帧 ----------------
+   src 可以是本机的 File，也可以是网址来源里的一个地址。
+   开一个不挂到页面上的 <video>，读到尺寸与时长后跳到开头 10%（最多 3 秒）那一帧：
+   很多片子第一帧是黑的，取稍后一点才看得出这段在拍什么。
+   网址那一类要带 crossOrigin —— 已经给过这个域名的权限，画布不会被「污染」。
+   放不了的（编码不认、文件坏了）超时或出错就抛出去，由调用方跳过。 */
+function once(el, ok, ms) {
+  return new Promise((res, rej) => {
+    const t = setTimeout(() => { off(); rej(new Error('timeout')); }, ms);
+    const good = () => { off(); res(); };
+    const bad = () => { off(); rej(new Error('video error')); };
+    const off = () => { clearTimeout(t); el.removeEventListener(ok, good); el.removeEventListener('error', bad); };
+    el.addEventListener(ok, good); el.addEventListener('error', bad);
+  });
+}
+export async function grabFrame(src, ms = 12000) {
+  if (typeof document === 'undefined') throw new Error('no document');
+  const v = document.createElement('video');
+  const own = typeof src !== 'string';
+  const url = own ? URL.createObjectURL(src) : src;
+  v.muted = true; v.playsInline = true; v.preload = 'auto';
+  if (!own) v.crossOrigin = 'anonymous';
+  try {
+    const meta = once(v, 'loadeddata', ms);
+    v.src = url;
+    await meta;
+    const W = v.videoWidth, H = v.videoHeight;
+    if (!W || !H) throw new Error('no picture');         // 只有声音的 mp4
+    const dur = Number.isFinite(v.duration) ? v.duration : 0;
+    const t = dur > 1 ? Math.min(dur * 0.1, 3) : 0;
+    if (t > 0) { const sk = once(v, 'seeked', ms); v.currentTime = t; await sk; }
+    const bmp = await createImageBitmap(v);
+    return { bmp, dur: +dur.toFixed(2) };
+  } finally {
+    v.removeAttribute('src'); try { v.load(); } catch { }
+    if (own) URL.revokeObjectURL(url);
+  }
+}
+/* 展墙以外的几种看法（瀑布流、环形长廊、胶卷、藏品库的缩略图）放的是静帧：
+   取出那一帧，缩到最长边 1280 以内存成 JPEG。本机视频的静帧只放在内存里，不写进缓存库。 */
+export async function videoPoster(src, px = 1280) {
+  const { bmp } = await grabFrame(src);
+  const k = Math.min(1, px / Math.max(bmp.width, bmp.height));
+  const c = new OffscreenCanvas(Math.max(1, Math.round(bmp.width * k)), Math.max(1, Math.round(bmp.height * k)));
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  bmp.close();
+  return c.convertToBlob({ type: 'image/jpeg', quality: .84 });
+}
+/* 时长写成 0:42 / 1:02:05 */
+export function fmtDur(s) {
+  s = Math.max(0, Math.round(Number(s) || 0));
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${x}` : `${m}:${x}`;
+}
+
 /* 从图片本身算出比例、主色色卡与占位图，和内置作品用同一套呈现 */
-async function analyse(file) {
-  const bmp = await createImageBitmap(file);
+async function analyse(file, name = '') {
+  if (SVG_RE.test(name) || /svg/i.test(file.type || '')) {
+    const n = await normalizeSvg(file);
+    const a = await analyseBmp(await S.bitmapOf(n.blob));
+    /* 尺寸记 svg 自己声明的那个（图标会被「最小边长」挡掉），比例跟着走 */
+    return { ...a, w: n.w, h: n.h, ar: +(n.w / n.h).toFixed(4) };
+  }
+  if (!kindOf(name)) return analyseBmp(await createImageBitmap(file));
+  const r = await rasterBitmap(file, name);
+  /* 尺寸记原图的（超大的 TIFF 画布上缩过） */
+  return { ...(await analyseBmp(r.bmp)), w: r.w, h: r.h, ar: +(r.w / r.h).toFixed(4) };
+}
+
+/* ---------------- svg ----------------
+   只写了 viewBox、没写宽高（或者写的是 100%、210mm）的 svg，放进 <img> 没有固有尺寸，
+   展墙上的画框就量不准。这里读出它声明的尺寸，把宽高按长边至少 1600 写回根节点；
+   原来的尺寸记在 data-corridor-w/h 上，再转一次也不会越放越大。
+   svg 放在 <img> 里本来就不跑脚本、不取外部资源，这里只是改两个属性。 */
+export async function normalizeSvg(blob) {
+  const txt = await blob.text();
+  const doc = new DOMParser().parseFromString(txt, 'image/svg+xml');
+  const root = doc.documentElement;
+  if (!root || root.nodeName.toLowerCase() !== 'svg' || doc.querySelector('parsererror')) throw new Error('bad svg');
+  const px = (v) => { const m = /^\s*([\d.]+)\s*(px)?\s*$/i.exec(v || ''); return m ? parseFloat(m[1]) : 0; };
+  let w = parseFloat(root.getAttribute('data-corridor-w')) || px(root.getAttribute('width'));
+  let h = parseFloat(root.getAttribute('data-corridor-h')) || px(root.getAttribute('height'));
+  const vb = (root.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+  if (vb.length === 4 && vb[2] > 0 && vb[3] > 0) {
+    if (!w && !h) { w = vb[2]; h = vb[3]; }
+    else if (!w) w = h * vb[2] / vb[3];
+    else if (!h) h = w * vb[3] / vb[2];
+  }
+  if (!(w > 0 && h > 0)) throw new Error('svg without size');
+  const k = Math.max(1, 1600 / Math.max(w, h));
+  if (!root.getAttribute('viewBox')) root.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  root.setAttribute('width', String(Math.round(w * k)));
+  root.setAttribute('height', String(Math.round(h * k)));
+  root.setAttribute('data-corridor-w', String(Math.round(w)));
+  root.setAttribute('data-corridor-h', String(Math.round(h)));
+  const out = new Blob([new XMLSerializer().serializeToString(doc)], { type: 'image/svg+xml' });
+  return { blob: out, w: Math.round(w), h: Math.round(h) };
+}
+
+/* ---------------- TIFF / HEIC / JPEG XL ----------------
+   先让浏览器自己解（Safari 认 TIFF 和 HEIC；Chrome 打开开关后认 JPEG XL），解不了再交给解码工人：
+   vendor/decode-worker.js 在后台线程里解，页面不卡；HEIC、JPEG XL 的 wasm 第一次遇到时才去取。
+   工人闲一分钟就收掉，把内存还回去。画布最长边限在 8192：再大的扫描件，屏幕上也看不出区别。 */
+const MAXPX = 8192;
+const kindOf = (name) => TIFF_RE.test(name) ? 'tiff' : /\.(heic|heif)$/i.test(name) ? 'heic' : /\.jxl$/i.test(name) ? 'jxl' : '';
+const native = {};                              // heic / jxl：这个浏览器自己解不解得了（试过一次就记住）
+let worker = null, wseq = 0, wIdle = 0;
+const waits = new Map();
+function dropWorker(err) {
+  for (const w of waits.values()) w.rej(err || new Error('decoder stopped'));
+  waits.clear();
+  try { worker?.terminate(); } catch { }
+  worker = null;
+}
+/* 一次最多解两张：iPhone 一张照片解开就是四五十 MB，藏品库一屏几十张一起解会把内存吃光 */
+let inflight = 0;
+const queue = [];
+async function workerDecode(kind, buf) {
+  if (inflight >= 2) await new Promise(r => queue.push(r));
+  inflight++;
+  try { return await decodeOnce(kind, buf); }
+  finally { inflight--; queue.shift()?.(); }
+}
+function decodeOnce(kind, buf) {
+  if (!worker) {
+    worker = new Worker(new URL('./vendor/decode-worker.js', import.meta.url));
+    worker.onmessage = (e) => {
+      const w = waits.get(e.data?.id); if (!w) return;
+      waits.delete(e.data.id); clearTimeout(w.t);
+      e.data.ok ? w.res(e.data) : w.rej(new Error(e.data.err || 'decode failed'));
+      if (!waits.size) { clearTimeout(wIdle); wIdle = setTimeout(() => { if (!waits.size) dropWorker(); }, 60000); }
+    };
+    worker.onerror = (e) => { e.preventDefault?.(); dropWorker(new Error('decoder failed to start')); };
+  }
+  clearTimeout(wIdle);
+  return new Promise((res, rej) => {
+    const id = ++wseq;
+    /* 一张图一分钟还没解完，多半是文件有问题：这一张算失败，别让后面的一直等 */
+    const t = setTimeout(() => { if (waits.delete(id)) rej(new Error('decode timeout')); }, 60000);
+    waits.set(id, { res, rej, t });
+    worker.postMessage({ id, kind, buf }, [buf]);
+  });
+}
+/* → { bmp, w, h, native }：w / h 是原图尺寸，native 表示浏览器自己就能显示 */
+async function rasterBitmap(blob, name) {
+  const kind = kindOf(name);
+  if (kind !== 'tiff' && native[kind] !== false) {
+    try {
+      const bmp = await createImageBitmap(blob);
+      if (kind) native[kind] = true;
+      return { bmp, w: bmp.width, h: bmp.height, native: true };
+    } catch (e) { if (!kind) throw e; native[kind] = false; }
+  }
+  let r;
+  try { r = await workerDecode(kind, await blob.arrayBuffer()); }
+  catch (e) {
+    if (kind === 'tiff') throw e;
+    /* 浏览器和解码器都打不开：记下来，卡片上照实说 */
+    throw Object.assign(new Error('unsupported'), { code: 'unsupported', ext: (/\.([a-z0-9]+)$/i.exec(name)?.[1] || kind).toLowerCase(), cause: e });
+  }
+  const img = new ImageData(new Uint8ClampedArray(r.data.buffer, r.data.byteOffset, r.width * r.height * 4), r.width, r.height);
+  const k = Math.min(1, MAXPX / Math.max(r.width, r.height));
+  const bmp = k < 1
+    ? await createImageBitmap(img, { resizeWidth: Math.round(r.width * k), resizeHeight: Math.round(r.height * k), resizeQuality: 'high' })
+    : await createImageBitmap(img);
+  return { bmp, w: r.width, h: r.height, native: false };
+}
+/* 给 <img> 用的版本：svg 补宽高；浏览器自己显示得了的原样返回；其余编码成 JPEG（带透明的用 PNG） */
+export async function displayBlob(blob, name) {
+  if (SVG_RE.test(name)) return (await normalizeSvg(blob)).blob;
+  if (!kindOf(name)) return blob;
+  const { bmp, native: ok } = await rasterBitmap(blob, name);
+  if (ok) { bmp.close(); return blob; }
+  const c = new OffscreenCanvas(bmp.width, bmp.height), g = c.getContext('2d');
+  g.drawImage(bmp, 0, 0); bmp.close();
+  /* 抽样看一眼有没有半透明像素，有就存 PNG，没有存 JPEG —— 省下好几倍体积 */
+  const d = g.getImageData(0, 0, c.width, c.height).data;
+  let alpha = false;
+  for (let i = 3, step = Math.max(4, Math.floor(d.length / 4 / 20000) * 4); i < d.length; i += step) if (d[i] < 255) { alpha = true; break; }
+  return c.convertToBlob(alpha ? { type: 'image/png' } : { type: 'image/jpeg', quality: .92 });
+}
+/* 视频取一帧来算，再补上时长 */
+async function analyseVideo(src) {
+  const { bmp, dur } = await grabFrame(src);
+  const a = await analyseBmp(bmp);
+  return { ...a, dur };
+}
+async function analyseBmp(bmp) {
   const W = bmp.width, H = bmp.height, ar = W / H;
   const N = 64, c = new OffscreenCanvas(N, N), g = c.getContext('2d', { willReadFrequently: true });
   g.drawImage(bmp, 0, 0, N, N);
@@ -253,7 +451,7 @@ async function analyse(file) {
   const lqip = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(''); fr.readAsDataURL(blob); });
   bmp.close();
   return {
-    w: W, h: H, ar: +ar.toFixed(4),
+    w: W, h: H, ar: +ar.toFixed(4), dur: 0,
     vis: { accent: palette[vivid >= 0 ? vivid : 0] || '#8a8375', lum: +(lum / n).toFixed(3), sat: +(sat / n).toFixed(3),
            palette, weights: top.map(e => +(e[3] / n).toFixed(3)), lqip }
   };
@@ -277,14 +475,17 @@ function mkWork(sid, { key, name, folder, title }, a, src) {
     title: { zh: t, en: t },
     artist: { zh: cleanText(folder, 120), en: cleanText(folder, 120) },
     life: '', year: '', ys: 0,
-    medium: { zh: '', en: '' }, dims: `${a.w} × ${a.h}`,
+    medium: a.video ? { zh: '视频', en: 'Video' } : { zh: '', en: '' },
+    dims: `${a.w} × ${a.h}` + (a.video && a.dur ? ` · ${fmtDur(a.dur)}` : ''),
     museum: { zh: '', en: '' }, place: { zh: '', en: '' },
     movement: '', region: '', tags: [], mature: false,
     format: a.ar > 2 ? 'wide' : a.ar < .8 ? 'tall' : 'std',
     note: { zh: '', en: '' }, look: { zh: '', en: '' },
     img: { base: src, name, full: src, w: a.w, h: a.h, ar: a.ar, sizes: [0] },
     src: { file: key, page: '', licence: '' },
-    vis: a.vis
+    vis: a.vis,
+    /* 视频：dur 是秒数，0 = 读不出来（直播流之类），轮换时退回按间隔 */
+    ...(a.video ? { video: true, dur: a.dur || 0 } : {})
   };
 }
 
@@ -313,21 +514,28 @@ export async function scanDir(src, onProgress, signal) {
     if (found.length >= MAX_FILES) break;
   }
   found.sort((a, b) => a.path.localeCompare(b.path, 'zh'));
-  const works = [];
+  const works = [], skip = {};
   for (let i = 0; i < found.length; i++) {
     if (signal?.aborted) break;
     const x = found[i];
     try {
       const file = await x.handle.getFile();
-      if (!file.size || file.size > 64 * 1048576) continue;
-      const a = await analyse(file);
+      const vid = isVideoName(x.name);
+      /* 图片整张读进内存，所以卡在 64 MB（TIFF 扫描件常常更大，放宽到 200 MB）；
+         视频是边放边从硬盘读，不设上限 */
+      const cap = TIFF_RE.test(x.name) ? 200 : 64;
+      if (!file.size || (!vid && file.size > cap * 1048576)) continue;
+      const a = vid ? { ...(await analyseVideo(file)), video: true } : await analyse(file, x.name);
       if (a.w < f.minPx || a.h < f.minPx) continue;
       works.push(mkWork(sid, { key: x.path, name: x.name, folder: x.dir.split('/').filter(Boolean).pop() || '' },
                         a, localURL(sid, x.path)));
-    } catch { /* 单张读不了就跳过 */ }
+    } catch (e) {
+      /* 单张读不了就跳过；浏览器不认的格式（HEIC、JPEG XL）记个数，卡片上照实说 */
+      if (e?.code === 'unsupported') skip[e.ext] = (skip[e.ext] || 0) + 1;
+    }
     onProgress?.(i + 1, found.length);
   }
-  return { ok: true, works, seen: found.length };
+  return { ok: true, works, seen: found.length, skip };
 }
 
 /* 扫一个网址来源 */
@@ -346,22 +554,31 @@ export async function scanURL(src, onProgress, signal) {
   });
   items = items.slice(0, MAX_FILES);
   const host = (() => { try { return new URL(src.url).hostname.replace(/^www\./, ''); } catch { return ''; } })();
-  const works = [];
+  const works = [], skip = {};
   for (let i = 0; i < items.length; i++) {
     if (signal?.aborted) break;
     const it = items[i];
     let name = '';
     try { name = decodeURIComponent(new URL(it.u).pathname.split('/').pop() || ''); } catch { name = it.u.split('/').pop() || ''; }
     try {
-      const { blob } = await S.fetchImage(it.u, { id: 'lb-' + hash(sid + '|' + it.u) });
-      if (!blob.size || blob.size > 64 * 1048576) continue;
-      const a = await analyse(blob);
+      let a;
+      if (isVideoName(name) || isVideoName(it.u)) {
+        /* 网址来源的视频不下载整段：只读开头取一帧，放的时候也是直接串流 */
+        a = { ...(await analyseVideo(it.u)), video: true };
+      } else {
+        const { blob } = await S.fetchImage(it.u, { id: 'lb-' + hash(sid + '|' + it.u) });
+        if (!blob.size || blob.size > 64 * 1048576) continue;
+        /* tiff / heic / jxl 在 fetchImage 里已经转成浏览器认得的图了，这里按转完的样子算 */
+        a = await analyse(blob, S.needsConvert(name) && !SVG_RE.test(name) ? '' : name);
+      }
       if (a.w < f.minPx || a.h < f.minPx) continue;
       works.push(mkWork(sid, { key: it.u, name, folder: S1(src.name) || host, title: it.t }, a, it.u));
-    } catch { /* 单张取不到就跳过 */ }
+    } catch (e) {
+      if (e?.code === 'unsupported') skip[e.ext] = (skip[e.ext] || 0) + 1;
+    }
     onProgress?.(i + 1, items.length);
   }
-  return { ok: true, works, seen: items.length };
+  return { ok: true, works, seen: items.length, skip };
 }
 
 export const scanSrc = (src, onProgress, signal) =>

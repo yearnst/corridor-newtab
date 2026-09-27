@@ -78,6 +78,7 @@ the 13 works with nudity out of the rotation, so a fresh install shows 93; turn 
 
 - Add local folders or online galleries and hang your own photos and artwork in Corridor: travel journals, family memories, old photos of your parents, your child's drawings, and more
 - Multiple gallery sources are supported, each with its own filters for file names, formats, or regular expressions
+- Videos in those folders play too (mp4, webm, mov): each one runs to the end before the next work, or follows the rotation interval if you prefer
 
 Photos do not have to stay buried in folders. Some memories deserve to be hung on a wall.
 
@@ -108,9 +109,9 @@ Photos do not have to stay buried in folders. Some memories deserve to be hung o
 - No project server, no account, no analytics
 - API keys are sent only to the endpoint you provide
 - Settings, favorites, and cached images stay on your device; cached works remain available offline
-- Images from local galleries are never copied or uploaded and are read only when displayed
+- Images and videos from local galleries are never copied or uploaded and are read only when displayed
 
-**Keyboard shortcuts**　`← →` Navigate · `F` Favorite · `X` Remove · `Z` High resolution · `I` Info · `L` Library · `M` Mode · `C` Clock · `D` Download · `Q` Pause Gallery · `S` Settings · `Space` Pause · `Esc` Close
+**Keyboard shortcuts**　`← →` Navigate · `F` Favorite · `X` Remove · `Z` High resolution · `I` Info · `L` Library · `M` Mode · `C` Clock · `D` Download · `Q` Pause Gallery · `S` Settings · `Space` Pause · `↑ ↓` Video volume · `Esc` Close
 
 Hover the keyboard button at the bottom right to see them all.
 
@@ -159,6 +160,7 @@ corridor-newtab/          The extension itself (choose this folder in Load unpac
 │   ├── diag.js           Endpoint error diagnosis
 │   ├── translate.js      Multilingual: artwork translations and interface language packs
 │   ├── local.js          Local folders and online galleries
+│   ├── vendor/           TIFF / HEIC / JPEG XL decoders (see vendor/LICENSES.txt)
 │   ├── i18n.js           Interface strings
 │   ├── langs.js          The 78-language table
 │   ├── tone.js           Wall color and tone
@@ -201,7 +203,7 @@ The extension makes only three kinds of network request, all of them optional:
 3. AI requests or online gallery pages to **the address you typed in yourself** — leave it blank and not one request is made
 
 Any API key you enter is sent only as a request header to that address, nowhere else.
-Local images from your custom sources are never copied, uploaded or cached; they are read once, at the moment they are shown.
+Local images and videos from your custom sources are never copied, uploaded or cached; they are read once, at the moment they are shown.
 
 Pause Gallery reads Chrome's most-visited list and your open tabs through two optional permissions (`topSites`, `tabs`):
 not requested at install, asked for only when you turn that source on, and revocable any time. It sees only site names

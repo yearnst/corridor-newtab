@@ -1,6 +1,6 @@
 # Corridor · Art New Tab
 
-<sub>v1.24.1</sub>
+<sub>v1.25.0</sub>
 
 **English** · [简体中文](README.zh-CN.md)
 
@@ -164,7 +164,8 @@ Press `C` to cycle through the three states.
 | Key | Action |
 |---|---|
 | `←` `→` | Previous / next work |
-| `Space` | Pause / resume automatic rotation |
+| `Space` | Pause / resume automatic rotation (a video on screen pauses with it) |
+| `↑` `↓` | Video volume, 10% per press, while a video is on screen |
 | `F` | Add to / remove from favorites |
 | `X` | Remove this work (out of the rotation and no longer listed in the Library; can be undone within five seconds) |
 | `Q` | Pause Gallery / back on show (instead of paintings, it shows the sites you visit often) |
@@ -311,8 +312,9 @@ You can search in Chinese or English, and it also recognizes English words such 
 **Display** Presentation mode (one of five) · Framing: Smart / Fill screen / Show whole work ·
 **Language** (native · foreign · which one the interface follows; once an endpoint has tested OK you can pick from 78 languages, plus translation of the artwork info and the interface text) ·
 Clock (Off / In bar / Grand) · Slow drift (Ken Burns) · Pan handscrolls horizontally ·
-**Hide interface when idle** (nine separate items; whichever you check fades out: Toolbars / Clock / Counter /
-Title / Artist / Date & medium / Museum / Highlight / Palette; check all four artwork items and the whole wall label card is put away too) ·
+**Hide interface when idle** (ten separate items; whichever you check fades out: Toolbars / Clock / Counter / **Label** /
+Title / Artist / Date & medium / Museum / Highlight / Palette. “Label” puts the whole label away at once: the wall label on the Gallery Wall, the info card in Immersive,
+and the label under the Circular Gallery and the Filmstrip; it is unchecked by default. Checking all four artwork items puts the whole wall label card away too) ·
 **Film stock** (Color positive / Color negative / Black & white / Slide mounts / Cine 35mm) · Edge print & frame numbers · Transport
 
 **Room** Frame (11 kinds) · Mount (the matting style, 5 kinds) · Mount width slider ·
@@ -326,6 +328,7 @@ Title / Artist / Date & medium / Museum / Highlight / Palette; check all four ar
 
 **Rotation** **New work on every new tab (a switch of its own)** ·
 Timed rotation: Manual only / 1, 5, 15 minutes / **25 minutes (Pomodoro)** / 1, 6 hours / daily (**timed rotation applies only to Gallery Wall and Immersive**) ·
+**Video length**: Play to the end / Follow interval · **Video volume** (60% by default) · Mute ·
 **Circular Gallery pace** and **Film transport** (Off / 3, 5, 10, 15, 30 seconds / 1, 3, 5, 10, 30 minutes / Custom; the Circular Gallery defaults to 15 seconds, the Filmstrip to **3 seconds**) ·
 Order: Shuffled / Chronological · Show from: Whole collection / Favorites only / Current filters ·
 **Work-safe mode** (the 13 works containing nudity are left out of the rotation, but can still be opened individually in the Library) · Image quality
@@ -338,7 +341,8 @@ Order: Shuffled / Chronological · Show from: Whole collection / Favorites only 
 
 > Settings open in a **drawer that slides in from the right**: the picture narrows to the left instead of being covered, so a change of frame or wall color shows right away.
 > In the drawer, **hovering over a frame or wall color tries it on**; move away and it reverts, and only a click saves. Press `S` to open and close it.
-> Every tab uses the same layout: group heading (collapsible, current value shown on the right) → title + description → control,
+> Every tab uses the same layout: group heading (collapsible, current value shown on the right) → title + a one-line description → control.
+> Where there's more to say, an ⓘ next to the title opens the details below the description, and a second click closes them;
 > with switches laid out as right-aligned single rows of equal width.
 > When you change a setting, the drawer **stays where it is** instead of jumping back to the top; only switching tabs takes you back to the top.
 
@@ -365,6 +369,8 @@ Out of the box you get a fully arranged gallery room — complete without changi
 | Wall texture | Velvet |
 | New work on every new tab | On |
 | Timed rotation | 25 minutes (Pomodoro) |
+| Video length | Play to the end |
+| Video volume | 60% (sound on) |
 | Work-safe mode | On |
 | Show from | Whole collection |
 | Daily additions | On (3 a day) |
@@ -411,16 +417,16 @@ Since v1.5 the Library also **grows on its own**:
 
 ---
 
-## 5. Your own library (hang your own pictures)
+## 5. Your own library (hang your own pictures and videos)
 
 Settings → Sources → **Custom sources**. You can add **several sources**, of two kinds:
 
 | | |
 |---|---|
-| **+ Folder** | A folder on this computer. It uses the browser's File System Access API; the directory handle is stored locally and reused directly the next time you open a new tab. Chrome occasionally asks you to confirm read access again, and the card tells you when. **The images always stay on your own disk** — the extension doesn't copy them, upload them or put them in the cache; it reads each one only at the moment it's displayed. |
-| **+ URL** | An online gallery. A directory index page, an ordinary gallery page, a JSON list, a plain-text file with one URL per line, or simply a single image — it accepts them all. The first scan asks you for access to that domain; the images it fetches go through the normal cache, so you can still see them offline. |
+| **+ Folder** | A folder on this computer. It uses the browser's File System Access API; the directory handle is stored locally and reused directly the next time you open a new tab. Chrome occasionally asks you to confirm read access again, and the card tells you when. **The images and videos always stay on your own disk** — the extension doesn't copy them, upload them or put them in the cache; it reads each one only at the moment it's displayed. |
+| **+ URL** | An online gallery. A directory index page, an ordinary gallery page, a JSON list, a plain-text file with one URL per line, or simply a single image or video — it accepts them all. The first scan asks you for access to that domain; the images it fetches go through the normal cache, so you can still see them offline. Videos aren't downloaded: they stream from that site when they play, so they need a connection. |
 
-One card per source: the icon shows folder or URL, and on the right it says how many images it holds. **Click a card's title to expand it**;
+One card per source: the icon shows folder or URL, and on the right it says how many items it holds. **Click a card's title to expand it**;
 inside are that source's own filters and “Rescan / Pick another folder / Delete”. Sources don't interfere with one another —
 rescan one and not a single image in the others is touched; delete one and only the works under it go with it.
 
@@ -433,7 +439,7 @@ Each source has its own set:
 | **Include** | Keeps what matches. `*.jpg`, `IMG_?`, or simply `cat` |
 | **Exclude** | Drops what matches. `thumb`, `*_preview.*` |
 | **regex** | When on, patterns are read as regular expressions (`^IMG_\d{4}$`); when off, `*` and `?` are wildcards, and a pattern with neither is read as “the file name contains these characters” |
-| **Formats** | jpg / jpeg / png / webp / avif / gif / bmp, each checked individually |
+| **Formats** | Images: jpg / jpeg / png / webp / avif / gif / bmp / svg / tif / tiff / heic / heif / jxl. Videos: mp4 / m4v / webm / mov. Each checked individually |
 | **Min. side** | Keeps out icons and thumbnails. Default 200px, or “any” for no limit |
 
 A few places where it's deliberately lenient:
@@ -444,11 +450,43 @@ A few places where it's deliberately lenient:
   (Backslashes don't count — regexes are full of `\d` and `\.`.)
 - **A broken regex doesn't crash anything**; the card shows exactly which pattern is wrong and where.
 
-Everything else is as before: up to 800 images per source, including four levels of subfolders, skipping hidden folders and thumbnail folders;
+Everything else is as before: up to 800 files per source (images and videos together), including four levels of subfolders, skipping hidden folders and thumbnail folders;
 **the file name becomes the title** (numbering prefixes like `01_` are removed automatically), **the parent folder's name becomes the artist**
 (for a URL source, the source's name is used); aspect ratio, dominant-color palette and placeholder are all computed locally,
 and the images are presented the same way as the built-in works (palette, filters and favorites all work).
 “Show from” gains two options: **My library** and **Daily additions**.
+
+### More image formats
+
+- **SVG**: vector artwork hangs as it is. Its proportions come from the width and height it declares (or its viewBox if it has none); icons and other tiny graphics are kept out by “Min. side”.
+- **TIFF** (.tif / .tiff), **HEIC / HEIF** (iPhone photos) and **JPEG XL**: the browser gets the first try; whatever it can't open goes to decoders that ship with the extension, which unpack it in the background on your computer, so the page doesn't stall.
+  - TIFF: uncompressed, LZW, Deflate, PackBits and JPEG-compressed files all work, up to 200 MB per file.
+  - HEIC: photos taken upright on an iPhone come out the right way up.
+  - Anything longer than 8192 pixels on its long side is shown at 8192. A large file takes a second or two each time it comes up, and the first HEIC or JPEG XL takes a moment longer while its decoder loads.
+  - Files even the decoders can't open (usually damaged ones) are skipped during the scan, and the source card says so (“skipped 3 HEIC”).
+- Like video stills, these converted images stay in memory only while the page is open; they never go into the cache.
+
+### Videos
+
+The mp4, m4v, webm and mov files in a folder come in along with the images and take their turn in the rotation.
+
+- **They play in Immersive and on the Gallery Wall.** On the Gallery Wall a video sits inside the frame, hung like a painting.
+  Masonry, the Circular Gallery, the Filmstrip and the Library show a still taken from the video, with a ▶ and its length in the corner; open it and it goes up on the Gallery Wall to play.
+- **How long a video stays**: Settings → Rotation → Video length.
+  - **Play to the end** (default): the next work comes up when the video finishes, and the progress bar follows the video.
+  - **Follow interval**: videos change on the same timer as images. A clip shorter than the interval loops until it's time; a longer one is cut off.
+  - With Timed rotation set to “Manual only”, a video keeps looping until you move on.
+- **Sound** is on by default, at 60%.
+  - While a video plays, a speaker appears next to the play button: click it to mute or unmute; hover over it for a volume bar you can drag or scroll; the `↑` `↓` keys change it by 10%.
+  - Settings → Rotation also has a “Video volume” slider and a “Mute” switch, and the volume you set is remembered.
+  - If the browser won't let a new page start with sound, the video plays muted and the speaker lights up; click anywhere on the page and the sound comes on. That click doesn't pause the video.
+- Click the picture (or press Space, or use the pause button below) to pause, and again to resume. It stops when you switch to another tab and picks up when you come back, and it stops while Pause Gallery is on.
+- Whether a file plays depends on its codec: H.264, VP8 / VP9 and AV1 all work, and iPhone HEVC (.mov) plays in Chrome on a Mac.
+  Files that can't play (ProRes, for example) are skipped during the scan and never reach the library.
+- The still used for thumbnails is kept in memory only while the page is open; it never goes into the cache.
+- Folders you added before need one **Rescan** for their videos (and the new formats such as SVG and TIFF) to show up. A source that had all seven image formats checked gets the new formats checked for you; one where you picked only some is left as it was.
+
+GIF, animated WebP and APNG already move (they loop in Immersive, on the Gallery Wall and in thumbnails). They still count as images: they change on the timer and don't wait for the animation to finish.
 
 ---
 
@@ -907,7 +945,8 @@ corridor-newtab/
 │   ├── app.js             Main program: playback, rendering, drawers, zoom
 │   ├── modes.js           Masonry / Circular Gallery / Filmstrip
 │   ├── daily.js           Daily additions: Commons category crawling, bilingual fill-in from Wikidata, palette calculation
-│   ├── local.js           Custom sources: directory handles, scanning and indexing, on-demand reads
+│   ├── local.js           Custom sources: directory handles, scanning and indexing, on-demand reads; video stills, SVG sizing, TIFF conversion
+│   ├── vendor/            TIFF / HEIC / JPEG XL decoders (a background worker; licenses in vendor/LICENSES.txt), loaded only when needed
 │   ├── ai.js              AI enrichment: dual-format OpenAI / Anthropic client, editable prompt templates, vocabulary constraints, enrichment report
 │   ├── diag.js            Endpoint error diagnosis: turns HTTP 4xx into “what's wrong, and what to do”
 │   ├── localnet.js        Local model: rewrites the Origin of requests sent to localhost to the local address
@@ -976,7 +1015,7 @@ See [`CHANGELOG.md`](../CHANGELOG.md) in the repository root: each version lists
 
 ## 12. Version and copyright
 
-**Corridor** v1.24.1
+**Corridor** v1.25.0
 
 By **Charles Chern** (**@yearnst**)
 

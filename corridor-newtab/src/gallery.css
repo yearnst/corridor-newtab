@@ -46,6 +46,8 @@ a{color:inherit}
   will-change:opacity;
 }
 .layer.on{opacity:1}
+/* 淡出去的那一层不接点击：不然它透明地盖在上面，点画面点到的是上一幅 */
+.layer:not(.on){pointer-events:none}
 
 /* --- 沉浸式 --- */
 .imm-img{
@@ -60,6 +62,13 @@ body[data-mode="immersive"] .layer.on .imm-img{cursor:zoom-in}
   filter:blur(52px) saturate(1.25) brightness(.42);transform:scale(1.06);display:none;
 }
 .layer.contain .imm-bg,.layer.scrolling .imm-bg{display:block}
+/* 视频：和图片同一个位置、同一套铺满 / 完整显示；不跟着 Ken Burns 慢推 —— 片子自己会动 */
+.imm-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;display:none;background:transparent}
+.layer.vid .imm-vid{display:block}
+.layer.vid .imm-img{display:none}
+.layer.contain .imm-vid{object-fit:contain;padding:clamp(26px,6vh,72px) clamp(26px,5vw,96px) clamp(96px,17vh,210px)}
+body[data-mode="immersive"] .layer.on .imm-vid{cursor:pointer}
+body[data-clock="grand"] .layer.contain .imm-vid{padding-top:clamp(200px,27vh,300px)}
 .layer.scrolling .imm-bg{filter:blur(64px) saturate(1.1) brightness(.30)}
 .layer.contain .imm-img{
   object-fit:contain;object-position:center;
@@ -243,7 +252,10 @@ body[data-tex="none"] #wallmottle{--mottle-op:.5}
 .bevel{position:relative;display:block;line-height:0;
   border:var(--bw,0px) solid;border-color:var(--bc,transparent);
   box-shadow:var(--bsh,none)}
-.bevel img{display:block;max-width:100%;height:auto;width:auto;background:#0a0a0a}
+.bevel img,.bevel video{display:block;max-width:100%;height:auto;width:auto;background:#0a0a0a}
+.bevel video{display:none}
+.bevel.vid video{display:block;cursor:pointer}
+.bevel.vid img{display:none}
 .artshade{position:absolute;inset:0;pointer-events:none;
   box-shadow:inset 0 7px 15px -8px rgba(0,0,0,.62),inset 0 0 0 1px rgba(0,0,0,.24)}
 
@@ -264,7 +276,7 @@ body[data-liner="wide"]  { --mw:calc(clamp(42px,5.2vw,92px) * var(--ms,1)); --mc
   --bw:clamp(3px,.34vw,6px); --bc:#eae5d9 #f9f7f1 #fffefb #f2eee4;
   --bsh:0 1px 3px rgba(0,0,0,.20) }
 
-body[data-mode="wall"] .bevel img{max-height:calc(70vh - 190px)}
+body[data-mode="wall"] .bevel img,body[data-mode="wall"] .bevel video{max-height:calc(70vh - 190px)}
 body[data-mode="wall"] .bevel img.scrollimg{max-height:min(40vh,340px)}
 
 /* 无框 */
@@ -376,11 +388,15 @@ body.idle[data-h-look="1"] #card #look{opacity:0}
 body.idle[data-h-look="1"] .ccap .cc-look{opacity:0 !important}
 /* 色条 */
 body.idle[data-h-palette="1"] #palette{opacity:0}
+/* 整张展签：展墙墙签、沉浸式信息卡、环形长廊与胶卷的展签 */
+body.idle[data-h-label="1"] #label,
+body.idle[data-h-label="1"] #card,
+body.idle[data-h-label="1"] .ccap{opacity:0 !important}
 /* 作品那一组全勾上：连墙签、信息卡这两块「纸」也一起收掉 */
 body.idle[data-h-card="1"] #label,
 body.idle[data-h-card="1"] #card{opacity:0}
 #card .eyebrow,#card h1,#card .who,#card .where,#card #look,#card,#palette,#label,
-#topbar,#dock,#clockbar,#clockgrand,#counter,#progress,.mcap b,.mcap span,
+#topbar,#dock,#clockbar,#clockgrand,#counter,#progress,.mcap b,.mcap span,.ccap,
 .ccap .cc-rule,.ccap .cc-eyebrow,.ccap h2,.ccap .cc-who>b,.ccap .cc-who>.cc-life,.ccap .cc-at,.ccap .cc-look{transition:opacity .6s var(--ease)}
 body.idle{cursor:none}
 #chrome > *{pointer-events:auto}
@@ -2011,3 +2027,42 @@ body[data-dir="rtl"] .tonerow{grid-template-columns:64px 1fr}
 #label[dir="ltr"]{text-align:left}
 #btnTheme svg{transition:transform .4s var(--ease)}
 #btnTheme:hover svg{transform:rotate(28deg)}
+
+/* 视频在缩略图（藏品库、瀑布流）上的小标记：一个三角 + 时长 */
+.vbadge{position:absolute;left:8px;top:8px;z-index:2;display:inline-flex;align-items:center;gap:4px;
+  padding:3px 7px 3px 6px;border-radius:999px;background:rgba(10,9,8,.62);color:#f3efe6;
+  font:600 10.5px/1 var(--sans,system-ui);letter-spacing:.02em;pointer-events:none;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.vbadge svg{width:9px;height:9px;fill:currentColor}
+
+/* 视频的音量：底栏播放键旁边那一颗，只在当前是视频时出现。
+   点它静音 / 出声；鼠标停上去，上方冒出一根横向的音量条（滚轮也能调）。 */
+.volwrap{position:relative;display:inline-flex}
+.volwrap[hidden]{display:none}
+.volpop{position:absolute;left:50%;bottom:100%;transform:translateX(-50%) translateY(4px);
+  padding:0 0 10px;opacity:0;pointer-events:none;transition:.18s var(--ease)}
+.volpop::before{content:"";position:absolute;inset:0 0 10px;border-radius:999px;background:#000c;
+  border:1px solid var(--hair);backdrop-filter:blur(10px)}
+.volpop input,.volpop b{position:relative}
+.volpop{display:flex;align-items:center;gap:8px}
+.volpop input{-webkit-appearance:none;appearance:none;width:118px;height:3px;margin:13px 0 13px 14px;border-radius:3px;
+  background:linear-gradient(90deg,var(--accent) var(--fill,60%),rgba(255,255,255,.22) var(--fill,60%));cursor:pointer}
+.volpop input::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#f3efe6;
+  box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.volpop b{font:600 11px/1 var(--sans);color:var(--ink);min-width:30px;margin-right:13px;font-variant-numeric:tabular-nums}
+.volwrap:hover .volpop,.volwrap:focus-within .volpop{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+/* 想出声、浏览器却只肯静音起播：这颗按钮亮起来，提示点一下 */
+#btnVol.blocked{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 55%,transparent);animation:volnudge 1.6s var(--ease) 3}
+@keyframes volnudge{50%{transform:translateY(-2px)}}
+
+/* 说明文字的 ⓘ：挂在标题旁（或短句末尾），点开在下面展开详细说明 */
+.dinfo{display:inline-grid;place-items:center;width:17px;height:17px;margin:0 0 0 6px;padding:0;vertical-align:-3px;
+  border:0;border-radius:50%;background:transparent;color:var(--ink-faint);cursor:pointer;transition:color .15s,background .15s}
+.dinfo svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round}
+.dinfo:hover,.dinfo:focus-visible{color:var(--ink)}
+.dinfo.on{color:var(--accent-lt,var(--accent))}
+.dinfo:focus-visible{outline:1px solid var(--accent);outline-offset:1px}
+.dmore{margin:7px 0 4px;padding:8px 11px;border-left:2px solid color-mix(in srgb,var(--accent) 60%,transparent);
+  border-radius:0 6px 6px 0;background:rgba(255,255,255,.035);font-size:11.5px;line-height:1.7;color:var(--ink-dim);white-space:pre-line}
+.dmore[hidden]{display:none}
+body[data-ui="light"] #drawer .dmore{background:rgba(0,0,0,.035)}
