@@ -112,6 +112,11 @@ header.top{
   :root:not([data-theme]) .iconbtn .ico-sun{display:none}
   :root:not([data-theme]) .iconbtn .ico-moon{display:block}
 }
+/* 顶栏永远一行：字标、链接、两个按钮都不许折行；窄屏（含手机放大字号后的窄视口）先收起 CORRIDOR 小字、再收紧间距 */
+.brand,.top nav a,.langbtn{white-space:nowrap;flex:none}
+.top nav{min-width:0}
+@media(max-width:359px){.brand small{display:none}.top nav{gap:14px}.top .wrap{gap:10px}}
+@media(max-width:330px){.top nav{gap:10px}.langbtn{padding:5px 10px}.iconbtn{padding:6px 8px}}
 
 /* ---------- 英雄区 ---------- */
 .hero{position:relative;padding:clamp(56px,9vw,108px) 0 clamp(40px,6vw,72px);text-align:center;overflow:hidden}
@@ -224,7 +229,7 @@ h3{font-family:var(--serif);font-weight:500;font-size:19px;letter-spacing:.03em;
 @media(max-width:520px){.stats b{font-size:25px}.stats div{padding:16px 8px}}
 
 /* ---------- 功能卡 ---------- */
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(268px,100%),1fr));gap:14px}
 .card{
   background:var(--card);border:1px solid var(--hair);border-radius:14px;
   padding:24px 24px 22px;transition:.24s var(--ease);
