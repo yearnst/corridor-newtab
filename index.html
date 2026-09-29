@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -134,7 +134,10 @@ h1{
   font-family:var(--serif);font-weight:500;margin:0;
   font-size:clamp(46px,8.4vw,86px);line-height:1.05;letter-spacing:.13em;
 }
-h1 .en-name{display:block;font-size:.26em;letter-spacing:.42em;color:var(--ink-faint);margin-top:20px;text-transform:uppercase}
+h1 .sub{display:block;font-size:.26em;letter-spacing:.42em;color:var(--ink-faint);margin-top:20px;text-transform:uppercase}
+/* 英文版：CORRIDOR 做主字标，长廊退到下面一行 */
+h1.wm-en{font-size:clamp(28px,8.6vw,78px);letter-spacing:.16em;text-transform:uppercase;padding-left:.16em}
+h1.wm-en .sub{font-size:max(14px,.3em);letter-spacing:.5em;margin-top:18px;padding-left:.5em}
 .tagline{
   font-family:var(--serif);font-size:clamp(20px,2.7vw,27px);line-height:1.5;
   margin:30px auto 0;max-width:22em;color:var(--ink);
@@ -184,6 +187,10 @@ h1 .en-name{display:block;font-size:.26em;letter-spacing:.42em;color:var(--ink-f
   font-size:11.5px;letter-spacing:.1em;color:var(--ink-faint);
   border:1px solid var(--hair);border-radius:4px;padding:4px 11px;
 }
+/* 两个版本号：GitHub 上最新发布的，和应用店里正在分发的（审核期间会落后一版） */
+a.chip.ver{display:inline-flex;gap:7px;color:var(--ink-faint);transition:border-color .2s var(--ease),color .2s var(--ease)}
+a.chip.ver b{font-weight:600;color:var(--accent);font-variant-numeric:tabular-nums}
+a.chip.ver:hover{border-color:var(--hair-strong);color:var(--ink-dim)}
 
 /* ---------- 挂画：英雄截图 + 展签 ---------- */
 .shot-wrap{position:relative;margin:clamp(44px,6vw,72px) auto 0;max-width:980px}
@@ -299,14 +306,12 @@ footer a:hover{color:var(--ink)}
 footer .sig{font-family:var(--serif);letter-spacing:.1em;color:var(--ink-dim)}
 </style>
 <script>
-/* 在首屏绘制之前就把主题定下来：优先用户选过的，其次跟随系统 */
+/* 在首屏绘制之前就把主题定下来：默认浅色，只有访客自己点过深色才用深色。
+   键从 corridor-theme 换成 corridor-site-theme：旧版跟随系统时记下的选择不再作数。 */
 (function () {
   var t = null;
-  try { t = localStorage.getItem('corridor-theme'); } catch (e) {}
-  if (t !== 'light' && t !== 'dark') {
-    t = (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
-  }
-  document.documentElement.dataset.theme = t;
+  try { t = localStorage.getItem('corridor-site-theme'); } catch (e) {}
+  document.documentElement.dataset.theme = (t === 'dark') ? 'dark' : 'light';
 })();
 </script>
 </head>
@@ -314,7 +319,8 @@ footer .sig{font-family:var(--serif);letter-spacing:.1em;color:var(--ink-dim)}
 
 <header class="top">
   <div class="wrap">
-    <a class="brand" href="#top">长&thinsp;廊 <small>Corridor</small></a>
+    <a class="brand i18n-zh" href="#top">长&thinsp;廊 <small>Corridor</small></a>
+    <a class="brand i18n-en" href="#top">Corridor <small>长&thinsp;廊</small></a>
     <nav>
       <a class="hide-s" href="#film"><span class="i18n-zh">短片</span><span class="i18n-en">Film</span></a>
       <a class="hide-s" href="#what"><span class="i18n-zh">它能做什么</span><span class="i18n-en">Features</span></a>
@@ -341,7 +347,8 @@ footer .sig{font-family:var(--serif);letter-spacing:.1em;color:var(--ink-dim)}
 <section class="hero">
   <div class="wrap">
     <p class="eyebrow"><span class="i18n-zh">106 幅公有领域杰作 · 默认展出 93 幅</span><span class="i18n-en">106 public-domain masterpieces · 93 on show by default</span></p>
-    <h1>长&thinsp;廊<span class="en-name">Corridor</span></h1>
+    <h1 class="i18n-zh">长&thinsp;廊<span class="sub">Corridor</span></h1>
+    <h1 class="i18n-en wm-en">Corridor<span class="sub">长&thinsp;廊</span></h1>
     <p class="tagline">
       <span class="i18n-zh">打开新标签页，看见一幅画。</span>
       <span class="i18n-en">Open a new tab. See a work of art.</span>
@@ -365,6 +372,8 @@ footer .sig{font-family:var(--serif);letter-spacing:.1em;color:var(--ink-dim)}
       <a class="btn btn-b i18n-zh" href="corridor-newtab/README.zh-CN.html">完整手册</a><a class="btn btn-b i18n-en" href="corridor-newtab/">Full manual</a>
     </div>
     <div class="chips">
+      <a class="chip ver" href="https://github.com/yearnst/corridor-newtab/releases/latest"><span class="k">GitHub</span><b data-ver="github">v1.25.0</b></a>
+      <a class="chip ver" href="https://chromewebstore.google.com/detail/corridor-%C2%B7-art-new-tab/mnllopjjkbkoeljonbgmlabijamcjlam"><span class="k">Chrome Web Store</span><b data-ver="store">v1.24.0</b></a>
       <span class="chip">MIT</span>
       <span class="chip">Manifest V3</span>
       <span class="chip">Chrome 110+</span>
@@ -695,17 +704,26 @@ footer .sig{font-family:var(--serif);letter-spacing:.1em;color:var(--ink-dim)}
     });
   });
 
+  /* 版本号：HTML 里写的是发版时的值，打开页面再各取一次最新的。
+     GitHub：本站自己出的 corridor-newtab/manifest.json（就是 main 上发布的那一版）；
+     应用店：shields.io 读的商店版本（商店没有给网页用的接口）。取不到就保留原值。 */
+  function setVer(k,v){
+    if(!/^v?\d+(\.\d+){1,3}$/.test(v||'')) return;
+    var el=document.querySelector('[data-ver="'+k+'"]'); if(el) el.textContent=(v.charAt(0)==='v'?v:'v'+v);
+  }
+  if(window.fetch){
+    fetch('corridor-newtab/manifest.json',{cache:'no-cache'}).then(function(r){return r.ok?r.json():null})
+      .then(function(j){if(j) setVer('github',j.version)}).catch(function(){});
+    fetch('https://img.shields.io/chrome-web-store/v/mnllopjjkbkoeljonbgmlabijamcjlam.json').then(function(r){return r.ok?r.json():null})
+      .then(function(j){if(j) setVer('store',j.value||j.message)}).catch(function(){});
+  }
+
   /* 明暗切换：head 里已经定过一次，这里只管点击之后的事 */
   var tbtn=document.getElementById('theme');
   if(tbtn) tbtn.addEventListener('click',function(){
     var next=document.documentElement.dataset.theme==='light'?'dark':'light';
     document.documentElement.dataset.theme=next;
-    try{localStorage.setItem('corridor-theme',next)}catch(e){}
-  });
-  /* 没手动选过的话，系统切换时跟着走 */
-  if(window.matchMedia) matchMedia('(prefers-color-scheme: light)').addEventListener('change',function(e){
-    var saved=null; try{saved=localStorage.getItem('corridor-theme')}catch(err){}
-    if(saved!=='light'&&saved!=='dark') document.documentElement.dataset.theme=e.matches?'light':'dark';
+    try{localStorage.setItem('corridor-site-theme',next)}catch(e){}
   });
 })();
 </script>
