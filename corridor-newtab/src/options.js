@@ -1,6 +1,7 @@
 import { t, lx, FRAMES, LINERS, WALLS, WALLGROUPS, TEXTURES, TEXGROUPS, applyPack } from './i18n.js';
 import * as S from './store.js';
 import * as LG from './langs.js';
+import './tips.js';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 let set, lang = 'zh', other = 'en', total = 0;
@@ -33,9 +34,9 @@ const K = (k) => ({ k });
 const moreOf = (k) => { const m = T(k + 'More'); return m === k + 'More' ? '' : m; };
 const dS = (d) => d && typeof d === 'object' ? T(d.k) : (d || '');
 const dK = (d) => d && typeof d === 'object' && moreOf(d.k) ? d.k : '';
-const info = (d) => dK(d) ? `<button class="dinfo" type="button" data-more="${dK(d)}" aria-expanded="false" title="${esc(T('moreInfo'))}"
-  aria-label="${esc(T('moreInfo'))}"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5"/><path d="M8 7.3v4.2M8 4.7v.3"/></svg></button>` : '';
-const box = (d) => dK(d) ? `<div class="dmore" data-morebox="${dK(d)}" hidden>${esc(moreOf(dK(d)))}</div>` : '';
+const info = (d) => dK(d) ? `<button class="dinfo" type="button" data-tip="${esc(moreOf(dK(d)))}" title=""
+  aria-label="${esc(T('moreInfo'))}: ${esc(moreOf(dK(d)))}"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5"/><path d="M8 7.3v4.2M8 4.7v.3"/></svg></button>` : '';
+const box = () => '';
 const row = (l, s, c) => `<div class="row"><div class="lab"><b>${esc(l)}${info(s)}</b>${dS(s) ? `<span>${esc(dS(s))}</span>` : ''}${box(s)}</div>${c}</div>`;
 const block = (l, s, c) => `<div class="row" style="display:block"><div class="lab" style="margin-bottom:8px"><b>${esc(l)}${info(s)}</b>${dS(s) ? `<span>${esc(dS(s))}</span>` : ''}${box(s)}</div>${c}</div>`;
 const seg = (id, o, cur) => `<div class="seg" data-seg="${id}">${o.map(x => `<button data-v="${esc(x.v)}" class="${String(x.v) === String(cur) ? 'on' : ''}">${esc(x.t)}</button>`).join('')}</div>`;
@@ -156,11 +157,6 @@ async function render() {
        <span style="display:block;margin-top:6px;opacity:.8">© ${new Date().getFullYear()} Charles Chern · MIT License</span></div>`;
 
   $$('[data-seg] button').forEach(b => b.onclick = () => save(b.closest('[data-seg]').dataset.seg, b.dataset.v));
-  $$('[data-more]').forEach(b => b.onclick = (e) => {
-    e.preventDefault(); e.stopPropagation();
-    const bx = $(`[data-morebox="${CSS.escape(b.dataset.more)}"]`); if (!bx) return;
-    bx.hidden = !bx.hidden; b.classList.toggle('on', !bx.hidden); b.setAttribute('aria-expanded', String(!bx.hidden));
-  });
   $$('[data-tg]').forEach(b => b.onclick = () => save(b.dataset.tg, !set[b.dataset.tg]));
   $$('[data-sel]').forEach(s => s.onchange = () => save(s.dataset.sel, s.value));
   $$('[data-pick]').forEach(b => b.onclick = () => save(b.dataset.pick, b.dataset.k));

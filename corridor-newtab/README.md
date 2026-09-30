@@ -1,6 +1,6 @@
 # Corridor · Art New Tab
 
-<sub>v1.25.0</sub>
+<sub>v1.25.1</sub>
 
 **English** · [简体中文](README.zh-CN.md)
 
@@ -168,9 +168,9 @@ Press `C` to cycle through the three states.
 | `↑` `↓` | Video volume, 10% per press, while a video is on screen |
 | `F` | Add to / remove from favorites |
 | `X` | Remove this work (out of the rotation and no longer listed in the Library; can be undone within five seconds) |
-| `Q` | Pause Gallery / back on show (instead of paintings, it shows the sites you visit often) |
-| `Z` | View in detail (scroll to zoom, drag to pan, double-click to fit) |
-| `I` | Artwork details (the full curatorial note, medium and dimensions, source and license). The panel has a language button at its top right: one click switches the whole page to the other language, and closing and reopening it brings back your native language |
+| `Q` | Pause Gallery / back on show (instead of paintings, it shows the sites you visit often). On the Gallery Wall, **triple-clicking** the left mouse button does the same |
+| `Z` | View in detail (scroll to zoom, drag to pan, double-click to fit). Press `Z` again to go back, like `Esc` |
+| `I` | Artwork details (the full curatorial note, medium and dimensions, source and license). Press `I` again to close it. The panel has a language button at its top right: one click switches the whole page to the other language, and closing and reopening it brings back your native language |
 | `L` | The Library (All / Favorites / History + filters and search) |
 | `S` | Settings drawer |
 | `C` | Switch clock style |
@@ -342,7 +342,7 @@ Order: Shuffled / Chronological · Show from: Whole collection / Favorites only 
 > Settings open in a **drawer that slides in from the right**: the picture narrows to the left instead of being covered, so a change of frame or wall color shows right away.
 > In the drawer, **hovering over a frame or wall color tries it on**; move away and it reverts, and only a click saves. Press `S` to open and close it.
 > Every tab uses the same layout: group heading (collapsible, current value shown on the right) → title + a one-line description → control.
-> Where there's more to say, an ⓘ next to the title opens the details below the description, and a second click closes them;
+> Where there's more to say, hover over the ⓘ next to the title and the details float up beside it (nothing is pushed down, and no click is needed);
 > with switches laid out as right-aligned single rows of equal width.
 > When you change a setting, the drawer **stays where it is** instead of jumping back to the top; only switching tabs takes you back to the top.
 
@@ -425,6 +425,8 @@ Settings → Sources → **Custom sources**. You can add **several sources**, of
 |---|---|
 | **+ Folder** | A folder on this computer. It uses the browser's File System Access API; the directory handle is stored locally and reused directly the next time you open a new tab. Chrome occasionally asks you to confirm read access again, and the card tells you when. **The images and videos always stay on your own disk** — the extension doesn't copy them, upload them or put them in the cache; it reads each one only at the moment it's displayed. |
 | **+ URL** | An online gallery. A directory index page, an ordinary gallery page, a JSON list, a plain-text file with one URL per line, or simply a single image or video — it accepts them all. The first scan asks you for access to that domain; the images it fetches go through the normal cache, so you can still see them offline. Videos aren't downloaded: they stream from that site when they play, so they need a connection. |
+
+Each source card has its own switch on the header row: turn a source off and its works leave the rotation, without removing the source or its scan.
 
 One card per source: the icon shows folder or URL, and on the right it says how many items it holds. **Click a card's title to expand it**;
 inside are that source's own filters and “Rescan / Pick another folder / Delete”. Sources don't interfere with one another —
@@ -1015,7 +1017,7 @@ See [`CHANGELOG.md`](../CHANGELOG.md) in the repository root: each version lists
 
 ## 12. Version and copyright
 
-**Corridor** v1.25.0
+**Corridor** v1.25.1
 
 By **Charles Chern** (**@yearnst**)
 

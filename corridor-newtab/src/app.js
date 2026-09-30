@@ -4,6 +4,7 @@
 import { STR, MOVEMENTS, REGIONS, TAGS, HUES, FRAMES, LINERS, WALLS, WALLGROUPS, TEXTURES, TEXGROUPS, COUNTRIES,
          t, label, lx, enDate, applyPack, dropPack, hasPack, packCount, packTotal } from './i18n.js';
 import * as S from './store.js';
+import './tips.js';
 import * as MODES from './modes.js';
 import * as LOCAL from './local.js';
 import * as AI from './ai.js';
@@ -59,7 +60,7 @@ const A = {                       // 应用状态
   list: [], idx: 0, cur: null, seed: 1,
   timer: null, tick: null, paused: false, layer: 'A',
   lang: 'zh', other: 'en', objUrls: new Set(), libTab: 'all', libQ: '', busy: false,
-  dtab: 'show', hover: null, moreOpen: new Set(), lastDl: null, painted: null, daily: 0, fresh: 0, lib: 0, libName: '',
+  dtab: 'show', hover: null, lastDl: null, painted: null, daily: 0, fresh: 0, lib: 0, libName: '',
   aiEye: false, aiAbort: null, aiPrev: null, aiReport: null,
   /* 分组折叠状态：提示词与 Chrome 页脚默认收着，别一开就是一屏文本 */
   fold: { aiprompt: true, chrome: true }, dq: '', labFlip: false,
@@ -1494,22 +1495,21 @@ const drawerOpen = () => document.body.classList.contains('drawer-open');
 /* 统一的设置区块 */
 const dsec = (t) => `<div class="dsec">${esc(t)}</div>`;
 /* ---------------- 说明文字 ----------------
-   每一项只常显一句短的；需要多说的放进「详细」：标题旁一个 ⓘ，点开在短句下面展开，再点收起。
+   每一项只常显一句短的；需要多说的放进「详细」：标题旁一个 ⓘ，鼠标停上去就弹出，移开收起（见 tips.js）。
    详细写在 i18n 里同名加 More 的那一条（localDesc → localDescMore）。
    调用处传 K('xxxDesc') 表示「这条可能有详细」；直接传字符串的就只是一句话。 */
 const K = (k) => ({ k });
 const moreOf = (k) => { const m = k ? T(k + 'More') : ''; return m === k + 'More' ? '' : m; };
-const infoBtn = (k) => `<button class="dinfo${A.moreOpen.has(k) ? ' on' : ''}" type="button" data-more="${k}"
-  aria-expanded="${A.moreOpen.has(k)}" title="${esc(T('moreInfo'))}" aria-label="${esc(T('moreInfo'))}"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5"/><path d="M8 7.3v4.2M8 4.7v.3"/></svg></button>`;
-const moreBox = (k) => `<div class="dmore" data-morebox="${k}"${A.moreOpen.has(k) ? '' : ' hidden'}>${esc(moreOf(k))}</div>`;
+const infoBtn = (k) => `<button class="dinfo" type="button" data-tip="${esc(moreOf(k))}"
+  title="" aria-label="${esc(T('moreInfo'))}: ${esc(moreOf(k))}"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5"/><path d="M8 7.3v4.2M8 4.7v.3"/></svg></button>`;
 const dS = (d) => d && typeof d === 'object' ? T(d.k) : (d || '');
 const dK = (d) => d && typeof d === 'object' && moreOf(d.k) ? d.k : '';
 /* 一段没有标题的说明：短句末尾挂 ⓘ */
 const dnote = (k, attrs = '') => { const m = moreOf(k);
-  return `<div class="dbd"${attrs}>${esc(T(k))}${m ? infoBtn(k) : ''}</div>${m ? moreBox(k) : ''}`; };
+  return `<div class="dbd"${attrs}>${esc(T(k))}${m ? infoBtn(k) : ''}</div>`; };
 /* 标题 + 短说明（+ ⓘ 挂在标题旁） */
 const dhead = (title, desc) => { const k = dK(desc);
-  return `<div class="dbt">${esc(title)}${k ? infoBtn(k) : ''}</div>${dS(desc) ? `<div class="dbd">${esc(dS(desc))}</div>` : ''}${k ? moreBox(k) : ''}`; };
+  return `<div class="dbt">${esc(title)}${k ? infoBtn(k) : ''}</div>${dS(desc) ? `<div class="dbd">${esc(dS(desc))}</div>` : ''}`; };
 const dblock = (title, desc, ctrl) => `<div class="dblock">
   ${dhead(title, desc)}
   <div class="dbc">${ctrl}</div></div>`;
@@ -1531,7 +1531,7 @@ function texGrid(cur) {
   }).join('');
 }
 const dctrl = (desc, ctrl) => { const k = dK(desc);
-  return `<div class="dblock">${dS(desc) ? `<div class="dbd nt">${esc(dS(desc))}${k ? infoBtn(k) : ''}</div>${k ? moreBox(k) : ''}` : ''}<div class="dbc">${ctrl}</div></div>`; };
+  return `<div class="dblock">${dS(desc) ? `<div class="dbd nt">${esc(dS(desc))}${k ? infoBtn(k) : ''}</div>` : ''}<div class="dbc">${ctrl}</div></div>`; };
 
 /* ---------------- 墙面颜色 ----------------
    色卡按「中性 / 展厅色 / 柔彩」分三排，末尾一格是自定义色板。
@@ -1715,7 +1715,7 @@ async function applySrc(key, val) {
   let o = next;
   for (let i = 0; i < ps.length - 1; i++) o = (o[ps[i]] = o[ps[i]] || {});
   const last = ps[ps.length - 1];
-  if (last === 'rx') val = !!val;
+  if (last === 'rx' || last === 'on') val = !!val;
   if (last === 'minPx') val = Number(val) || 0;
   o[last] = val;
   const lib = await S.getLocalLib();
@@ -1789,7 +1789,7 @@ function bindLib(body) {
   $$('[data-srcopen]', body).forEach(h => {
     const go = () => { const id = h.dataset.srcopen; A.libOpen = A.libOpen === id ? '' : id; renderDrawer(); };
     h.onclick = go;
-    h.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
+    h.onkeydown = (e) => { if (e.target === h && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); go(); } };
   });
 
   /* 加一个文件夹 */
@@ -1899,12 +1899,13 @@ function srcCard(x) {
   const filt = [f.inc && `${T('libInc')} ${f.inc}`, f.exc && `${T('libExc')} ${f.exc}`,
                 (f.ext || []).length < LOCAL.EXTS.length ? (f.ext || []).join('/') : '',
                 f.rx ? T('libRx') : ''].filter(Boolean).join(' · ');
-  return `<div class="srccard${open ? ' open' : ''}${x.err ? ' bad' : ''}" data-src="${esc(x.id)}">
+  return `<div class="srccard${open ? ' open' : ''}${x.err ? ' bad' : ''}${x.on === false ? ' off' : ''}" data-src="${esc(x.id)}">
     <div class="srchead" data-srcopen="${esc(x.id)}" role="button" tabindex="0">
       <s class="srckind">${isUrl ? '&#127760;' : '&#128193;'}</s>
       <div class="srcname"><b>${esc(x.name || (isUrl ? hostOf(x.url) : T('libFolder')))}</b>
         <u>${esc(where)}</u></div>
       <i class="srcn">${x.n || 0}</i>
+      ${toggle('src.' + x.id + '.on', x.on !== false)}
       <b class="dchev"></b>
     </div>
     ${x.err ? `<div class="srcerr">${esc(x.err)}</div>` : ''}
@@ -2017,7 +2018,7 @@ function langBlock(s) {
           spellcheck="false" autocomplete="off"><button class="bigbtn sm pri" id="langNewOk">${esc(T('apply'))}</button></div></div>` : ''}
       <div class="dbd lphint">${esc(open ? T('langFlipTip') : T('langBuiltinOnly'))}</div>
       ${open ? '' : `<div class="dbd lplock"><s>!</s><span>${esc(T('langLocked'))}${infoBtn('langLocked')}</span>
-        <button class="bigbtn sm" id="btnLangGoAi">${esc(T('langGoAi'))}</button></div>${moreBox('langLocked')}`}
+        <button class="bigbtn sm" id="btnLangGoAi">${esc(T('langGoAi'))}</button></div>`}
     </div>` +
     (custom ? `<div class="dblock trbox">
       <div class="dbl">${dhead(T('trOn'), K('trDesc'))}</div>
@@ -2210,7 +2211,7 @@ async function buildTab(tab, s) {
           <div>${seg('pf.fmt', [{ v: 'auto', t: T('aiFmtAuto') }, { v: 'openai', t: 'OpenAI' }, { v: 'anthropic', t: 'Anthropic' }], cp.fmt)}</div>
           <label>${esc(T('aiBase'))}</label>
           <div>${tin('pf.base', cp.base, 'https://api.openai.com/v1')}<i class="tint">${esc(T('aiBaseTip'))}</i>
-            ${cpLocal ? `<i class="tint">${esc(T('aiLocalNote'))}${infoBtn('aiLocalNote')}</i>${moreBox('aiLocalNote')}` : ''}</div>
+            ${cpLocal ? `<i class="tint">${esc(T('aiLocalNote'))}${infoBtn('aiLocalNote')}</i>` : ''}</div>
           <label>${esc(T('aiKey'))}</label>
           <div class="tinrow">${tin('pf.key', cp.key, cpLocal ? T('aiKeyLocalPh') : 'sk-…', A.aiEye ? 'text' : 'password')}
             <button class="bigbtn sm" id="btnAiEye">${esc(A.aiEye ? T('aiHide') : T('aiShow'))}</button></div>
@@ -2602,7 +2603,7 @@ function backupBlock() {
     ${b.keys === 'enc' ? `<div class="dbc tinrow">${tin('bk.pass', b.pass, T('bkPassPh'), A.bkEye ? 'text' : 'password')}
       <button class="bigbtn sm" id="btnBkEye">${esc(A.bkEye ? T('aiHide') : T('aiShow'))}</button></div>
       ${dnote('bkEncNote')}` : ''}
-    ${b.keys === 'plain' ? `<div class="bkwarn">${esc(T('bkPlainWarn'))}${infoBtn('bkPlainWarn')}</div>${moreBox('bkPlainWarn')}` : ''}
+    ${b.keys === 'plain' ? `<div class="bkwarn">${esc(T('bkPlainWarn'))}${infoBtn('bkPlainWarn')}</div>` : ''}
   </div>`;
 
   const why = ['notjson', 'notours', 'newer'].includes(sum && sum.why) ? sum.why : 'notours';
@@ -2751,16 +2752,6 @@ async function renderDrawer(toTop = false) {
   });
 
   $$('[data-seg2]', body).forEach(b => b.onclick = async () => { await applySetting(b.dataset.seg2, b.dataset.v); renderDrawer(); });
-  /* ⓘ：在短句下面展开 / 收起详细说明；重画抽屉后保持原样 */
-  $$('[data-more]', body).forEach(b => b.onclick = (e) => {
-    e.preventDefault(); e.stopPropagation();
-    const k = b.dataset.more, box = $(`[data-morebox="${CSS.escape(k)}"]`, body);
-    if (!box) return;
-    const open = box.hidden;
-    box.hidden = !open;
-    b.classList.toggle('on', open); b.setAttribute('aria-expanded', String(open));
-    if (open) A.moreOpen.add(k); else A.moreOpen.delete(k);
-  });
   $$('[data-seg] button', body).forEach(b => b.onclick = async () => {
     const k = b.closest('[data-seg]').dataset.seg;
     if (k.startsWith('pf.')) { await saveProf({ [k.slice(3)]: b.dataset.v }); renderDrawer(); return; }
@@ -3427,7 +3418,12 @@ function refit() {
 const AI_BOOL = ['on', 'forDaily', 'forLocal', 'auto', 'over', 'note', 'split'];
 async function applySetting(key, val) {
   /* src.<来源 id>.<字段> 走的不是设置，而是图库那份存储 */
-  if (String(key).startsWith('src.')) return applySrc(key, val);
+  if (String(key).startsWith('src.')) {
+    await applySrc(key, val);
+    /* 勾选 / 取消某个来源：目录与播放列表跟着重建，那个来源的作品立刻上墙 / 下墙 */
+    if (key.endsWith('.on')) { await reloadDaily(); A.painted = null; }
+    return;
+  }
   if (['kenburns', 'autohide', 'workSafe', 'scrollPan', 'newTabAdvance', 'dailyNew', 'localLib', 'filmEdge', 'off', 'offTop', 'videoMute'].includes(key)) val = !!val;
   if (['intervalMs', 'cacheLimitMB', 'matScale', 'carouselMs', 'filmMs', 'wallSat', 'wallTemp', 'videoVol'].includes(key)) val = Number(val);
   /* 嵌套设置（ai.base 这种）写成一层层的补丁，交给 setSettings 深合并 */
@@ -3743,6 +3739,25 @@ function wire() {
   $('#zOut').onclick = () => zoomAt(1 / 1.5, innerWidth / 2, innerHeight / 2);
   $('#zFit').onclick = zoomFit;
 
+  /* 展墙：鼠标左键三连击＝Q（暂歇）。
+     前两下会照常触发点击（点画会打开高清、点视频会暂停 / 继续），所以第一下先记下当时的样子，
+     第三下到了再原样退回去，然后才暂歇。面板、抽屉、按钮、输入框上的连击不算。 */
+  let tc = null;
+  addEventListener('click', (e) => {
+    if (e.button !== 0) return;
+    if (e.detail === 1) {
+      const skip = A.set.mode !== 'wall' || pausedOn() || drawerOpen() || Z.on || $$('.sheet.open').length ||
+        e.target.closest?.('button,a,input,select,textarea,label,#chrome,#drawer,.sheet,#undobar,#toast,.dtip');
+      tc = skip ? null : { paused: A.paused };
+    } else if (e.detail === 3 && tc) {
+      const was = tc; tc = null; e.stopPropagation();
+      if (A.set.mode !== 'wall') return;
+      closeSheets();
+      if (A.paused !== was.paused) { A.paused = was.paused; MODES.setPaused(A.paused); startTimer(); }
+      togglePause(true);
+    }
+  }, true);
+
   /* 键盘 */
   addEventListener('keydown', e => {
     if (e.target.matches('input,select,textarea')) {
@@ -3778,8 +3793,10 @@ function wire() {
          不拦住的话这个字母会接着被打进那个框里（按 L 打开，框里就先躺了个 l）。
          上面已经把「焦点在输入框里」的情况提前 return 掉了，这里拦不到正常打字。 */
       case 'f': case 'F': e.preventDefault(); $('#btnFav').click(); break;
-      case 'z': case 'Z': if (!open) { e.preventDefault(); $('#btnZoom').click(); } break;
-      case 'i': case 'I': if (!open) { e.preventDefault(); $('#btnInfo').click(); } break;
+      case 'z': case 'Z':   /* 再按一次＝退回，跟 Esc 一样 */
+        if (Z.on) { e.preventDefault(); closeSheets(); } else if (!open) { e.preventDefault(); $('#btnZoom').click(); } break;
+      case 'i': case 'I':
+        if ($('#infoSheet').classList.contains('open')) { e.preventDefault(); closeSheets(); } else if (!open) { e.preventDefault(); $('#btnInfo').click(); } break;
       case 'l': case 'L': if (!open) { e.preventDefault(); $('#btnLib').click(); } break;
       case 's': case 'S': if (!open) { e.preventDefault(); $('#btnSet').click(); } break;
       case 'c': case 'C': if (!open) { e.preventDefault(); applySetting('clock', A.set.clock === 'off' ? 'bar' : A.set.clock === 'bar' ? 'grand' : 'off'); } break;
@@ -3844,8 +3861,11 @@ function mergeAll(cat, daily, lib, set) {
   const every = applyTr(cat.concat(daily.works || []).concat(lib.works || []));
   A.everById = new Map(every.map(w => [w.id, w]));
   /* 两个开关关掉时那一批不进目录 —— 但它们并没有消失，everById 里还留着 */
+  /* 自定义图库里被取消勾选的来源，它名下的作品同样不进目录 */
+  const srcOff = new Set((lib.srcs || []).filter(x => x.on === false).map(x => x.id));
   const off = new Set([...(set.dailyNew ? [] : (daily.works || [])),
-                       ...(set.localLib ? [] : (lib.works || []))].map(w => w.id));
+                       ...(set.localLib ? [] : (lib.works || [])),
+                       ...(lib.works || []).filter(w => srcOff.has(w.sid))].map(w => w.id));
   return off.size ? every.filter(w => !off.has(w.id)) : every;
 }
 

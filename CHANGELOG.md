@@ -19,6 +19,39 @@ Every entry is in English first; the Chinese text is folded under **中文**.
 
 ---
 
+## [1.25.1] — 2026-09-30
+
+A few small conveniences: Z and I close themselves, three clicks pause the gallery, and every Custom source gets its own switch.
+
+### Added
+
+* **Custom sources can be switched on and off one by one**
+  Each source card in Settings → Sources has its own switch. A source that is off stays in the list but its works leave the rotation.
+* **Triple-click on the Gallery Wall to Pause Gallery**, the same as `Q`. Resume with `Q` or the power button.
+
+### Fixes and improvements
+
+* Press `Z` (detail view) or `I` (artwork details) a second time to go back, like `Esc`.
+* The ⓘ next to a setting now opens on hover and closes when you move away. It floats beside the icon, so nothing is pushed down and no click is needed.
+
+<details>
+<summary markdown="span">中文</summary>
+
+几处小的顺手改动：Z 和 I 再按一次就退回，三连击暂歇，自定义图库的每个来源都能单独开关。
+
+### 新增
+
+* **自定义图库的来源可以逐个开关**
+  设置 → 图库 里每张来源卡片都有自己的开关。关掉的来源还留在列表里，它的作品不再进入轮换。
+* **展墙上鼠标左键三连击＝暂歇**，跟 `Q` 一样。回来仍用 `Q` 或电源按钮。
+
+### 修复与优化
+
+* `Z`（高清）和 `I`（作品详情）再按一次就退回，跟 `Esc` 一样。
+* 设置项旁的 ⓘ 改成鼠标停上去就显示，移开收起。说明浮在图标旁边，不挤开下面的内容，也不用点击。
+
+</details>
+
 ## [1.25.0] — 2026-09-27
 
 Videos from your Custom sources now play in the rotation, and SVG, TIFF, HEIC and JPEG XL images come in too.

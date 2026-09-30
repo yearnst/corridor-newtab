@@ -786,6 +786,10 @@ select.sel{background:var(--f1);border:1px solid var(--hair);border-radius:9px;p
   border-bottom:1.4px solid var(--ink-faint);transform:rotate(45deg);margin:-4px 3px 0 2px;
   transition:transform .24s var(--ease)}
 .srccard.open .srchead .dchev{transform:rotate(-135deg);margin-top:2px}
+.srchead .sw-toggle{width:34px;height:20px}
+.srchead .sw-toggle::after{top:3px;left:3px;width:14px;height:14px}
+.srchead .sw-toggle.on::after{transform:translateX(14px)}
+.srccard.off .srcname,.srccard.off .srckind,.srccard.off .srcn{opacity:.45}
 .srcerr{padding:0 11px 9px;font-size:11px;line-height:1.6;color:#c08c85}
 .srcbody{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s var(--ease)}
 .srccard.open .srcbody{grid-template-rows:1fr}
@@ -2060,9 +2064,9 @@ body[data-dir="rtl"] .tonerow{grid-template-columns:64px 1fr}
   border:0;border-radius:50%;background:transparent;color:var(--ink-faint);cursor:pointer;transition:color .15s,background .15s}
 .dinfo svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round}
 .dinfo:hover,.dinfo:focus-visible{color:var(--ink)}
-.dinfo.on{color:var(--accent-lt,var(--accent))}
 .dinfo:focus-visible{outline:1px solid var(--accent);outline-offset:1px}
-.dmore{margin:7px 0 4px;padding:8px 11px;border-left:2px solid color-mix(in srgb,var(--accent) 60%,transparent);
-  border-radius:0 6px 6px 0;background:rgba(255,255,255,.035);font-size:11.5px;line-height:1.7;color:var(--ink-dim);white-space:pre-line}
-.dmore[hidden]{display:none}
-body[data-ui="light"] #drawer .dmore{background:rgba(0,0,0,.035)}
+.dtip{position:fixed;z-index:300;max-width:min(300px,calc(100vw - 24px));padding:9px 12px;border-radius:8px;pointer-events:none;
+  background:#1c1b19;color:#e8e4dc;border:1px solid rgba(255,255,255,.14);box-shadow:0 14px 34px -10px rgba(0,0,0,.55);
+  font-size:11.5px;line-height:1.7;white-space:pre-line}
+.dtip[hidden]{display:none}
+body[data-ui="light"] .dtip{background:#fffdfa;color:#3a362f;border-color:rgba(0,0,0,.14);box-shadow:0 14px 34px -14px rgba(40,30,15,.35)}
