@@ -72,6 +72,7 @@ Videos from your Custom sources now play in the rotation, and SVG, TIFF, HEIC an
 
 * Notes in Settings are down to one line each; an ⓘ next to the title opens the details.
 * After you change works by hand, Timed rotation starts counting from zero.
+* Immersive framing defaults to “Smart” again on new installs and after a “Reset” (Settings → Display → Framing), as before 1.22.1. Existing settings are not changed.
 
 ### Privacy and permissions
 
@@ -98,25 +99,11 @@ Videos from your Custom sources now play in the rotation, and SVG, TIFF, HEIC an
 
 * 设置里的说明每项只留一句；标题旁的 ⓘ 点开看详细。
 * 手动换作品之后，定时轮换从头计时。
+* 沉浸式的画面适配，新装或「重置」之后默认改回「智能」（设置 → 呈现 → 画面适配），和 1.22.1 之前一样。已经在用的设置不变。
 
 ### 隐私与权限
 
 * 没有新增权限。页面的安全策略允许播放视频（来源和图片一样），并允许扩展自带的解码器在后台运行。不从扩展以外加载任何东西。
-
-</details>
-
-## [1.24.1] — 2026-09-25
-
-Immersive defaults to Smart framing again.
-
-* New installs, and settings after a “Reset”, start on “Smart” under Settings → Display → Framing, as before 1.22.1. Existing settings are not changed.
-
-<details>
-<summary markdown="span">中文</summary>
-
-沉浸式的画面适配默认改回「智能」。
-
-* 新装或「重置」之后，设置 → 呈现 → 画面适配 默认「智能」，和 1.22.1 之前一样。已经在用的设置不变。
 
 </details>
 
