@@ -342,7 +342,7 @@ Order: Shuffled / Chronological · Show from: Whole collection / Favorites only 
 > Settings open in a **drawer that slides in from the right**: the picture narrows to the left instead of being covered, so a change of frame or wall color shows right away.
 > In the drawer, **hovering over a frame or wall color tries it on**; move away and it reverts, and only a click saves. Press `S` to open and close it.
 > Every tab uses the same layout: group heading (collapsible, current value shown on the right) → title + a one-line description → control.
-> Where there's more to say, hover over the ⓘ next to the title and the details float up beside it (nothing is pushed down, and no click is needed);
+> Where there's more to say, hover over the ⓘ next to the title and the details float up above it (nothing is pushed down, and no click is needed);
 > with switches laid out as right-aligned single rows of equal width.
 > When you change a setting, the drawer **stays where it is** instead of jumping back to the top; only switching tabs takes you back to the top.
 

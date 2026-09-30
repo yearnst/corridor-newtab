@@ -18,8 +18,9 @@ function showTip(btn) {
   const r = btn.getBoundingClientRect(), m = 12;
   const w = t.offsetWidth, h = t.offsetHeight;
   let x = Math.min(Math.max(m, r.left - 8), innerWidth - w - m);
-  let y = r.bottom + 8;
-  if (y + h > innerHeight - m) y = Math.max(m, r.top - h - 8);
+  /* 优先放在图标上方，免得盖住下面还要看的设置；上面放不下才放下面 */
+  let y = r.top - h - 8;
+  if (y < m) y = Math.min(r.bottom + 8, Math.max(m, innerHeight - h - m));
   t.style.left = x + 'px'; t.style.top = y + 'px';
 }
 const hit = (e) => e.target.closest?.('.dinfo[data-tip]');

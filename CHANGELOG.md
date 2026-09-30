@@ -32,7 +32,7 @@ A few small conveniences: Z and I close themselves, a double-click pauses the ga
 ### Fixes and improvements
 
 * Press `Z` (detail view) or `I` (artwork details) a second time to go back, like `Esc`.
-* The ⓘ next to a setting now opens on hover and closes when you move away. It floats beside the icon, so nothing is pushed down and no click is needed.
+* The ⓘ next to a setting now opens on hover and closes when you move away. It floats above the icon, so nothing is pushed down and no click is needed.
 
 <details>
 <summary markdown="span">中文</summary>
@@ -48,7 +48,7 @@ A few small conveniences: Z and I close themselves, a double-click pauses the ga
 ### 修复与优化
 
 * `Z`（高清）和 `I`（作品详情）再按一次就退回，跟 `Esc` 一样。
-* 设置项旁的 ⓘ 改成鼠标停上去就显示，移开收起。说明浮在图标旁边，不挤开下面的内容，也不用点击。
+* 设置项旁的 ⓘ 改成鼠标停上去就显示，移开收起。说明浮在图标上方，不挤开下面的内容，也不用点击。
 
 </details>
 
