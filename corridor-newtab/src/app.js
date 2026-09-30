@@ -3739,18 +3739,25 @@ function wire() {
   $('#zOut').onclick = () => zoomAt(1 / 1.5, innerWidth / 2, innerHeight / 2);
   $('#zFit').onclick = zoomFit;
 
-  /* 展墙：鼠标左键三连击＝Q（暂歇）。
-     前两下会照常触发点击（点画会打开高清、点视频会暂停 / 继续），所以第一下先记下当时的样子，
-     第三下到了再原样退回去，然后才暂歇。面板、抽屉、按钮、输入框上的连击不算。 */
+  /* 鼠标左键二连击＝Q（暂歇）：展墙上双击进入暂歇，暂歇那一屏的空白处双击回到展出。
+     进入时前一下点击会照常触发（点画开高清、点视频切暂停），所以第一下先记下当时的样子，
+     第二下到了再原样退回去，然后才暂歇。面板、抽屉、按钮、链接、输入框上的双击不算；
+     暂歇屏上只认空白处（整理模式里不认），免得误点站点卡片。 */
   let tc = null;
   addEventListener('click', (e) => {
     if (e.button !== 0) return;
+    const ui = e.target.closest?.('button,a,input,select,textarea,label,#chrome,#drawer,.sheet,#undobar,#toast,.dtip');
     if (e.detail === 1) {
-      const skip = A.set.mode !== 'wall' || pausedOn() || drawerOpen() || Z.on || $$('.sheet.open').length ||
-        e.target.closest?.('button,a,input,select,textarea,label,#chrome,#drawer,.sheet,#undobar,#toast,.dtip');
-      tc = skip ? null : { paused: A.paused };
-    } else if (e.detail === 3 && tc) {
-      const was = tc; tc = null; e.stopPropagation();
+      if (pausedOn()) {
+        tc = (!A.offTidy && !drawerOpen() && !ui && (e.target.id === 'paused' || e.target.id === 'offIn')) ? { resume: true } : null;
+      } else {
+        const skip = A.set.mode !== 'wall' || drawerOpen() || Z.on || $$('.sheet.open').length || ui;
+        tc = skip ? null : { paused: A.paused };
+      }
+    } else if (e.detail === 2 && tc) {
+      const was = tc; tc = null;
+      e.stopPropagation();
+      if (was.resume) { if (pausedOn()) togglePause(false); return; }
       if (A.set.mode !== 'wall') return;
       closeSheets();
       if (A.paused !== was.paused) { A.paused = was.paused; MODES.setPaused(A.paused); startTimer(); }

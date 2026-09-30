@@ -21,13 +21,13 @@ Every entry is in English first; the Chinese text is folded under **中文**.
 
 ## [1.25.1] — 2026-09-30
 
-A few small conveniences: Z and I close themselves, three clicks pause the gallery, and every Custom source gets its own switch.
+A few small conveniences: Z and I close themselves, a double-click pauses the gallery, and every Custom source gets its own switch.
 
 ### Added
 
 * **Custom sources can be switched on and off one by one**
   Each source card in Settings → Sources has its own switch. A source that is off stays in the list but its works leave the rotation.
-* **Triple-click on the Gallery Wall to Pause Gallery**, the same as `Q`. Resume with `Q` or the power button.
+* **Double-click to Pause Gallery**, the same as `Q`: on the Gallery Wall it pauses, and on a blank spot of the Pause Gallery screen it goes back on show.
 
 ### Fixes and improvements
 
@@ -37,13 +37,13 @@ A few small conveniences: Z and I close themselves, three clicks pause the galle
 <details>
 <summary markdown="span">中文</summary>
 
-几处小的顺手改动：Z 和 I 再按一次就退回，三连击暂歇，自定义图库的每个来源都能单独开关。
+几处小的顺手改动：Z 和 I 再按一次就退回，双击暂歇，自定义图库的每个来源都能单独开关。
 
 ### 新增
 
 * **自定义图库的来源可以逐个开关**
   设置 → 图库 里每张来源卡片都有自己的开关。关掉的来源还留在列表里，它的作品不再进入轮换。
-* **展墙上鼠标左键三连击＝暂歇**，跟 `Q` 一样。回来仍用 `Q` 或电源按钮。
+* **鼠标左键双击＝暂歇**，跟 `Q` 一样：在展墙上进入暂歇，在暂歇那一屏的空白处回到展出。
 
 ### 修复与优化
 

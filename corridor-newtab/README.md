@@ -168,7 +168,7 @@ Press `C` to cycle through the three states.
 | `↑` `↓` | Video volume, 10% per press, while a video is on screen |
 | `F` | Add to / remove from favorites |
 | `X` | Remove this work (out of the rotation and no longer listed in the Library; can be undone within five seconds) |
-| `Q` | Pause Gallery / back on show (instead of paintings, it shows the sites you visit often). On the Gallery Wall, **triple-clicking** the left mouse button does the same |
+| `Q` | Pause Gallery / back on show (instead of paintings, it shows the sites you visit often). **Double-clicking** the left mouse button does the same: on the Gallery Wall it pauses, and on the Pause Gallery screen (on a blank spot) it goes back on show |
 | `Z` | View in detail (scroll to zoom, drag to pan, double-click to fit). Press `Z` again to go back, like `Esc` |
 | `I` | Artwork details (the full curatorial note, medium and dimensions, source and license). Press `I` again to close it. The panel has a language button at its top right: one click switches the whole page to the other language, and closing and reopening it brings back your native language |
 | `L` | The Library (All / Favorites / History + filters and search) |
