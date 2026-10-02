@@ -122,7 +122,7 @@ function undoBar(msg, label, fn, ms = 6000) {
   bar.hidden = false;
   requestAnimationFrame(() => bar.classList.add('on'));
   btn.onclick = async () => { undoBarHide(); try { await fn(); } catch { } };
-  undoBar._t = setTimeout(undoBarHide, ms);
+  if (ms > 0) undoBar._t = setTimeout(undoBarHide, ms);
 }
 function undoBarHide() {
   const bar = $('#undobar');
@@ -270,6 +270,31 @@ async function setIndex(i) {
   await S.setCursor({ idx: A.idx, at: Date.now(), sig: listSig() });
   S.pushHistory(w.id).then(h => A.hist = h);
   resetProgress(); prefetchAhead();
+}
+
+/* ---------------- 自定义图库：文件夹权限掉了 ----------------
+   浏览器重开以后，Chrome 往往把文件夹的读取权限收回成「要再问一次」。以前这时什么也不说，
+   本机图片全都糊在占位图上（放大还提示「离线」），只有重新扫描 —— 扫描会顺手要权限 —— 才变清楚。
+   现在：一发现就在底部给一条「恢复」，点一下要回权限，当场重画，不用重新扫描。 */
+const dirIds = () => (A.libSrcs || []).filter(x => x.kind !== 'url' && x.on !== false).map(x => x.id);
+function askGrant() {
+  if (askGrant._busy) return;
+  undoBar(T('libLost'), T('libRegrant'), regrantNow, 0);
+}
+async function regrantNow() {
+  askGrant._busy = true;
+  try {
+    const want = await LOCAL.needGrant(dirIds());
+    const ok = await LOCAL.regrant(want);
+    if (want.length && ok.length < want.length) { toast(T('libNeedGrant')); return; }
+    toast(T('libBack'));
+    A.painted = null;
+    if (A.cur && !pausedOn()) await show(A.cur);
+    if ($('#libSheet')?.classList.contains('open')) renderGrid();
+  } finally { askGrant._busy = false; }
+}
+async function checkGrant() {
+  try { if ((await LOCAL.needGrant(dirIds())).length) askGrant(); } catch { }
 }
 
 async function show(w, dir = 1) {
@@ -945,7 +970,7 @@ function wallBase(s) {
   return w ? w.c : WALLS[0].c;
 }
 /* 最终墙色 = 本色 → 拧饱和度 → 拧色温 */
-const wallHexOf = (s) => TN.tone(wallBase(s), (s.wallSat ?? 100) / 100, (s.wallTemp ?? 0) / 100);
+const wallHexOf = (s) => TN.tone(wallBase(s), (s.wallSat ?? S.DEFAULTS.wallSat) / 100, (s.wallTemp ?? S.DEFAULTS.wallTemp) / 100);
 
 /* 墙色一律由 JS 算出来写进 --wall。自定义色板、饱和度、色温、自带本色的材质，
    四件事在这一处收口，CSS 里就不必再为每种颜色写一条规则。 */
@@ -980,7 +1005,7 @@ const LAMP_N = '#fff6e2', LAMP_W = '#ffd79b', LAMP_C = '#e6efff';
    否则灯明明在右边、影子却还朝右，一眼就假。 */
 function applyLight(lamp) {
   const b = document.body;
-  const l = Object.assign({ bright: 100, angle: -18, warm: 0, n: 1 }, lamp || {});
+  const l = Object.assign({ ...S.DEFAULTS.lamp }, lamp || {});
   const n = Math.max(0, Math.min(4, Math.round(l.n) || 0));
   const k = Math.max(0, Math.min(2, Number(l.bright) / 100));
   const w = Math.max(-1, Math.min(1, Number(l.warm) / 100));
@@ -1298,7 +1323,10 @@ async function zoomOpen(w) {
     const r = await S.fetchImage(url, { id: w.id });
     const u = URL.createObjectURL(r.blob); A.objUrls.add(u); Z.url = u;
     await new Promise(res => { img.onload = res; img.onerror = res; img.src = u; });
-  } catch { toast(T('offlineHD')); }
+  } catch (e) {
+    /* 本机图片读不出来跟联网无关，别说「离线」 */
+    toast(e?.code === 'noperm' || e?.code === 'nohandle' ? T('libLost') : w.local ? T('libUnread') : T('offlineHD'));
+  }
   Z.natural = [img.naturalWidth || w.img.w, img.naturalHeight || w.img.h];
   img.style.width = Z.natural[0] + 'px'; img.style.height = Z.natural[1] + 'px';
   zoomFit();
@@ -1573,7 +1601,7 @@ const pctFmt = (v) => v + '%';
 const signFmt = (v, lo, hi) => v === 0 ? '—' : (v < 0 ? lo + ' ' + Math.abs(v) : hi + ' ' + v);
 
 function toneBlock(s) {
-  const dirty = s.wallSat !== 100 || s.wallTemp !== 0;
+  const dirty = s.wallSat !== S.DEFAULTS.wallSat || s.wallTemp !== S.DEFAULTS.wallTemp;
   return `<div class="dblock"><div class="dbt">${esc(T('wallTone'))}${
       dirty ? `<button class="minilink" data-tonereset>${esc(T('toneReset'))}</button>` : ''}</div>
     <div class="dbd">${esc(T('wallToneDesc'))}</div>
@@ -2816,8 +2844,9 @@ async function renderDrawer(toTop = false) {
     const which = sl.dataset.lang, v = sl.value;
     if (v === '__new') { A.langNew = which; renderDrawer(); setTimeout(() => $('#langNewIn')?.focus(), 60); return; }
     const other = which === 'a' ? A.set.loc.b : A.set.loc.a;
-    if (v === other) { toast(T('langSame')); renderDrawer(); return; }
     A.langNew = '';
+    /* 选成跟另一边一样的：不拒绝，两边对调（母语 ⇄ 外语） */
+    if (v === other) { await swapLang(); return; }
     await applySetting('loc.' + which, v);
     renderDrawer();
   });
@@ -2829,10 +2858,10 @@ async function renderDrawer(toTop = false) {
       const code = LG.customCode(name);
       const which = A.langNew;
       const other = which === 'a' ? A.set.loc.b : A.set.loc.a;
-      if (!code || code === other) { toast(T('langSame')); return; }
+      if (!code) { toast(T('langSame')); return; }
       A.langNew = '';
       await applySetting('loc.names', { ...(A.set.loc.names || {}), [code]: name });
-      await applySetting('loc.' + which, code);
+      if (code === other) await swapLang(); else await applySetting('loc.' + which, code);
       renderDrawer();
     };
     newOk.onclick = take;
@@ -2951,7 +2980,7 @@ async function renderDrawer(toTop = false) {
   liveSlider('lampWarm', -100, 100, v => signFmt(v, T('cool'), T('warm')), v => previewSet({ lamp: { warm: v } }), 'lamp.warm');
   const tr = $('[data-tonereset]', body);
   if (tr) tr.onclick = async () => {
-    A.set = await S.setSettings({ wallSat: 100, wallTemp: 0 });
+    A.set = await S.setSettings({ wallSat: S.DEFAULTS.wallSat, wallTemp: S.DEFAULTS.wallTemp });
     applyRoom(); renderDrawer();
   };
   /* 自定义色板：取色器拖着就变，色号框失焦或回车才认 */
@@ -3476,6 +3505,14 @@ async function applySetting(key, val) {
   if (key === 'lang') await relang();
 }
 
+/* 母语与外语对调：一次写完两边，只重画一遍 */
+async function swapLang() {
+  const { a, b } = A.set.loc;
+  A.set = await S.setSettings({ loc: { a: b, b: a } });
+  await relang();
+  renderDrawer();
+}
+
 /* ============================================================
    换语言：装卸语言包、重排书写方向、把画面上的字全部重刷一遍
    ============================================================ */
@@ -3942,6 +3979,7 @@ async function init() {
     S.getTr(), S.getPacks(), S.getGone()
   ]);
   S.setLocalReader(LOCAL.readFile);
+  LOCAL.onNeedGrant(() => askGrant());
   S.setPosterMaker(LOCAL.videoPoster);
   S.setImageConverter(LOCAL.displayBlob);
   A.set = set; A.tr = tr || {}; [A.lang, A.other] = resolveLang(set); A.favs = favs; A.hist = hist; A.gone = gone;
@@ -3987,6 +4025,7 @@ async function init() {
 
   if (!A.set.seenFirstRun) { setTimeout(() => toast(T('firstRun')), 900); S.setSettings({ seenFirstRun: true }); }
   if (!navigator.onLine) toast(T('offline'));
+  checkGrant();
   setTimeout(() => { if (!document.hidden) aiTick().catch(() => { }); }, 6000);
 }
 init().catch(err => {

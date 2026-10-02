@@ -19,6 +19,31 @@ Every entry is in English first; the Chinese text is folded under **中文**.
 
 ---
 
+## [1.25.2] — 2026-10-05
+
+Your own folders no longer stay blurred after Chrome restarts; choosing the same language twice now swaps them, and the gallery wall starts out a little warmer.
+
+### Fixes and improvements
+
+* In Settings → Display → Language, picking the same language for “native” and “foreign” swaps the two instead of refusing. It helps most before an API is set up, when only Simplified Chinese and English are on offer.
+* Custom folders no longer stay blurred after Chrome restarts. Chrome usually takes folder read access back when the browser is closed; until now the images then sat on their blurred placeholders with no explanation (and the zoom view even said “Offline”), and only a Rescan fixed it. Now a bar at the bottom says what happened, and one click on **Restore** brings the images back on the spot. Choosing “Allow on every visit” in Chrome's prompt keeps it from happening again.
+* When one of your own images can't be read, the zoom view no longer blames the network: it says the file may have moved, been deleted, or still be in the cloud (OneDrive and the like) and not on this computer.
+* New installs, and settings after a “Reset”, start with wall saturation 140%, temperature +20, and the spotlight at 100% brightness, angle 0°, warmth +50. Existing settings are not changed.
+
+<details>
+<summary markdown="span">中文</summary>
+
+自定义文件夹不再在浏览器重开后一直糊着；母语和外语选成同一种时两边自动对调；展厅的默认色调也暖了一点。
+
+### 修复与优化
+
+* 设置 → 呈现 → 语言：母语和外语选成同一种时，两边直接对调，不再拒绝。还没配接口、只有简体中文和 English 可选时最方便。
+* 自定义文件夹的图片不会再在浏览器重开后一直糊着。Chrome 关掉浏览器时通常会收回文件夹的读取权限，以前这时本机图片只剩模糊的占位图、什么提示都没有（放大还说「离线」），只有重新扫描才变清楚。现在页面底部会说明原因，点「恢复」当场变清楚；在 Chrome 的提示里选「每次访问都允许」，以后就不会再收回。
+* 本机图片读不出来时，放大页不再说「离线」，而是照实说：文件可能挪走、删了，或者还在网盘云端（OneDrive 之类）没下载到本机。
+* 新装或「重置」之后，墙色饱和度默认 140%、色温偏暖 20，射灯亮度 100%、角度 0°、偏暖 50。已经在用的设置不变。
+
+</details>
+
 ## [1.25.1] — 2026-09-30
 
 A few small conveniences: Z and I close themselves, a double-click pauses the gallery, and every Custom source gets its own switch.

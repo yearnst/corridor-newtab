@@ -591,19 +591,61 @@ export async function scan(h, onProgress) {
   return r.works;
 }
 
-/* ---------------- 显示时按需读取原图 ---------------- */
+/* ---------------- 显示时按需读取原图 ----------------
+   Chrome 给文件夹的读取权限默认只管这一次会话：浏览器重开、或者扩展的页面全关掉一阵，
+   存着的目录句柄就退回 'prompt'（除非当时在提示里选了「每次访问都允许」）。
+   这时读盘会失败，画面只剩那张 20px 的占位图 —— 看着像「离线、高清图没下下来」，其实是权限没了。
+   requestPermission 必须在用户的点击里调，所以这里不悄悄重试，而是把「要再确认一次」
+   报给页面（onNeedGrant），由页面给一个按钮；点了就 regrant()。 */
 const cache = new Map();
+let needGrantFn = null;
+export function onNeedGrant(fn) { needGrantFn = fn; }
+const lost = new Set();                          // 这一页里已经报过「要再确认」的来源
+function noPerm(sid, code) {
+  if (!lost.has(sid)) { lost.add(sid); try { needGrantFn?.(sid); } catch { } }
+  return Object.assign(new Error(code === 'nohandle' ? 'no folder' : 'no permission'), { code, sid });
+}
 export async function readFile(u) {
   const { sid, path } = splitLocal(u);
-  if (cache.has(sid + '|' + path)) return cache.get(sid + '|' + path);
-  const root = await getHandle(sid); if (!root) throw new Error('no folder');
-  if (await permState(root) !== 'granted') throw new Error('no permission');
-  let dir = root;
-  const parts = path.split('/');
-  const name = parts.pop();
-  for (const p of parts) dir = await dir.getDirectoryHandle(p);
-  const file = await (await dir.getFileHandle(name)).getFile();
+  const key = sid + '|' + path;
+  const root = await getHandle(sid); if (!root) throw noPerm(sid, 'nohandle');
+  /* 先问权限再查内存：权限中途被收回时，内存里那份 File 也读不出东西 */
+  if (await permState(root) !== 'granted') { dropCache(sid); throw noPerm(sid, 'noperm'); }
+  if (cache.has(key)) return cache.get(key);
+  let file;
+  try {
+    let dir = root;
+    const parts = path.split('/');
+    const name = parts.pop();
+    for (const p of parts) dir = await dir.getDirectoryHandle(p);
+    file = await (await dir.getFileHandle(name)).getFile();
+  } catch (e) {
+    /* NotFoundError：文件挪走或删了；NotReadableError：多半是 OneDrive 之类「按需下载」的占位文件，
+       断网时打不开。都不是权限的事，照实抛出去，界面别再说「离线」 */
+    throw Object.assign(new Error(e?.message || 'unreadable'), { code: e?.name === 'NotFoundError' ? 'missing' : 'unreadable', sid });
+  }
   if (cache.size > 24) cache.delete(cache.keys().next().value);
-  cache.set(sid + '|' + path, file);
+  cache.set(key, file);
   return file;
+}
+function dropCache(sid) { for (const k of [...cache.keys()]) if (k.startsWith(sid + '|')) cache.delete(k); }
+
+/* 哪些文件夹来源现在读不了、但点一下就能恢复（'prompt'）。只查不问，不会弹任何东西 */
+export async function needGrant(ids) {
+  const out = [];
+  for (const id of ids || []) {
+    const h = await getHandle(id);
+    if (h && await permState(h) === 'prompt') out.push(id);
+  }
+  return out;
+}
+/* 在用户点击里调：一个个去要权限。Chrome 122 起这一步会给「每次访问都允许」的选项。
+   返回拿到权限的那些 id */
+export async function regrant(ids) {
+  const ok = [];
+  for (const id of ids || []) {
+    const h = await getHandle(id);
+    if (h && await permState(h, true) === 'granted') { ok.push(id); lost.delete(id); }
+  }
+  return ok;
 }

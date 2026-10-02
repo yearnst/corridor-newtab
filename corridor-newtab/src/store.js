@@ -48,13 +48,13 @@ export const DEFAULTS = {
   /* 今日画夹的底色：wall 跟着展墙走（默认）| dark 原来那块深色 | custom 单独挑一个 */
   rvWall: 'wall',
   rvWallCustom: '#2A2622',
-  wallSat: 100,               // 墙色饱和度 0–200%
-  wallTemp: 0,                // 墙色色温 -100 冷 … +100 暖
+  wallSat: 140,               // 墙色饱和度 0–200%
+  wallTemp: 20,               // 墙色色温 -100 冷 … +100 暖
   tex: 'velvet',              // 墙面纹理
   /* 灯光：射灯打在墙上的样子。角度同时决定投影方向与纹理的受光面。 */
   lamp: { bright: 100,        // 亮度 0–200%
-          angle: -18,         // -60 左 … +60 右（默认对上贴图烘焙的左上光）
-          warm: 0,            // -100 冷白 … +100 暖黄
+          angle: 0,           // -60 左 … +60 右（0 = 正对）
+          warm: 50,           // -100 冷白 … +100 暖黄
           n: 1 },             // 灯数 0–4（0 = 不打灯）
   matStyle: 'mount',          // auto|linen|mount|wide|none
   matScale: 0.9,              // 留白宽度倍率 0.4–2.0
@@ -189,12 +189,12 @@ export async function getSettings() {
   if (!['wall', 'dark', 'custom'].includes(s.rvWall)) s.rvWall = 'wall';
   s.rvWallCustom = HEX(s.rvWallCustom, '#2a2622');
   const clampN = (v, lo, hi, d) => { v = Math.round(Number(v)); return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
-  s.wallSat = clampN(s.wallSat, 0, 200, 100);
-  s.wallTemp = clampN(s.wallTemp, -100, 100, 0);
+  s.wallSat = clampN(s.wallSat, 0, 200, DEFAULTS.wallSat);
+  s.wallTemp = clampN(s.wallTemp, -100, 100, DEFAULTS.wallTemp);
   s.lamp = Object.assign(structuredClone(DEFAULTS.lamp), (s.lamp && typeof s.lamp === 'object') ? s.lamp : {});
-  s.lamp.bright = clampN(s.lamp.bright, 0, 200, 100);
-  s.lamp.angle = clampN(s.lamp.angle, -60, 60, -18);
-  s.lamp.warm = clampN(s.lamp.warm, -100, 100, 0);
+  s.lamp.bright = clampN(s.lamp.bright, 0, 200, DEFAULTS.lamp.bright);
+  s.lamp.angle = clampN(s.lamp.angle, -60, 60, DEFAULTS.lamp.angle);
+  s.lamp.warm = clampN(s.lamp.warm, -100, 100, DEFAULTS.lamp.warm);
   s.lamp.n = clampN(s.lamp.n, 0, 4, 1);
   if (typeof s.mat === 'boolean') { s.matStyle = s.mat ? 'auto' : 'none'; delete s.mat; }
   if (!['off', 'bar', 'grand'].includes(s.clock)) s.clock = 'off';

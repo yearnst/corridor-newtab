@@ -1,6 +1,6 @@
 # Corridor · Art New Tab
 
-<sub>v1.25.1</sub>
+<sub>v1.25.2</sub>
 
 **English** · [简体中文](README.zh-CN.md)
 
@@ -423,7 +423,7 @@ Settings → Sources → **Custom sources**. You can add **several sources**, of
 
 | | |
 |---|---|
-| **+ Folder** | A folder on this computer. It uses the browser's File System Access API; the directory handle is stored locally and reused directly the next time you open a new tab. Chrome occasionally asks you to confirm read access again, and the card tells you when. **The images and videos always stay on your own disk** — the extension doesn't copy them, upload them or put them in the cache; it reads each one only at the moment it's displayed. |
+| **+ Folder** | A folder on this computer. It uses the browser's File System Access API; the directory handle is stored locally and reused directly the next time you open a new tab. After Chrome restarts it often takes the read access back (unless you chose “Allow on every visit” in its prompt); a bar at the bottom of the page then says so, and one click on **Restore** brings your images back — no rescan needed. **The images and videos always stay on your own disk** — the extension doesn't copy them, upload them or put them in the cache; it reads each one only at the moment it's displayed. |
 | **+ URL** | An online gallery. A directory index page, an ordinary gallery page, a JSON list, a plain-text file with one URL per line, or simply a single image or video — it accepts them all. The first scan asks you for access to that domain; the images it fetches go through the normal cache, so you can still see them offline. Videos aren't downloaded: they stream from that site when they play, so they need a connection. |
 
 Each source card has its own switch on the header row: turn a source off and its works leave the rotation, without removing the source or its scan.
@@ -749,7 +749,7 @@ Which two they are is up to you: pick from **78 languages**, and if yours isn't 
 | | |
 |---|---|
 | Your language | Your native language, the one you speak. The interface follows it by default |
-| Second language | The foreign language — the other side. It's what you see when you flip a wall label over |
+| Second language | The foreign language — the other side. It's what you see when you flip a wall label over. Pick the same language as the other side and the two simply swap places |
 | Interface in | Yours / Second / Follow system (uses whichever of the two is closer to the system language) |
 
 Chinese and English **can be chosen at any time**, with no endpoint needed. To switch to a third language,
@@ -1017,7 +1017,7 @@ See [`CHANGELOG.md`](../CHANGELOG.md) in the repository root: each version lists
 
 ## 12. Version and copyright
 
-**Corridor** v1.25.1
+**Corridor** v1.25.2
 
 By **Charles Chern** (**@yearnst**)
 
