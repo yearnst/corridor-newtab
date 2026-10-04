@@ -138,6 +138,7 @@ git clone https://github.com/yearnst/corridor-newtab.git
 5. 打开一个新标签页
 
 Edge / Brave / Arc 等 Chromium 内核浏览器同样适用，需要 Chrome 110 及以上。
+这样加载的不会自动更新；从 Chrome 网上应用店装的会。
 
 ## 目录结构
 

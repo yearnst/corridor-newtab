@@ -139,6 +139,7 @@ git clone https://github.com/yearnst/corridor-newtab.git
 5. Open a new tab
 
 Edge, Brave, Arc and other Chromium browsers work too. Chrome 110 or newer.
+A copy loaded this way does not update itself; the Chrome Web Store version does.
 
 ## Project structure
 

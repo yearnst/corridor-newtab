@@ -19,6 +19,27 @@ Every entry is in English first; the Chinese text is folded under **中文**.
 
 ---
 
+## [1.25.3] — 2026-10-05
+
+New versions from the Chrome Web Store now take effect sooner, instead of waiting for a browser restart.
+
+### Fixes and improvements
+
+* Chrome only swaps in a downloaded update when the extension is idle, and an open Corridor new tab counts as busy, so updates often waited until Chrome restarted. Corridor now applies a waiting update as soon as no Corridor tab is open — never while you are looking at one — and asks the store for news once a day. Needs Chrome 116 or newer; older versions keep Chrome's own timing.
+* The manuals say how to fetch an update right away (`chrome://extensions/` → Developer mode → Update), and that a copy loaded unpacked from GitHub does not update itself.
+
+<details>
+<summary markdown="span">中文</summary>
+
+商店的新版本会更快生效，不用再等重启浏览器。
+
+### 修复与优化
+
+* Chrome 下好新版以后，要等扩展「闲下来」才换上，而开着的长廊新标签页算「在忙」，所以新版常常拖到重启浏览器才生效。现在只要长廊的标签页都关掉，就立刻换上新版 —— 你正看着的时候绝不打断；另外每天主动向商店问一次有没有新版。需要 Chrome 116 及以上，更老的版本照旧由 Chrome 自己安排。
+* 手册里写明了怎样立刻更新（`chrome://extensions/` → 开发者模式 → 更新），以及从 GitHub 以开发者模式加载的不会自动更新。
+
+</details>
+
 ## [1.25.2] — 2026-10-05
 
 Your own folders no longer stay blurred after Chrome restarts; choosing the same language twice now swaps them, and the gallery wall starts out a little warmer.

@@ -1,6 +1,6 @@
 # Corridor · Art New Tab
 
-<sub>v1.25.2</sub>
+<sub>v1.25.3</sub>
 
 **English** · [简体中文](README.zh-CN.md)
 
@@ -14,7 +14,7 @@ Connect your own model and the interface and artwork information can switch to *
 
 ### From the Chrome Web Store (recommended)
 
-**[▸ Corridor · Art New Tab](https://chromewebstore.google.com/detail/mnllopjjkbkoeljonbgmlabijamcjlam)** — once it's installed, just open a new tab; from then on it updates itself.
+**[▸ Corridor · Art New Tab](https://chromewebstore.google.com/detail/mnllopjjkbkoeljonbgmlabijamcjlam)** — once it's installed, just open a new tab; from then on it updates itself. A new version is swapped in as soon as no Corridor tab is open; to fetch it right away, open `chrome://extensions/`, turn on **Developer mode** and click **Update**.
 
 ### Loading in developer mode (for when you want to modify the source)
 
@@ -23,6 +23,8 @@ Connect your own model and the interface and artwork information can switch to *
 3. Click **Load unpacked**
 4. Select the `corridor-newtab/` folder (the level that contains `manifest.json`)
 5. Open a new tab and you're done
+
+A copy loaded this way **does not update itself**; pull the source again and click the reload icon on its card. Install from the Chrome Web Store if you want automatic updates.
 
 > A new tab opens automatically on first install. If the new tab page doesn't change, check whether another extension is also taking over the new tab page.
 > Edge / Brave / Arc and other Chromium-based browsers work the same way.
@@ -1017,7 +1019,7 @@ See [`CHANGELOG.md`](../CHANGELOG.md) in the repository root: each version lists
 
 ## 12. Version and copyright
 
-**Corridor** v1.25.2
+**Corridor** v1.25.3
 
 By **Charles Chern** (**@yearnst**)
 

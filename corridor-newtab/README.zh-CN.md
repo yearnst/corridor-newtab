@@ -1,6 +1,6 @@
 # 长廊 Corridor · 艺术新标签页
 
-<sub>v1.25.2</sub>
+<sub>v1.25.3</sub>
 
 [English](README.md) · **简体中文**
 
@@ -14,7 +14,7 @@
 
 ### 从 Chrome 网上应用店（推荐）
 
-**[▸ 长廊 Corridor · 艺术新标签页](https://chromewebstore.google.com/detail/mnllopjjkbkoeljonbgmlabijamcjlam)** —— 装完打开一个新标签页即可，之后会自动更新。
+**[▸ 长廊 Corridor · 艺术新标签页](https://chromewebstore.google.com/detail/mnllopjjkbkoeljonbgmlabijamcjlam)** —— 装完打开一个新标签页即可，之后会自动更新：新版下载好以后，等长廊的标签页都关掉就会换上。想立刻更新，在 `chrome://extensions/` 打开 **开发者模式**，点 **更新**。
 
 ### 开发者模式加载（想改源码时用）
 
@@ -23,6 +23,8 @@
 3. 点击 **加载已解压的扩展程序**
 4. 选择 `corridor-newtab/` 文件夹（即包含 `manifest.json` 的这一层）
 5. 打开一个新标签页即可
+
+这样加载的**不会自动更新**：要拉取新的源码，再点它卡片上的刷新按钮。想自动更新，请从 Chrome 网上应用店安装。
 
 > 首次安装会自动打开一个新标签页。若新标签页没有变化，检查是否有其他扩展也在接管新标签页。
 > Edge / Brave / Arc 等 Chromium 内核浏览器同样适用。
@@ -1017,7 +1019,7 @@ corridor-newtab/
 
 ## 十二、版本与版权
 
-**长廊 Corridor** v1.25.2
+**长廊 Corridor** v1.25.3
 
 作者 **Charles Chern**（**@yearnst**）
 

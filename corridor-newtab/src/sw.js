@@ -58,22 +58,67 @@ chrome.storage.onChanged.addListener((ch, area) => { if (area === 'local' && ch.
 /* 用户刚给某个地址授了权，规则这时候才真正管用 —— 立刻铺一遍 */
 try { chrome.permissions?.onAdded?.addListener(() => armNet()); } catch { }
 
+/* ---------- 商店新版：尽快换上 ----------
+   Chrome 从商店下好新版以后，要等扩展「闲下来」才换；可新标签页就是这个扩展的页面，
+   很多人一直开着一个，于是新版常常拖到重启浏览器才生效。
+   这里接住 onUpdateAvailable：扩展的页面一个都没开着，就立刻 reload() 换上；
+   还开着就不打扰 —— reload 会把扩展的页面关掉 —— 等最后一个关掉（或者翻去了别的网站）再换。
+   查「开没开着」要 runtime.getContexts（Chrome 116+）；更老的 Chrome 拿不到，就照旧交给 Chrome 自己。
+   只对从商店装的有用；开发者模式加载的不会收到更新。 */
+const UPD = 'updPending';
+const curVer = () => chrome.runtime.getManifest().version;
+async function pagesOpen() {
+  const all = await chrome.runtime.getContexts({});
+  return all.filter(c => c.contextType !== 'BACKGROUND').length;
+}
+async function applyUpdate() {
+  if (typeof chrome.runtime.getContexts !== 'function') return;
+  const p = (await chrome.storage.local.get(UPD))[UPD];
+  if (!p) return;
+  /* 上次已经 reload 过、版本却没变：说明这条路换不上，别一直重启，留给 Chrome 下次启动时换 */
+  if (p.tried === curVer() || p.v === curVer()) { await dropUpdate(); return; }
+  if (await pagesOpen()) { chrome.alarms.create('corridor-update', { delayInMinutes: 2, periodInMinutes: 2 }); return; }
+  await chrome.storage.local.set({ [UPD]: { ...p, tried: curVer() } });
+  chrome.runtime.reload();
+}
+async function dropUpdate() {
+  try { await chrome.storage.local.remove(UPD); await chrome.alarms.clear('corridor-update'); } catch { }
+}
+chrome.runtime.onUpdateAvailable?.addListener(async (d) => {
+  await chrome.storage.local.set({ [UPD]: { v: String(d?.version || ''), at: Date.now() } });
+  applyUpdate();
+});
+/* 关掉一个标签页就看一眼：可能正是最后一个新标签页（tabs.onRemoved 不需要 tabs 权限） */
+let updT = 0;
+chrome.tabs.onRemoved.addListener(() => { clearTimeout(updT); updT = setTimeout(() => applyUpdate().catch(() => { }), 1500); });
+/* 每天主动问一次商店。Chrome 自己也会每隔几小时查，这只是不让它漏掉；查得太勤 Chrome 会限流 */
+async function askStore() {
+  try { await chrome.runtime.requestUpdateCheck(); } catch { }
+}
+globalThis.__corridorUpdate = { applyUpdate, pagesOpen, UPD };   // 测试用
+
 chrome.runtime.onInstalled.addListener(async (d) => {
+  if (d.reason === 'update') dropUpdate();       // 新版已经换上
   await S.setSettings({});                     // 写入默认值
   chrome.alarms.create('corridor-prefetch', { delayInMinutes: 1, periodInMinutes: 180 });
   chrome.alarms.create('corridor-daily', { delayInMinutes: 3, periodInMinutes: 360 });
+  chrome.alarms.create('corridor-updcheck', { delayInMinutes: 30, periodInMinutes: 1440 });
   armAI(); armNet();
   if (d.reason === 'install') chrome.tabs.create({});
 });
 chrome.runtime.onStartup.addListener(() => {
   chrome.alarms.create('corridor-prefetch', { delayInMinutes: 2, periodInMinutes: 180 });
   chrome.alarms.create('corridor-daily', { delayInMinutes: 4, periodInMinutes: 360 });
+  chrome.alarms.create('corridor-updcheck', { delayInMinutes: 30, periodInMinutes: 1440 });
   armAI(); armNet();
+  applyUpdate().catch(() => { });              // 上次没换成的，这次启动再看一眼
 });
 chrome.alarms.onAlarm.addListener(a => {
   if (a.name === 'corridor-prefetch') prefetch();
   if (a.name === 'corridor-daily') dailyThenAI();       // 一天只真正拉一次，其余直接返回
   if (a.name === 'corridor-ai') aiRun('daily');         // 定时清扫漏网的
+  if (a.name === 'corridor-update') applyUpdate().catch(() => { });
+  if (a.name === 'corridor-updcheck') askStore();
 });
 /* 新作进来了就顺手补全，省得等下一个整点 */
 async function dailyThenAI(force = false) {
