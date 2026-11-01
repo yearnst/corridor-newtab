@@ -19,6 +19,59 @@ Every entry is in English first; the Chinese text is folded under **中文**.
 
 ---
 
+## [1.25.5] — 2026-11-01
+
+Online galleries can now keep themselves up to date, and a long list of sources is easier to find your way around.
+
+### Added
+
+* **Scheduled sync for online galleries**
+  In Settings → Sources, turn on “Sync online galleries” (off by default) and pick how often: every 15 minutes, hour, 6 hours, day (the default) or week, or any number of minutes, hours or days. New images on the site come into your library; images gone from the site leave it, along with their cached copies — unless you have favorited them, in which case they stay, and stay cached.
+  Each URL source can be left out: click the globe in front of it. A green dot means it is synced; new sources are synced by default.
+  Syncing runs in an open Corridor tab. If the site can't be reached, or suddenly shows no images at all, nothing is removed that time.
+* **Sorting and filtering custom sources**
+  The source list is now compact, one line per source, grouped into Folders and URLs. Show only one kind, sort by newest, oldest or name, and, with six or more sources, find one by name or URL. Past 13 sources, each group lists its first 10 and keeps the rest under “more”; clicking a group's header folds it away.
+
+### Fixes and improvements
+
+* Rescanning a URL source now downloads only what is new, and always asks the site for a fresh copy of the page. Works already in the library stay as they are, so their AI enrichment is no longer lost on a rescan, and favorites gone from the site are kept.
+* A URL source without a name now shows the last part of its address after the host, so several sources from one site can be told apart; a Feishu view shows its table name.
+* Custom sources are no longer capped at 12; up to 100 are kept. Before, a 13th source was quietly dropped.
+* A newly added URL source's button reads “Confirm” until it has been scanned once, then “Rescan”.
+* Error messages from URL sources follow the interface language.
+
+### Privacy and permissions
+
+* With scheduled sync on, Corridor asks your online gallery sites for their image list again at the interval you set, while a Corridor tab is open. No new permissions; the privacy policy now says so.
+
+<details>
+<summary markdown="span">中文</summary>
+
+在线图库可以自己保持更新了；来源多了，也好找、好管。
+
+### 新增
+
+* **在线图库定时同步**
+  设置 → 图库里打开「在线图库定时同步」（默认关闭），选好间隔：每 15 分钟、每小时、每 6 小时、每天（默认）、每周，或者自定义几分钟、几小时、几天。网站上新增的图会收进图库；网站上没了的图随之拿掉，缓存也一起删掉 —— 收藏过的除外，它们会留着，缓存也留着。
+  每个网址来源可以单独不参加：点它前面的地球即可。带绿点的参加同步；新加的来源默认参加。
+  同步在打开着的长廊标签页里进行。网站连不上，或者忽然一张图都没有时，这一次什么都不删。
+* **自定义图库可以分类、排序**
+  来源列表改成一行一个，分「文件夹」「网址」两组；可以只看一类，按最新、最早或名称排；来源到 6 个以上时，还能按名称或网址查找。超过 13 个时，每组先列 10 个，其余收在「还有 N 个」后面；点组标题可以把整组折起。
+
+### 修复与优化
+
+* 重扫网址来源时只下载新出现的图，并且每次都向网站要最新的页面。已经收进来的作品原样留着，AI 补全的内容不再因为重扫而丢失，线上没了的收藏也会留下。
+* 没起名的网址来源，会在域名后面带上网址的最后一段，同一个网站的几个来源分得清；飞书视图显示表名。
+* 自定义来源不再限 12 个，最多可以留 100 个。以前加到第 13 个会被悄悄丢掉。
+* 新加的网址来源，扫描之前按钮叫「确认」，扫过以后才是「重新扫描」。
+* 网址来源的出错提示跟随界面语言。
+
+### 隐私与权限
+
+* 打开定时同步后，长廊会在标签页开着时，按你设的间隔重新向你的在线图库网站要一次图片清单。不新增任何权限；隐私政策已经写明这一点。
+
+</details>
+
 ## [1.25.4] — 2026-11-01
 
 A public Feishu Base view can now hang on the wall as a gallery source.

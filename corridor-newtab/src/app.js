@@ -7,6 +7,7 @@ import * as S from './store.js';
 import './tips.js';
 import * as MODES from './modes.js';
 import * as LOCAL from './local.js';
+import * as SYNC from './libsync.js';
 import * as AI from './ai.js';
 import * as LG from './langs.js';
 import * as TR from './translate.js';
@@ -1743,7 +1744,7 @@ async function applySrc(key, val) {
   let o = next;
   for (let i = 0; i < ps.length - 1; i++) o = (o[ps[i]] = o[ps[i]] || {});
   const last = ps[ps.length - 1];
-  if (last === 'rx' || last === 'on') val = !!val;
+  if (last === 'rx' || last === 'on' || last === 'sync') val = !!val;
   if (last === 'minPx') val = Number(val) || 0;
   o[last] = val;
   const lib = await S.getLocalLib();
@@ -1752,8 +1753,53 @@ async function applySrc(key, val) {
   A.libSrcs = l2.srcs; A.lib = (l2.works || []).length;
 }
 
+/* 来源显示的名字：自己起的 → 来源报的（飞书表名）→ 从网址里取（域名 · 最后一段） */
+function urlLabel(u) {
+  try {
+    const x = new URL(u), host = x.hostname.replace(/^www\./, '');
+    if (/\/share\/base\/view\//.test(x.pathname)) return host;
+    let last = decodeURIComponent(x.pathname.split('/').filter(Boolean).pop() || '').replace(/\.[a-z0-9]{2,5}$/i, '');
+    if (last.length > 28) last = last.slice(0, 26) + '…';
+    return last ? `${host} · ${last}` : host;
+  } catch { return S1(u); }
+}
+const srcLabel = (x) => S1(x?.name) || S1(x?.ttl) || (x?.kind === 'url' ? (urlLabel(x.url) || T('libUrl')) : T('libFolder'));
+/* 长网址掐掉中间，头尾都看得见 */
+function midCut(u, n = 52) {
+  u = S1(u).replace(/^https?:\/\//i, '');
+  return u.length > n ? u.slice(0, Math.ceil(n * .45)) + '…' + u.slice(-Math.floor(n * .55)) : u;
+}
+/* 「3 小时前」：跟着界面语言走 */
+function ago(t) {
+  const d = Math.max(0, Date.now() - (Number(t) || 0)) / 1000;
+  let rtf; try { rtf = new Intl.RelativeTimeFormat(A.lang, { numeric: 'auto' }); } catch { rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' }); }
+  if (d < 45) return rtf.format(0, 'second');
+  if (d < 3600) return rtf.format(-Math.round(d / 60), 'minute');
+  if (d < 86400) return rtf.format(-Math.round(d / 3600), 'hour');
+  return rtf.format(-Math.round(d / 86400), 'day');
+}
+const syncDelta = (a, d, lead = '') => (a || d) ? lead + T('libSyncDelta', { a: a || 0, d: d || 0 }) : '';
+
+/* ---------------- 在线图库定时同步 ----------------
+   开着的标签页每分钟看一眼；到点了的网址来源同步一遍（多个标签页只有一个在做，见 libsync.js）。 */
+let syncBusy = false;
+async function syncTick(all = false, onSrc) {
+  if (syncBusy || (!all && !A.set.libSync)) return null;
+  syncBusy = true;
+  try {
+    const r = await SYNC.syncDue(A.set, { all, errText: libErr, onSrc });
+    if (r && r.n) {
+      await reloadDaily(true);
+      if (document.body.classList.contains('drawer-open') && A.dtab === 'lib') renderDrawer();
+      if (r.add) await fillFresh(r.add);
+    }
+    return r;
+  } finally { syncBusy = false; }
+}
+
 /* 扫描回来的错误：权限类和飞书类给的是文案的键，其余原样显示 */
-const libErr = (e) => e === 'noperm' || e === 'nohandle' ? T('libNeedGrant') : /^libFs[A-Z]/.test(String(e || '')) ? T(e) : e;
+const libErr = (e) => e === 'noperm' || e === 'nohandle' ? T('libNeedGrant')
+  : /^lib[A-Z]\w+$/.test(String(e || '')) && STR.en[e] ? T(e) : e;
 
 /* 一个来源扫一遍：进度写在它自己那张卡里，扫完只换掉它名下的作品 */
 async function scanOne(src, opt = {}) {
@@ -1772,10 +1818,18 @@ async function scanOne(src, opt = {}) {
       if (await LOCAL.permState(h, true) !== 'granted') { say(T('libNeedGrant')); return { ok: false }; }
     }
     say(T('libScanning'));
-    const r = await LOCAL.scanSrc(src, (i, n) => {
+    const prog = (i, n) => {
       if (fillI) fillI.style.width = (n ? i / n * 100 : 0).toFixed(1) + '%';
       say(`${T('libScanning')} ${i} / ${n}`);
-    }, opt.signal);
+    };
+    /* 网址来源：增量同步 —— 已经收过的原样留着（AI 补全的结果不丢），收藏过的线上没了也留着 */
+    if (src.kind === 'url') {
+      const r = await SYNC.syncOne(src, { manual: true, errText: libErr, onProgress: prog, signal: opt.signal });
+      if (!r.ok) { say(libErr(r.err)); return r; }
+      say(`${T('libDone')} ${r.total}` + syncDelta(r.add, r.drop, ' · ') + skipTxt(r.skip, ' · '));
+      return r;
+    }
+    const r = await LOCAL.scanSrc(src, prog, opt.signal);
     if (!r.ok) {
       await S.setLibSource({ ...src, err: libErr(r.err) },
                            (await S.getLocalLib()).works.filter(w => w.sid === src.id));
@@ -1811,7 +1865,7 @@ function bindLib(body) {
   const refresh = async () => {
     const lib = await S.getLocalLib();
     A.libSrcs = lib.srcs; A.lib = (lib.works || []).length;
-    A.libName = lib.srcs.map(x => x.name || hostOf(x.url)).filter(Boolean).join(' · ');
+    A.libName = lib.srcs.map(srcLabel).filter(Boolean).join(' · ');
     await reloadDaily(true);
     renderDrawer();
   };
@@ -1823,6 +1877,55 @@ function bindLib(body) {
     h.onkeydown = (e) => { if (e.target === h && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); go(); } };
   });
 
+  /* 新加的那张卡别被分类或搜索藏起来 */
+  const showNewSrc = async (kind) => {
+    A.libSrcQ = '';
+    if (A.set.libView !== 'all' && A.set.libView !== kind) A.set = await S.setSettings({ libView: 'all' });
+  };
+
+  /* 按名字或网址找：只藏卡片，不重画，输入框的焦点留着 */
+  const q = $('#libSrcQ', body);
+  const filt = () => {
+    const v = S1(q?.value).toLowerCase(); A.libSrcQ = q?.value || '';
+    $('.srclist', body)?.classList.toggle('q', !!v);          // 查找时收起的、折起的都参加
+    $$('.srccard', body).forEach(c => { c.hidden = !!v && !c.dataset.q.includes(v); });
+    $$('.srcgrp', body).forEach(g => { g.hidden = !!v && !$$('.srccard', g).some(c => !c.hidden); });
+    const none = $('#libSrcNone', body); if (none) none.hidden = !$$('.srccard', body).every(c => c.hidden);
+  };
+  /* 打字时别触发展厅的快捷键（F 收藏、X 去除……）；Esc 先清空，空了才交给抽屉去关 */
+  if (q) { q.oninput = filt; q.onkeydown = (e) => { if (e.key !== 'Escape' || q.value) e.stopPropagation(); if (e.key === 'Escape' && q.value) { q.value = ''; filt(); } }; filt(); }
+
+  /* 网址前的地球：这一路参不参加定时同步 */
+  $$('[data-srcsync]', body).forEach(b => b.onclick = async (e) => {
+    e.stopPropagation();
+    const k = 'src.' + b.dataset.srcsync + '.sync';
+    await applySetting(k, srcVal(k) === false); renderDrawer();
+  });
+  /* 「还有 N 个」展开 / 收起；组标题折起整组。只记在这一页里 */
+  $$('[data-srcmore]', body).forEach(b => b.onclick = () => {
+    const k = b.dataset.srcmore, g = b.closest('.srcgrp');
+    A.libMore[k] = !g.classList.contains('wide');
+    g.classList.toggle('wide', A.libMore[k]);
+    b.textContent = A.libMore[k] ? T('libLess') : T('libMore', { n: b.dataset.n });
+  });
+  $$('[data-srcfold]', body).forEach(b => b.onclick = () => {
+    const k = b.dataset.srcfold, g = b.closest('.srcgrp');
+    A.libFold[k] = !g.classList.contains('fold');
+    g.classList.toggle('fold', A.libFold[k]); b.setAttribute('aria-expanded', String(!A.libFold[k]));
+  });
+
+  /* 立即同步：参加同步的网址来源全来一遍 */
+  const sn = $('#btnLibSyncNow', body);
+  if (sn) sn.onclick = async () => {
+    sn.disabled = true;
+    const line = $('#libSyncStat', body); if (line) line.textContent = T('libSyncing');
+    const r = await syncTick(true, (src, i, n) => {
+      const l = $('#libSyncStat', $('#drawerBody')); if (l) l.textContent = `${T('libSyncing')} ${i} / ${n} · ${srcLabel(src)}`;
+    });
+    if (r === null && line) line.textContent = T('libSyncBusy');
+    else { await refresh(); if (r) toast(T('libSyncDone') + syncDelta(r.add, r.drop, ' · ')); }
+  };
+
   /* 加一个文件夹 */
   const ad = $('#btnLibAddDir', body);
   if (ad) ad.onclick = async () => {
@@ -1830,7 +1933,8 @@ function bindLib(body) {
     try {
       const id = 'd' + Date.now().toString(36);
       const h = await LOCAL.pickFolder(id);
-      const src = { id, kind: 'dir', name: h.name, f: LOCAL.DEF_FILTER() };
+      const src = { id, kind: 'dir', name: h.name, add: Date.now(), f: LOCAL.DEF_FILTER() };
+      await showNewSrc('dir');
       await S.setLibSource(src, []);
       A.libOpen = id;
       await refresh();
@@ -1844,7 +1948,8 @@ function bindLib(body) {
   const au = $('#btnLibAddUrl', body);
   if (au) au.onclick = async () => {
     const id = 'u' + Date.now().toString(36);
-    await S.setLibSource({ id, kind: 'url', name: '', url: '', f: LOCAL.DEF_FILTER() }, []);
+    await showNewSrc('url');
+    await S.setLibSource({ id, kind: 'url', name: '', url: '', add: Date.now(), f: LOCAL.DEF_FILTER() }, []);
     A.libOpen = id;
     await refresh();
     setTimeout(() => $(`[data-tin="src.${id}.url"]`, $('#drawerBody'))?.focus(), 80);
@@ -1920,21 +2025,29 @@ function bindLib(body) {
 }
 
 /* ---------------- 自定义图库：一串来源 ----------------
-   一个来源一张卡：名字、类型、收了多少张、上次什么时候扫的。
-   点卡片展开就是这一路的筛选条件。 */
+   一个来源一行：名字、网址（掐掉中间）、收了多少张、开关。
+   点开就是这一路的筛选条件。 */
 function srcCard(x) {
   const open = A.libOpen === x.id;
   const isUrl = x.kind === 'url';
   const f = x.f || {};
-  const where = isUrl ? x.url : (x.name || T('libFolder'));
-  const filt = [f.inc && `${T('libInc')} ${f.inc}`, f.exc && `${T('libExc')} ${f.exc}`,
-                (f.ext || []).length < LOCAL.EXTS.length ? (f.ext || []).join('/') : '',
-                f.rx ? T('libRx') : ''].filter(Boolean).join(' · ');
-  return `<div class="srccard${open ? ' open' : ''}${x.err ? ' bad' : ''}${x.on === false ? ' off' : ''}" data-src="${esc(x.id)}">
-    <div class="srchead" data-srcopen="${esc(x.id)}" role="button" tabindex="0">
-      <s class="srckind">${isUrl ? '&#127760;' : '&#128193;'}</s>
-      <div class="srcname"><b>${esc(x.name || (isUrl ? hostOf(x.url) : T('libFolder')))}</b>
-        <u>${esc(where)}</u></div>
+  const label = srcLabel(x);
+  const sub = isUrl ? midCut(x.url) : '';
+  /* 网址来源还没扫过（刚加进来）：按钮叫「确认」，扫过以后才是「重新扫描」 */
+  const fresh = isUrl && !x.sy && !x.n && !x.err;
+  /* 定时同步开着时，网址前的地球就是这一路的同步开关：带绿点 = 参加同步 */
+  const syncOn = x.sync !== false;
+  const kind = isUrl && A.set.libSync
+    ? `<button class="srckind srcsync${syncOn ? ' on' : ''}" data-srcsync="${esc(x.id)}" aria-pressed="${syncOn}"
+        title="${esc(T(syncOn ? 'libSyncSrcOn' : 'libSyncSrcOff'))}" aria-label="${esc(T(syncOn ? 'libSyncSrcOn' : 'libSyncSrcOff'))}">&#127760;</button>`
+    : `<s class="srckind">${isUrl ? '&#127760;' : '&#128193;'}</s>`;
+  const stat = [x.at && !fresh ? T('libLast', { n: x.n || 0 }) : '',
+    isUrl && x.sy ? T('libSynced', { t: ago(x.sy) }) + syncDelta(x.sa, x.sd, ' · ') : ''].filter(Boolean).join(' · ');
+  return `<div class="srccard${open ? ' open' : ''}${x.err ? ' bad' : ''}${x.on === false ? ' off' : ''}" data-src="${esc(x.id)}"
+      data-q="${esc((label + ' ' + (x.url || '') + ' ' + (x.name || '')).toLowerCase())}">
+    <div class="srchead" data-srcopen="${esc(x.id)}" role="button" tabindex="0" title="${esc(isUrl ? x.url : label)}">
+      ${kind}
+      <div class="srcname"><b>${esc(label)}</b>${sub ? `<u>${esc(sub)}</u>` : ''}</div>
       <i class="srcn">${x.n || 0}</i>
       ${toggle('src.' + x.id + '.on', x.on !== false)}
       <b class="dchev"></b>
@@ -1943,7 +2056,7 @@ function srcCard(x) {
     <div class="srcbody"><div class="srcin">
       <div class="aigrid srcgrid">
         <label>${esc(T('libName'))}</label>
-        <div>${tin('src.' + x.id + '.name', x.name, isUrl ? hostOf(x.url) : T('libFolder'))}</div>
+        <div>${tin('src.' + x.id + '.name', x.name, S1(x.ttl) || (isUrl ? urlLabel(x.url) : T('libFolder')))}</div>
         ${isUrl ? `<label>${esc(T('libUrl'))}</label>
         <div>${tin('src.' + x.id + '.url', x.url, 'https://example.com/gallery/')}
           <i class="tint">${esc(T('libUrlTip'))}</i></div>` : ''}
@@ -1962,15 +2075,42 @@ function srcCard(x) {
           ({ v, t: v ? String(v) : T('libNoMin') })), null, 0, 4000, 'px')}</div>
       </div>
       <div class="dbc btnrow" style="margin-top:10px">
-        <button class="bigbtn sm pri" data-srcscan="${esc(x.id)}">${esc(T('libRescan'))}</button>
+        <button class="bigbtn sm pri" data-srcscan="${esc(x.id)}">${esc(T(fresh ? 'libConfirm' : 'libRescan'))}</button>
         ${isUrl ? '' : `<button class="bigbtn sm" data-srcrepick="${esc(x.id)}">${esc(T('libRepick'))}</button>`}
         <button class="bigbtn sm" data-srcdrop="${esc(x.id)}">${esc(T('libRemove'))}</button>
       </div>
-      <div class="dbd srcstat" data-srcstat="${esc(x.id)}">${esc(x.at ? T('libLast', { n: x.n || 0 }) + skipTxt(x.skip, ' · ') : '')}</div>
+      <div class="dbd srcstat" data-srcstat="${esc(x.id)}">${esc(stat + skipTxt(x.skip, stat ? ' · ' : ''))}</div>
     </div></div>
   </div>`;
 }
 
+/* 排序：名字按当前语言的习惯比（数字按大小），添加时间老来源从 id 里读 */
+function sortSrcs(list, how) {
+  let coll; try { coll = new Intl.Collator(A.lang, { numeric: true, sensitivity: 'base' }); } catch { coll = new Intl.Collator('en', { numeric: true }); }
+  const byName = (a, b) => coll.compare(srcLabel(a), srcLabel(b));
+  const byAdd = (a, b) => (a.add || 0) - (b.add || 0);
+  const k = how || 'add-a';
+  return list.slice().sort(k === 'name-a' ? byName : k === 'name-d' ? (a, b) => byName(b, a)
+    : k === 'add-d' ? (a, b) => byAdd(b, a) : byAdd);
+}
+
+/* 在线图库定时同步：开关、间隔、上次同步 */
+function syncBlock(urls) {
+  const s = A.set;
+  if (!urls.length) return '';
+  const last = Math.max(0, ...urls.map(x => x.sy || 0));
+  const lastSrcs = urls.filter(x => x.sy && last - x.sy < 120000);
+  const a = lastSrcs.reduce((n, x) => n + (x.sa || 0), 0), d = lastSrcs.reduce((n, x) => n + (x.sd || 0), 0);
+  return dinline(T('libSync'), { k: 'libSyncDesc' }, toggle('libSync', s.libSync)) +
+    (s.libSync ? dblock(T('libSyncEvery'), '', numSel('libSyncMin', s.libSyncMin,
+        [15, 60, 360, 1440, 10080].map(v => ({ v, t: T('libSyncP' + v) })),
+        [{ v: 1, t: T('min') }, { v: 60, t: T('hour') }, { v: 1440, t: T('day') }], 1, 43200)) +
+      `<div class="dblock"><div class="dbd srcsynchint"><s class="srcsync on" aria-hidden="true">&#127760;</s>${esc(T('libSyncPer'))}</div></div>` +
+      `<div class="dblock"><div class="dbc srcsync">
+        <span class="dbd" id="libSyncStat">${esc(last ? T('libSyncLast', { t: ago(last) }) + syncDelta(a, d, ' · ') : T('libSyncNever'))}</span>
+        <button class="bigbtn sm" id="btnLibSyncNow">${esc(T('libSyncNow'))}</button>
+      </div></div>` : '');
+}
 /* 扫描时浏览器解不了、只好跳过的那些：「跳过 3 个 HEIC、1 个 JXL（这个浏览器打不开）」 */
 function skipTxt(skip, lead = '') {
   const e = Object.entries(skip || {}).filter(([, n]) => n > 0);
@@ -1978,18 +2118,55 @@ function skipTxt(skip, lead = '') {
   return lead + T('libSkip', { list: e.map(([k, n]) => `${n} ${k.toUpperCase()}`).join(LG.isCJK(A.lang) ? '、' : ', ') });
 }
 function libBlock() {
-  const list = A.libSrcs || [];
+  const all = A.libSrcs || [];
+  const s = A.set;
+  const dirs = all.filter(x => x.kind !== 'url'), urls = all.filter(x => x.kind === 'url');
+  const view = (s.libView === 'dir' && dirs.length) || (s.libView === 'url' && urls.length) ? s.libView : 'all';
+  const shown = sortSrcs(view === 'dir' ? dirs : view === 'url' ? urls : all, s.libSort);
+  /* 两类都有、又在看全部：分成「文件夹」「网址」两组 */
+  const groups = view === 'all' && dirs.length && urls.length
+    ? [['dir', T('libKindDir'), shown.filter(x => x.kind !== 'url')], ['url', T('libKindUrl'), shown.filter(x => x.kind === 'url')]]
+    : [[view, '', shown]];
+  const tools = all.length > 1 ? `<div class="srctools">
+      ${dirs.length && urls.length ? seg('libView', [
+        { v: 'all', t: `${T('libKindAll')} ${all.length}` },
+        { v: 'dir', t: `${T('libKindDir')} ${dirs.length}` },
+        { v: 'url', t: `${T('libKindUrl')} ${urls.length}` }], view) : ''}
+      <select class="sel srcsort" data-sel="libSort" aria-label="${esc(T('libSortBy'))}">
+        ${['add-d', 'add-a', 'name-a', 'name-d'].map(k =>
+          `<option value="${k}"${k === (s.libSort || 'add-a') ? ' selected' : ''}>${esc(T('libSort_' + k.replace('-', '')))}</option>`).join('')}
+      </select>
+      ${all.length >= 6 ? `<input class="tin srcq" id="libSrcQ" type="search" value="${esc(A.libSrcQ || '')}"
+          placeholder="${esc(T('libFind'))}" spellcheck="false" autocomplete="off">` : ''}
+    </div>` : '';
+  /* 来源多了（超过 13 个）：每组先列 10 个，其余收在「还有 N 个」后面；组标题点一下整组折起。
+     查找时不管收没收，全都参加；正在编辑的那张卡所在的组自动展开。 */
+  const many = shown.length > 13, CAP = 10;
+  A.libMore = A.libMore || {}; A.libFold = A.libFold || {};
+  const section = ([k, t, xs]) => {
+    const cut = many && xs.length > CAP + 2;
+    const wide = !cut || A.libMore[k] || xs.slice(CAP).some(x => x.id === A.libOpen);
+    const fold = t && A.libFold[k] && !xs.some(x => x.id === A.libOpen);
+    return `<div class="srcgrp${wide ? ' wide' : ''}${fold ? ' fold' : ''}" data-grp="${esc(k)}">
+      ${t ? `<button class="srcgrph" data-srcfold="${esc(k)}" aria-expanded="${!fold}"><b>${esc(t)}</b><i>${xs.length}</i><s class="dchev"></s></button>` : ''}
+      ${xs.map((x, i) => srcCard(x).replace('class="srccard', `class="srccard${i >= CAP && cut ? ' more' : ''}`)).join('')}
+      ${cut ? `<button class="srcmore" data-srcmore="${esc(k)}" data-n="${xs.length - CAP}">${esc(wide ? T('libLess') : T('libMore', { n: xs.length - CAP }))}</button>` : ''}
+    </div>`;
+  };
+  const list = all.length ? `${tools}<div class="srclist">${groups.map(section).join('')}
+      <div class="dbd srcempty" id="libSrcNone" hidden>${esc(T('libFindNone'))}</div></div>`
+    : `<div class="dbd srcempty">${esc(T('libNone2'))}</div>`;
   return `<div class="dblock">${dnote('localDesc')}
-    ${list.length ? `<div class="srclist">${list.map(srcCard).join('')}</div>`
-      : `<div class="dbd srcempty">${esc(T('libNone2'))}</div>`}
+    ${list}
     <div class="dbc btnrow" style="margin-top:10px">
       <button class="bigbtn pri" id="btnLibAddDir">${esc(T('libAddDir'))}</button>
       <button class="bigbtn" id="btnLibAddUrl">${esc(T('libAddUrl'))}</button>
-      ${list.length ? `<button class="bigbtn" id="btnLibScanAll">${esc(T('libScanAll'))}</button>
+      ${all.length ? `<button class="bigbtn" id="btnLibScanAll">${esc(T('libScanAll'))}</button>
         <button class="bigbtn" id="btnLibDrop">${esc(T('libClearAll'))}</button>` : ''}
     </div>
     <div class="aibar" id="libBar"><i id="libBarI" style="width:0%"></i></div>
-    <div class="dbd" id="libStatus" style="margin-top:8px"></div></div>`;
+    <div class="dbd" id="libStatus" style="margin-top:8px"></div></div>
+    ${syncBlock(urls)}`;
 }
 
 /* 探测面板：这个接口报出来的模型，挨个真跑一遍，谁能读图是测出来的 */
@@ -3496,6 +3673,7 @@ async function applySetting(key, val) {
   applyTips(); startClock(); startTimer(); armIdle();
   if (key === 'mode') { A.painted = null; MODES.stopLoops(); }
   if (key === 'dailyNew' || key === 'localLib') { await reloadDaily(); A.painted = null; }
+  if (key === 'libSync' && val) setTimeout(() => syncTick().catch(() => { }), 1500);
   if (['scope', 'order', 'workSafe'].includes(key)) { buildList(); A.idx = 0; A.painted = null; }
   if (['film', 'filmEdge', 'filmRun'].includes(key) && A.set.mode === 'film') A.painted = null;
   if (['carouselMs', 'filmMs'].includes(key)) MODES.applyPace(A.set);
@@ -3966,7 +4144,7 @@ async function reloadDaily(keepView = false) {
   A.daily = (daily.works || []).length; A.fresh = daily.fresh || 0;
   A.lib = (lib.works || []).length;
   A.libSrcs = lib.srcs || [];
-  A.libName = A.libSrcs.map(x => x.name || hostOf(x.url)).filter(Boolean).join(' · ');
+  A.libName = A.libSrcs.map(srcLabel).filter(Boolean).join(' · ');
   buildCatalog(mergeAll(cat, daily, lib, A.set));
   buildList(); applyTips(); paintSeal();
   if (!keepView && !A.byId.get(A.cur?.id)) await show(A.list[0]);
@@ -3991,7 +4169,7 @@ async function init() {
   A.daily = (daily.works || []).length; A.fresh = daily.fresh || 0;
   A.lib = (lib.works || []).length;
   A.libSrcs = lib.srcs || [];
-  A.libName = A.libSrcs.map(x => x.name || hostOf(x.url)).filter(Boolean).join(' · ');
+  A.libName = A.libSrcs.map(srcLabel).filter(Boolean).join(' · ');
   buildCatalog(mergeAll(cat, daily, lib, set));
 
   document.body.dataset.mode = set.mode;
@@ -4030,6 +4208,9 @@ async function init() {
   if (!navigator.onLine) toast(T('offline'));
   checkGrant();
   setTimeout(() => { if (!document.hidden) aiTick().catch(() => { }); }, 6000);
+  /* 在线图库定时同步：开页 9 秒后看一眼，之后每分钟看一眼 */
+  setTimeout(() => syncTick().catch(() => { }), 9000);
+  setInterval(() => syncTick().catch(() => { }), 60000);
 }
 init().catch(err => {
   console.error(err);

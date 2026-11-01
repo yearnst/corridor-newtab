@@ -35,7 +35,7 @@ Only in these cases, all of which you control:
 1. **Artwork images** — requests to `upload.wikimedia.org` for public-domain paintings. No identifying information is attached.
 2. **Daily additions** (on by default) — metadata queries to `commons.wikimedia.org` and `www.wikidata.org`.
 3. **AI enrichment / multilingual** (off by default, needs your own endpoint) — sends a JPEG downscaled to at most 1024px, plus the prompt, to **the endpoint address you entered**. Leave it blank and not a single request is made.
-4. **Online gallery sources** (off by default, needs a URL from you) — requests the page, images and videos from **the site you entered**. Some sites (shared tables, cloud drives and the like) need their sign-in domains as well; Chrome lists every domain in its permission prompt the first time, before anything is sent. For those sites the extension uses that site's cookies in your browser, exactly as if you opened the link yourself — if you are signed in there, the site sees your account. Nothing from the site is sent anywhere else.
+4. **Online gallery sources** (off by default, needs a URL from you) — requests the page, images and videos from **the site you entered**. Some sites (shared tables, cloud drives and the like) need their sign-in domains as well; Chrome lists every domain in its permission prompt the first time, before anything is sent. For those sites the extension uses that site's cookies in your browser, exactly as if you opened the link yourself — if you are signed in there, the site sees your account. If you turn on scheduled sync (off by default), these same sites are asked again for their image list at the interval you choose, while a Corridor tab is open. Nothing from the site is sent anywhere else.
 
 The Pause Gallery screen makes no network requests and fetches no site icons. If your model runs on your own machine (`localhost` and the like), its requests never leave that machine.
 
@@ -123,7 +123,7 @@ Charles Chern · achillesmars@gmail.com
 1. **取画作图片** —— 向 `upload.wikimedia.org` 请求公有领域画作的图片文件。这是扩展默认就有的能力，请求里不带任何身份信息。
 2. **每日新作**（默认开启）—— 向 `commons.wikimedia.org` 与 `www.wikidata.org` 查询公有领域画作的元数据。
 3. **AI 补全 / 多语言**（默认关闭，需要你自己填接口）—— 把图片缩成不超过 1024px 的 JPEG，连同提示词发往**你自己填写的那个接口地址**。你不填，一个请求都不会发。
-4. **在线图库**（默认关闭，需要你自己填网址）—— 只向**你填写的那个网站**请求页面、图片与视频。有些网站（共享表格、网盘之类）还需要它自己的登录域名；第一次使用时，浏览器会在弹窗里列出全部域名，你同意之后才发请求。对这类网站，扩展用的是浏览器里该网站的 cookie，等同于你自己打开那个链接：如果你在那里登录着，对方看到的就是你的账号。从网站取回的内容不会发往任何其他地方。
+4. **在线图库**（默认关闭，需要你自己填网址）—— 只向**你填写的那个网站**请求页面、图片与视频。有些网站（共享表格、网盘之类）还需要它自己的登录域名；第一次使用时，浏览器会在弹窗里列出全部域名，你同意之后才发请求。对这类网站，扩展用的是浏览器里该网站的 cookie，等同于你自己打开那个链接：如果你在那里登录着，对方看到的就是你的账号。如果你打开定时同步（默认关闭），长廊会在标签页开着时，按你设的间隔重新向这些网站要一次图片清单。从网站取回的内容不会发往任何其他地方。
 
 暂歇那一屏不发任何网络请求，也不取站点图标。接的如果是本机模型（`localhost` 这类地址），请求不出这台电脑。
 

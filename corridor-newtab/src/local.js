@@ -204,14 +204,15 @@ export function pickFromText(txt, baseUrl) {
 
 export async function listURL(url, signal) {
   const u = S1(url);
-  if (!/^https?:\/\//i.test(u)) return { ok: false, err: '网址要以 http:// 或 https:// 开头', items: [] };
+  if (!/^https?:\/\//i.test(u)) return { ok: false, err: 'libUrlScheme', items: [] };
   /* 飞书多维表格的分享视图另走一条路；飞书的其他链接给出该换哪种链接的提示 */
   if (FS.parseShare(u)) return FS.listShare(u, { max: MAX_FILES, signal });
   const bad = FS.badLink(u);
   if (bad) return { ok: false, err: bad, items: [] };
   let r;
-  try { r = await fetch(u, { credentials: 'omit', signal }); }
-  catch (e) { return { ok: false, err: '取不到这个网址 · ' + S1(e.message).slice(0, 60), items: [] }; }
+  /* no-cache：每次都向网站确认一遍。不然浏览器会拿缓存里的旧页面，同步就看不到线上的变化 */
+  try { r = await fetch(u, { credentials: 'omit', cache: 'no-cache', signal }); }
+  catch (e) { if (e?.name === 'AbortError') throw e; return { ok: false, err: 'libUrlNet', items: [] }; }
   if (!r.ok) return { ok: false, err: `HTTP ${r.status}`, items: [] };
   const ct = S1(r.headers.get('content-type')).toLowerCase();
   if (ct.startsWith('image/') || ct.startsWith('video/')) { try { r.body?.cancel(); } catch { } return { ok: true, items: [{ u, t: '' }] }; }
@@ -546,47 +547,81 @@ export async function scanDir(src, onProgress, signal) {
   return { ok: true, works, seen: found.length, skip };
 }
 
-/* 扫一个网址来源 */
-export async function scanURL(src, onProgress, signal) {
-  const sid = src.id;
-  const f = compile(src.f);
-  if (f.err) return { ok: false, err: f.err, works: [] };
-  if (!(await hasHost(src.url))) return { ok: false, err: 'noperm', works: [] };
+/* 文件名：清单里给了就用（飞书的附件地址里看不出名字和后缀），没给就取地址的最后一段 */
+const nameOf = (x) => {
+  if (x.n) return x.n;
+  try { return decodeURIComponent(new URL(x.u).pathname.split('/').pop() || ''); } catch { return x.u.split('/').pop() || ''; }
+};
+const hostOfURL = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
 
-  const got = await listURL(src.url, signal);
-  if (!got.ok) return { ok: false, err: got.err, works: [] };
-  /* 文件名：清单里给了就用（飞书的附件地址里看不出名字和后缀），没给就取地址的最后一段 */
-  const nameOf = (x) => {
-    if (x.n) return x.n;
-    try { return decodeURIComponent(new URL(x.u).pathname.split('/').pop() || ''); } catch { return x.u.split('/').pop() || ''; }
-  };
-  let items = got.items.filter(x => f.test(nameOf(x), x.u));
-  items = items.slice(0, MAX_FILES);
-  const host = (() => { try { return new URL(src.url).hostname.replace(/^www\./, ''); } catch { return ''; } })();
-  const works = [], skip = {};
-  for (let i = 0; i < items.length; i++) {
-    if (signal?.aborted) break;
-    const it = items[i];
-    const name = nameOf(it);
-    try {
-      let a;
-      if (isVideoName(name) || isVideoName(it.u)) {
-        /* 网址来源的视频不下载整段：只读开头取一帧，放的时候也是直接串流 */
-        a = { ...(await analyseVideo(it.u)), video: true };
-      } else {
-        const { blob } = await S.fetchImage(it.u, { id: 'lb-' + hash(sid + '|' + it.u) });
-        if (!blob.size || blob.size > 64 * 1048576) continue;
-        /* tiff / heic / jxl 在 fetchImage 里已经转成浏览器认得的图了，这里按转完的样子算 */
-        a = await analyse(blob, S.needsConvert(name) && !SVG_RE.test(name) ? '' : name);
-      }
-      if (a.w < f.minPx || a.h < f.minPx) continue;
-      works.push(mkWork(sid, { key: it.u, name, folder: S1(src.name) || S1(got.name) || host, title: it.t }, a, it.u));
-    } catch (e) {
-      if (e?.code === 'unsupported') skip[e.ext] = (skip[e.ext] || 0) + 1;
+/* 网址清单里的一条 → 一件作品：下载（进缓存）、量尺寸、取色。打不开、太小、太大都回 null */
+async function urlWork(src, it, f, folder, skip) {
+  const name = nameOf(it);
+  try {
+    let a;
+    if (isVideoName(name) || isVideoName(it.u)) {
+      /* 网址来源的视频不下载整段：只读开头取一帧，放的时候也是直接串流 */
+      a = { ...(await analyseVideo(it.u)), video: true };
+    } else {
+      const { blob } = await S.fetchImage(it.u, { id: 'lb-' + hash(src.id + '|' + it.u) });
+      if (!blob.size || blob.size > 64 * 1048576) return null;
+      /* tiff / heic / jxl 在 fetchImage 里已经转成浏览器认得的图了，这里按转完的样子算 */
+      a = await analyse(blob, S.needsConvert(name) && !SVG_RE.test(name) ? '' : name);
     }
-    onProgress?.(i + 1, items.length);
+    if (a.w < f.minPx || a.h < f.minPx) return null;
+    return mkWork(src.id, { key: it.u, name, folder, title: it.t }, a, it.u);
+  } catch (e) {
+    if (e?.code === 'unsupported') skip[e.ext] = (skip[e.ext] || 0) + 1;
+    return null;
   }
-  return { ok: true, works, seen: items.length, skip };
+}
+
+/* 列一遍网址来源，套上这个来源的筛选，最多 MAX_FILES 条 */
+async function listSrc(src, signal) {
+  const f = compile(src.f);
+  if (f.err) return { ok: false, err: f.err };
+  if (!(await hasHost(src.url))) return { ok: false, err: 'noperm' };
+  const got = await listURL(src.url, signal);
+  if (!got.ok) return { ok: false, err: got.err };
+  const items = got.items.filter(x => f.test(nameOf(x), x.u)).slice(0, MAX_FILES);
+  return { ok: true, f, items, name: S1(got.name), folder: S1(src.name) || S1(got.name) || hostOfURL(src.url) };
+}
+
+/* 扫一个网址来源（从头收一遍） */
+export async function scanURL(src, onProgress, signal) {
+  const L = await listSrc(src, signal);
+  if (!L.ok) return { ok: false, err: L.err, works: [] };
+  const works = [], skip = {};
+  for (let i = 0; i < L.items.length; i++) {
+    if (signal?.aborted) break;
+    const w = await urlWork(src, L.items[i], L.f, L.folder, skip);
+    if (w) works.push(w);
+    onProgress?.(i + 1, L.items.length);
+  }
+  return { ok: true, works, seen: L.items.length, skip, name: L.name };
+}
+
+/* ---------------- 网址来源的增量同步 ----------------
+   existing 是这个来源眼下的作品，keep 是不能拿掉的作品 id（收藏的）。
+   只下载新出现的；已经有的原样留着（AI 补全过的字段也就留着）；
+   线上没了的，不在 keep 里就列进 drop。
+   自动同步时线上忽然一条都没有，多半是那边临时出错 —— 这一回什么都不删。 */
+export async function syncURL(src, { existing = [], keep = new Set(), manual = false, onProgress, signal } = {}) {
+  const L = await listSrc(src, signal);
+  if (!L.ok) return { ok: false, err: L.err };
+  if (!L.items.length && existing.length && !manual) return { ok: false, err: 'libSyncEmpty' };
+  const have = new Set(existing.map(w => w.path));
+  const now = new Set(L.items.map(x => x.u));
+  const fresh = L.items.filter(x => !have.has(x.u));
+  const add = [], skip = {};
+  for (let i = 0; i < fresh.length; i++) {
+    if (signal?.aborted) break;
+    const w = await urlWork(src, fresh[i], L.f, L.folder, skip);
+    if (w) add.push(w);
+    onProgress?.(i + 1, fresh.length);
+  }
+  const drop = existing.filter(w => !now.has(w.path) && !keep.has(w.id)).map(w => w.id);
+  return { ok: true, add, drop, seen: L.items.length, skip, name: L.name };
 }
 
 export const scanSrc = (src, onProgress, signal) =>

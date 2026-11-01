@@ -766,30 +766,66 @@ select.sel{background:var(--f1);border:1px solid var(--hair);border-radius:9px;p
   white-space:pre-wrap;word-break:break-all}
 
 /* ---------------- 自定义图库：一串来源 ----------------
-   一个来源一张卡，点标题展开就是这一路的筛选条件 */
-.srclist{margin-top:10px;display:flex;flex-direction:column;gap:7px}
+   一个来源一行，整串收在一个框里、细线分隔；点一行展开就是这一路的筛选条件。
+   两类都有时分「文件夹」「网址」两组。 */
+.srctools{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px}
+.srctools .seg{padding:2px;border-radius:9px}
+.srctools .seg button{padding:4px 10px;font-size:11.5px;border-radius:7px}
+.srctools .srcq{flex:1 1 100%;width:auto;min-width:0;padding:5px 10px;font-size:12px;border-radius:8px}
+.srctools select.srcsort{margin-left:auto;padding:5px 8px;font-size:12px;border-radius:8px;max-width:100%}
+.srclist{margin-top:8px;display:flex;flex-direction:column;border:1px solid var(--hair);border-radius:11px;
+  background:var(--f0);overflow:hidden}
 .srcempty{margin-top:8px;opacity:.7}
-.srccard{border:1px solid var(--hair);border-radius:11px;background:var(--f0);overflow:hidden}
-.srccard.bad{border-color:color-mix(in srgb,#c8695f 42%,var(--hair))}
-.srchead{display:flex;align-items:center;gap:9px;padding:9px 11px;cursor:pointer;
+.srclist .srcempty{margin:0;padding:10px 11px}
+.srcempty[hidden],.srccard[hidden],.srcgrp[hidden]{display:none}
+.srcgrph{display:flex;width:100%;align-items:center;gap:7px;padding:5px 11px;background:var(--f1);
+  font:inherit;font-size:10.5px;letter-spacing:.06em;color:var(--ink-faint);text-align:left;cursor:pointer}
+.srcgrph:hover{color:var(--ink-dim)}
+.srcgrph b{font-weight:500}
+.srcgrph i{font-style:normal;font-variant-numeric:tabular-nums;opacity:.8}
+.srcgrph .dchev{margin-left:auto;width:6px;height:6px;border-right:1.2px solid currentColor;border-bottom:1.2px solid currentColor;
+  transform:rotate(45deg);margin-top:-3px;transition:transform .2s var(--ease);text-decoration:none}
+.srcgrp.fold .srcgrph .dchev{transform:rotate(-45deg);margin-top:0}
+/* 来源多了：每组先列 10 个，其余收在「还有 N 个」后面；查找时全都参加 */
+.srcgrp:not(.wide) .srccard.more,.srcgrp.fold .srccard,.srcgrp.fold .srcmore{display:none}
+.srclist.q .srcgrp .srccard:not([hidden]){display:block}
+.srclist.q .srcmore{display:none}
+.srcmore{display:block;width:100%;padding:6px 11px 6px 37px;border-top:1px solid var(--hair);text-align:left;
+  font:inherit;font-size:11.5px;color:var(--ink-dim);cursor:pointer}
+.srcmore:hover{background:var(--f1);color:var(--ink)}
+.srcgrp+.srcgrp .srcgrph,.srcgrph+.srccard,.srccard+.srccard{border-top:1px solid var(--hair)}
+.srccard{background:none;transition:background .16s var(--ease)}
+.srccard.open{background:var(--f1)}
+.srccard.bad{box-shadow:inset 2px 0 0 color-mix(in srgb,#c8695f 70%,transparent)}
+.srchead{display:flex;align-items:center;gap:9px;padding:6px 10px 6px 11px;cursor:pointer;
   transition:background .16s var(--ease)}
 .srchead:hover{background:var(--f1)}
-.srckind{flex:none;font-size:14px;line-height:1;text-decoration:none;filter:saturate(.5)}
-.srcname{flex:1;min-width:0}
-.srcname b{display:block;font-size:12.5px;font-weight:500;color:var(--ink);
+.srckind{flex:none;font-size:13px;line-height:1;text-decoration:none;filter:saturate(.5)}
+/* 网址前的地球 = 这一路的同步开关：带绿点 = 参加同步，灰掉 = 不参加 */
+button.srckind{position:relative;padding:3px;margin:-3px;border-radius:6px;cursor:pointer;color:inherit;font:inherit;font-size:13px}
+button.srckind:hover{background:var(--f2)}
+.srcsync{position:relative;display:inline-block}
+.srcsync:not(.on){filter:grayscale(1);opacity:.5}
+.srcsync.on::after{content:"";position:absolute;right:0;bottom:0;width:7px;height:7px;border-radius:50%;
+  background:#43a565;box-shadow:0 0 0 1.5px var(--f0)}
+.srcsynchint{display:flex;align-items:center;gap:8px}
+.srcsynchint .srcsync{padding:3px;font-size:13px;line-height:1;text-decoration:none;filter:saturate(.5)}
+.srcname{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px}
+.srcname b{flex:0 1 auto;min-width:0;font-size:12.5px;font-weight:500;color:var(--ink);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.srcname u{display:block;margin-top:1px;text-decoration:none;font-size:10.5px;color:var(--ink-faint);
+.srcname u{flex:1 1 0;min-width:0;text-decoration:none;font-size:10.5px;color:var(--ink-faint);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .srcn{flex:none;font-style:normal;font-size:11px;color:var(--ink-dim);
-  background:var(--f2);border-radius:999px;padding:2px 9px;font-variant-numeric:tabular-nums}
-.srchead .dchev{flex:none;width:9px;height:9px;border:none;border-right:1.4px solid var(--ink-faint);
+  background:var(--f2);border-radius:999px;padding:1px 8px;font-variant-numeric:tabular-nums}
+.srchead .dchev{flex:none;width:8px;height:8px;border:none;border-right:1.4px solid var(--ink-faint);
   border-bottom:1.4px solid var(--ink-faint);transform:rotate(45deg);margin:-4px 3px 0 2px;
   transition:transform .24s var(--ease)}
 .srccard.open .srchead .dchev{transform:rotate(-135deg);margin-top:2px}
-.srchead .sw-toggle{width:34px;height:20px}
-.srchead .sw-toggle::after{top:3px;left:3px;width:14px;height:14px}
-.srchead .sw-toggle.on::after{transform:translateX(14px)}
+.srchead .sw-toggle{width:30px;height:18px}
+.srchead .sw-toggle::after{top:3px;left:3px;width:12px;height:12px}
+.srchead .sw-toggle.on::after{transform:translateX(12px)}
 .srccard.off .srcname,.srccard.off .srckind,.srccard.off .srcn{opacity:.45}
+.srcsync{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .srcerr{padding:0 11px 9px;font-size:11px;line-height:1.6;color:#c08c85}
 .srcbody{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s var(--ease)}
 .srccard.open .srcbody{grid-template-rows:1fr}

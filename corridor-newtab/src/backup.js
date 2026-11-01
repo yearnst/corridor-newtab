@@ -113,7 +113,7 @@ export async function collect(parts, { keys = 'none', password = '' } = {}) {
     /* 只有网址来源带得走：本机文件夹靠的是目录句柄，换台机器就指不到了 */
     const lib = await S.getLocalLib();
     data.libsrc = (lib.srcs || []).filter(x => x && x.kind === 'url')
-      .map(x => ({ id: x.id, kind: 'url', name: x.name || '', url: x.url || '',
+      .map(x => ({ id: x.id, kind: 'url', name: x.name || '', url: x.url || '', add: x.add || 0,
                    on: x.on !== false, f: clone(x.f) }));
   }
 
@@ -229,7 +229,7 @@ export async function apply(file, { parts, mode = 'replace', password = '' } = {
     const keepDirs = (lib.srcs || []).filter(x => x.kind !== 'url');       // 文件夹来源一律留着
     const oldUrls = mode === 'merge' ? (lib.srcs || []).filter(x => x.kind === 'url') : [];
     const byId = new Map([...oldUrls, ...d.libsrc].map(x => [x.id, x]));
-    const srcs = [...keepDirs, ...byId.values()].slice(0, 12);
+    const srcs = [...keepDirs, ...byId.values()].slice(0, S.MAX_SRCS);
     const live = new Set(srcs.map(x => x.id));
     await S.setLocalLib({ at: Date.now(), srcs, works: (lib.works || []).filter(w => live.has(w.sid)) });
     done.push('libsrc');

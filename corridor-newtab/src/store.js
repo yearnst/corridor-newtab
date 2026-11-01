@@ -93,6 +93,10 @@ export const DEFAULTS = {
   dailyNew: true,             // 每天从 Wikimedia Commons 补几幅新作
   dailyN: 3,                  // 每天补几幅
   localLib: true,             // 自定义图库是否参与展览
+  libSync: false,             // 在线图库定时同步：线上新增的收进来，线上没了的（收藏的除外）拿掉
+  libSyncMin: 1440,           // 同步间隔，分钟；默认一天
+  libView: 'all',             // 来源列表只看哪一类：all | dir 文件夹 | url 网址
+  libSort: 'add-d',           // 来源列表怎么排：add-d 新加的在前 | add-a | name-a | name-d
   /* AI 补全：用你自己的多模态模型给每日新作与自定义图库补字段。
      base 或 model 留空＝不启用，两个图库沿用原来的规则。 */
   ai: {
@@ -178,6 +182,10 @@ export async function getSettings() {
   if (!['dark', 'light'].includes(s.ui)) s.ui = 'dark';
   if (!['cur', 'all'].includes(s.dscope)) s.dscope = 'cur';
   s.dailyN = Math.min(12, Math.max(1, Math.round(Number(s.dailyN) || 3)));
+  s.libSync = !!s.libSync;
+  s.libSyncMin = Math.min(43200, Math.max(1, Math.round(Number(s.libSyncMin) || 1440)));
+  if (!['all', 'dir', 'url'].includes(s.libView)) s.libView = 'all';
+  if (!['add-d', 'add-a', 'name-a', 'name-d'].includes(s.libSort)) s.libSort = 'add-d';
   s.matScale = Math.min(2, Math.max(0.4, Number(s.matScale) || 1));
   /* 墙色：自定义色板与两个微调。色号只认 #rgb / #rrggbb，别的一律回默认 */
   const HEX = (v, d) => {
@@ -405,7 +413,8 @@ export async function clearDaily() { await area().set({ daily: { day: '', at: 0,
 /* ---------------- 自定义图库 ----------------
    { at, srcs:[…], works:[…] }
    srcs 一条一个来源：
-     { id, kind:'dir'|'url', name, url?, at, n, err, f:{inc,exc,rx,ext[],minPx} }
+     { id, kind:'dir'|'url', name, url?, add, at, n, err, f:{inc,exc,rx,ext[],minPx},
+       sync, sy, sa, sd }   // 网址来源：参不参加定时同步、上次同步的时间、新增几件、移除几件
    文件夹来源的目录句柄另存在 corridor-fs 库里，按 id 分开放。
    老版本存的是 { name, at, works }（只有一个文件夹），读的时候迁成第一个来源，
    id 就叫 root —— 正好跟老句柄的键对上，用户不用重新授权。
@@ -419,6 +428,10 @@ export const isVideoURL = (u) => VID_RE.test(String(u || '').split(/[?#]/)[0]);
 const OLD_IMG = ['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif', 'bmp'];
 export const IMG_EXTS = OLD_IMG.concat(['svg', 'tif', 'tiff', 'heic', 'heif', 'jxl']);
 const LIB_EXTS = IMG_EXTS.concat(VIDEO_EXTS);
+export const MAX_SRCS = 100;
+/* 来源 id 是「d / u + 建立时刻的 36 进制」，老来源没有 add，就从 id 里读出加进来的时间 */
+const idTime = (id) => { const t = parseInt(String(id || '').slice(1), 36); return t > 1.4e12 && t < 4e12 ? t : 0; };
+const N0 = (v) => Math.max(0, Math.round(Number(v) || 0));
 function normSrc(x, i) {
   const s = x && typeof x === 'object' ? x : {};
   const kind = s.kind === 'url' ? 'url' : 'dir';
@@ -433,14 +446,18 @@ function normSrc(x, i) {
     id: String(s.id || 's' + (i + 1)).slice(0, 24),
     kind,
     name: String(s.name || '').slice(0, 60),
+    ttl: String(s.ttl || '').slice(0, 80),     // 来源自己报的名字（比如飞书的表名），没起名时拿来显示
     url: kind === 'url' ? String(s.url || '').slice(0, 500) : '',
-    at: Math.max(0, Math.round(Number(s.at) || 0)),
-    n: Math.max(0, Math.round(Number(s.n) || 0)),
+    add: N0(s.add) || idTime(s.id) || N0(s.at),
+    at: N0(s.at),
+    n: N0(s.n),
+    sy: N0(s.sy), sa: N0(s.sa), sd: N0(s.sd),
     err: String(s.err || '').slice(0, 160),
     /* 上一次扫描时，因为浏览器解不了而跳过的：{ heic: 3, jxl: 1 } */
     skip: Object.fromEntries(Object.entries(s.skip && typeof s.skip === 'object' ? s.skip : {})
       .filter(([k, v]) => LIB_EXTS.includes(k) && Number(v) > 0).slice(0, 8).map(([k, v]) => [k, Math.round(Number(v))])),
     on: s.on === undefined ? true : !!s.on,
+    sync: s.sync === undefined ? true : !!s.sync,   // 网址来源：参不参加定时同步（默认参加）
     f: {
       inc: String(f.inc || '').slice(0, 200),
       exc: String(f.exc || '').slice(0, 200),
@@ -454,7 +471,7 @@ function normSrc(x, i) {
 export async function getLocalLib() {
   const d = (await area().get('locallib')).locallib || {};
   const out = { at: Number(d.at) || 0, srcs: [], works: Array.isArray(d.works) ? d.works : [] };
-  if (Array.isArray(d.srcs) && d.srcs.length) out.srcs = d.srcs.slice(0, 12).map(normSrc);
+  if (Array.isArray(d.srcs) && d.srcs.length) out.srcs = d.srcs.slice(0, MAX_SRCS).map(normSrc);
   else if (String(d.name || '') || out.works.length) {
     /* 从「一个文件夹」升上来 */
     out.srcs = [normSrc({ id: 'root', kind: 'dir', name: d.name || '', at: d.at || 0, n: out.works.length }, 0)];
@@ -473,7 +490,7 @@ export async function getLocalLib() {
   return out;
 }
 export async function setLocalLib(d) {
-  const srcs = (Array.isArray(d.srcs) ? d.srcs : []).slice(0, 12).map(normSrc);
+  const srcs = (Array.isArray(d.srcs) ? d.srcs : []).slice(0, MAX_SRCS).map(normSrc);
   const works = Array.isArray(d.works) ? d.works : [];
   await area().set({ locallib: { at: Number(d.at) || Date.now(), srcs, works } });
 }
@@ -487,6 +504,31 @@ export async function setLibSource(src, works) {
   const rest = lib.works.filter(w => w.sid !== s.id);
   await setLocalLib({ at: Date.now(), srcs: lib.srcs, works: rest.concat(works || []) });
   return getLocalLib();
+}
+/* 增量改一个来源：拿掉 drop 里的作品、补上 add 里的（id 已经有的跳过），来源字段按 patch 改。
+   每次都现读一遍最新的库再写，别的来源、别处刚写进去的东西都不会被冲掉。 */
+export async function mergeLibSource(sid, { add = [], drop = [], patch = {} } = {}) {
+  const lib = await getLocalLib();
+  const i = lib.srcs.findIndex(x => x.id === sid);
+  if (i < 0) return lib;                       // 来源刚被删掉了
+  const gone = new Set(drop);
+  let works = lib.works.filter(w => !(w.sid === sid && gone.has(w.id)));
+  const have = new Set(works.map(w => w.id));
+  works = works.concat(add.filter(w => w && !have.has(w.id) && have.add(w.id)));
+  const n = works.filter(w => w.sid === sid).length;
+  lib.srcs[i] = normSrc({ ...lib.srcs[i], ...patch, at: Date.now(), n }, i);
+  await setLocalLib({ at: Date.now(), srcs: lib.srcs, works });
+  return getLocalLib();
+}
+/* 只把这几件作品换成新的样子（AI 补全写回用）：库里已经没有的不会被加回来，
+   这段时间里同步新加进来的也不会被冲掉 */
+export async function patchLibWorks(list) {
+  const by = new Map((list || []).filter(w => w && w.id).map(w => [w.id, w]));
+  if (!by.size) return;
+  const lib = await getLocalLib();
+  let hit = 0;
+  const works = lib.works.map(w => by.has(w.id) ? (hit++, by.get(w.id)) : w);
+  if (hit) await setLocalLib({ at: lib.at || Date.now(), srcs: lib.srcs, works });
 }
 export async function dropLibSource(id) {
   const lib = await getLocalLib();
@@ -686,7 +728,8 @@ export async function cacheTrim(limitBytes) {
   try {
     const favs = new Set(await getFavs());                  // 收藏过的最后才动
     const m = await mtx('readonly');
-    const all = await wrap(m.getAll());
+    /* 在线图库里收藏过的那几张一张都不删：线上可能已经没有了，缓存就是仅存的一份 */
+    const all = (await wrap(m.getAll())).filter(r => !(favs.has(r.id) && String(r.id || '').startsWith('lb-')));
     let total = all.reduce((n, r) => n + (r.size || 0), 0);
     if (total <= limitBytes) return { total, removed: 0 };
     all.sort((a, b) => (favs.has(a.id) - favs.has(b.id)) || ((a.used || 0) - (b.used || 0)));

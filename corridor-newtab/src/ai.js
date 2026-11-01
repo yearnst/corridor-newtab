@@ -642,7 +642,8 @@ export async function runBatch(opt = {}) {
     let dirtyD = false, dirtyL = false, since = 0;
     const flush = async () => {
       if (dirtyD) { await S.setDaily(daily); dirtyD = false; }
-      if (dirtyL) { await S.setLocalLib(lib); dirtyL = false; }
+      /* 只写回这一批里的那几件：整份写回会把这段时间里同步新加、删掉的东西冲回去 */
+      if (dirtyL) { await S.patchLibWorks(list.filter(x => x.box === 'local').map(x => x.w)); dirtyL = false; }
       await S.setAIState({ lock: Date.now(), tok });        // 续租：长队列别被当成死锁
       since = 0;
     };
@@ -706,7 +707,7 @@ export async function retryOne(id, box) {
       const ch = applyResult(w, r.data, ai);
       if (ch) {
         row.ok = true; row.f = ch; row.now = nameOf(w);
-        box === 'local' ? await S.setLocalLib(store) : await S.setDaily(store);
+        box === 'local' ? await S.patchLibWorks([w]) : await S.setDaily(store);
       } else row.err = '模型返回的内容用不了';
     } else row.err = r.err || '未知错误';
   } catch (e) { row.err = short(e?.message); }
