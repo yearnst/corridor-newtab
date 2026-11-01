@@ -234,13 +234,8 @@ async function toJPEG(blob, px = MAXPX) {
 /* 每日新作走网络缩略图；自定义图库走本机文件（只有页面里读得到，
    后台服务拿不到目录句柄，会自然跳过，留给下次打开新标签页时补） */
 async function imageOf(w) {
-  if (w.local) {
-    const { blob } = await S.fetchImage(w.img.base);
-    return toJPEG(blob);
-  }
-  const sizes = w.img?.sizes?.length ? w.img.sizes : [960];
-  const px = sizes.find(s => s >= 900) ?? sizes[sizes.length - 1];
-  const { blob } = await S.fetchImage(`${w.img.base}/${px}px-${w.img.name}`, { id: w.id });
+  /* 按作品取：手里的主图够 900 宽就直接用，不够才联网；本机文件夹里的直接读盘 */
+  const { blob } = await S.getArt(w, 900, { main: true });
   return toJPEG(blob);
 }
 

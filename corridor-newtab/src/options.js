@@ -4,7 +4,7 @@ import * as LG from './langs.js';
 import './tips.js';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
-let set, lang = 'zh', other = 'en', total = 0;
+let set, lang = 'zh', other = 'en', total = 0, catIds = [];
 const T = (k, v) => t(lang, k, v);
 /* 跟新标签页里一套规则：母语 / 外语两个位置，界面跟其中一个走 */
 function resolveLang(st) {
@@ -69,6 +69,15 @@ const TEXCHIP = { level5:220, rollmatt:180, skimtrowel:200, venetian:210, marmor
 
 async function render() {
   const st = await S.cacheStats();
+  /* 「已缓存 X / Y」：Y＝内置馆藏 + 每日新作 + 网址来源（本机文件夹里的不复制，不算）；X＝其中手里有展示图的 */
+  let got = st.works;
+  try {
+    const [have, daily, lib] = await Promise.all([S.cacheIndex(), S.getDaily(), S.getLocalLib()]);
+    const ids = catIds.concat((daily.works || []).map(w => w.id),
+      (lib.works || []).filter(w => !String(w.img?.base || '').startsWith('local:')).map(w => w.id));
+    total = ids.length;
+    got = ids.filter(id => (have.get(id)?.px || 0) > 0).length;
+  } catch { }
   const ver = globalThis.chrome?.runtime?.getManifest?.().version || '';
   const ivOpts = INTERVALS.map(o => ({ v: o.v, t: o.k ? T(o.k) : `${o.n} ${T(o.u)}${o.tag ? ' · ' + T(o.tag) : ''}` }));
   $('#hName').textContent = T('appName');
@@ -128,9 +137,10 @@ async function render() {
     row(T('clock'), '', seg('clock', [{ v: 'off', t: T('clockOff') }, { v: 'bar', t: T('clockBar') }, { v: 'grand', t: T('clockGrand') }], set.clock)) +
 
     `<div class="sectitle">${esc(T('cache'))}</div>
-     <div class="row"><div class="lab"><b>${esc(T('cached'))} ${st.works} / ${total} ${esc(T('works'))}</b>
+     <div class="row"><div class="lab"><b>${esc(T('cached'))} ${got} / ${total} ${esc(T('works'))}</b>
        <span>${esc(T('cacheDesc'))}</span>
        <span style="margin-top:6px">${esc(T('cacheSize'))}: ${fmt(st.bytes)} / ${set.cacheLimitMB} MB</span>
+       <span style="opacity:.75">${esc(T('cacheSplit', { main: fmt(st.mainBytes), n: st.thumbs, thumb: fmt(st.thumbBytes) }))}</span>
        <div class="cachebar"><i style="width:${Math.min(100, st.bytes / (set.cacheLimitMB * 1048576) * 100).toFixed(1)}%"></i></div>
        <span style="margin-top:8px"><b>${esc(T('evict'))}</b> — ${esc(T('evictDesc'))}</span></div>
        <div style="display:flex;gap:8px"><button class="bigbtn pri" id="pf">${esc(T('cacheAll'))}</button>
@@ -200,6 +210,6 @@ async function save(k, v) {
   set = await S.getSettings(); [lang, other] = resolveLang(set);
   await loadPacks(); applyDir();
   document.body.dataset.frame = set.frame;
-  try { total = (await (await fetch(chrome.runtime.getURL('data/catalog.json'))).json()).length; } catch { total = 106; }
+  try { catIds = (await (await fetch(chrome.runtime.getURL('data/catalog.json'))).json()).map(w => w.id); total = catIds.length; } catch { total = 106; }
   render();
 })();

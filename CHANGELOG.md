@@ -19,6 +19,59 @@ Every entry is in English first; the Chinese text is folded under **中文**.
 
 ---
 
+## [1.26.0] — 2026-11-02
+
+Corridor now copes properly with being offline or on a poor connection: each work keeps one display image and one thumbnail, and a new tab no longer waits on the network.
+
+### Added
+
+* **Keeps showing when you're offline**
+  When the image source can't be reached, rotation moves only through cached works, and a new tab opens straight onto one that is cached. In the Library, works that aren't cached are marked “Not cached”; Masonry puts the cached ones first.
+* **Today's Selection works offline**
+  New daily additions are stored as soon as they arrive. Background prefetch now includes daily additions too, starting with favorites and the works in Today's Selection.
+
+### Fixes and improvements
+
+* **New tabs no longer hang**
+  On a restricted network, where the browser says it is online but the image source can't be reached, a new tab could take tens of seconds to show a picture. Now anything already cached goes up right away, and when nothing is, it waits 1.5 seconds at most. Every request has a timeout; when the image source keeps failing, Corridor remembers it for a few minutes, and new tabs opened in that time don't wait on the network.
+* **Two copies per work: one display image, one thumbnail**
+  The same painting used to be stored once for each size it was shown at, up to five or six copies, and a cached work counted as missing whenever the size didn't match, so it went back to the network. Now the display image is the largest size this device needs, replaced by a larger one once you zoom in, and the thumbnail is made locally from it. Every other size is the browser scaling one of the two. After the update, an existing cache is merged into these two copies automatically.
+* **When the cache is full, shrink first, then delete**
+  Over the limit, works no longer in any collection go first; then large images from zooming in are shrunk locally; only then are the least-recently-seen display images removed. Thumbnails and favorites stay to the end. Usage could previously run a little over the limit (406 MB of 400 MB, say); it is now checked after every write.
+* On the Gallery Wall, a work that isn't cached no longer shrinks to a small square inside the frame: its blurred placeholder fills the frame at the work's real proportions. The same goes for the Circular Gallery, Today's Selection and the zoom view.
+* In Settings → Offline cache, “Cached X / Y works” now counts only works that can be cached, so the first number can no longer be larger than the second. Display images and thumbnails are listed separately, and the part no longer in the collection can be cleaned up in one click.
+* Background prefetch now runs every hour and stores images at this device's actual display width, instead of always 1920 pixels.
+* Exported images are named after their actual format; the few shrunk locally are `.webp`.
+
+<details>
+<summary markdown="span">中文</summary>
+
+断网和弱网下的长廊重新做了一遍：每幅只存一份展示图和一张缩略图，打开新标签页不再等网络。
+
+### 新增
+
+* **断网也能照常展出**
+  连不上图源时，轮换只在已缓存的作品里转，新标签页直接打开一幅手里有图的作品。藏品库里没缓存的作品标着「未缓存」，瀑布流把有图的排在前面。
+* **今日画夹断网也看得到**
+  每日新作一进来，就把它的图存好。后台预取也把每日新作算了进来，先存收藏和今日画夹里的那几幅。
+
+### 修复与优化
+
+* **打开新标签页不再卡住**
+  在网络受限的环境里（浏览器显示在线，图源却连不上），新标签页以前要等几十秒才出画。现在手里有图就马上上墙；一张都没有时，最多等 1.5 秒。每个请求都有超时，图源连着连不上时，长廊会记几分钟，这期间新开的标签页不再等网络。
+* **每幅只存两份：一份展示图、一张缩略图**
+  以前同一幅画会按不同的显示尺寸各存一份，最多五六份；查缓存时尺寸对不上就当作没有，又去联网。现在展示图只存这台设备用得着的最大一档，放大看过就换成更大的那份；缩略图在本地从展示图缩出来。其余尺寸都由浏览器显示时缩放。升级后，原有的缓存会自动并成这两份。
+* **缓存满了，先缩小、后删除**
+  超过上限时，先清已经不在目录里的作品，再把放大看过的大图在本地缩小，最后才删最久没看的展示图；缩略图和收藏留到最后。以前占用可能略微超出上限（例如 406 MB / 400 MB），现在每次写入后都会检查。
+* 展墙上没缓存的作品不再缩成画框里的一个小方块：模糊占位图按原作比例撑满画框。环形长廊、今日画夹、放大页也一样。
+* 设置 → 离线缓存里的「已缓存 X / Y 幅」只统计能缓存的作品，不会再出现前一个数比后一个大的情况；占用分开列出展示图和缩略图，已不在目录里的那部分可以一键清理。
+* 后台预取改为每小时一轮，按这台设备实际的展示宽度存图，不再固定存 1920 像素宽。
+* 导出的图片按实际格式命名，在本地缩小过的几幅是 `.webp`。
+
+</details>
+
+---
+
 ## [1.25.5] — 2026-11-01
 
 Online galleries can now keep themselves up to date, and a long list of sources is easier to find your way around.

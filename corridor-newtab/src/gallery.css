@@ -1347,6 +1347,13 @@ body[data-mode="immersive"] #label{display:none}
 .skipbadge{position:absolute;left:7px;top:7px;z-index:2;font-size:9.5px;letter-spacing:.06em;
   padding:2px 6px;border-radius:3px;background:rgba(12,12,14,.72);color:#d8d2c4;
   border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(4px)}
+/* 藏品库：断网时手里没有图的那几幅 */
+.ncbadge{position:absolute;right:7px;bottom:46px;z-index:2;font-size:9.5px;letter-spacing:.06em;
+  padding:2px 6px;border-radius:3px;background:rgba(12,12,14,.72);color:#bdb6a8;
+  border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(4px)}
+/* 存储：不在目录里的那些，一行说明加一个「清理」 */
+.orphrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
+.orphrow .bigbtn{padding:3px 10px;font-size:12px}
 .texglab{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);
   margin:13px 0 4px;opacity:.75}
 .texglab:first-child{margin-top:2px}

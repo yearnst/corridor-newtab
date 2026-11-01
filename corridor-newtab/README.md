@@ -348,7 +348,7 @@ Order: Shuffled / Chronological · Show from: Whole collection / Favorites only 
 > with switches laid out as right-aligned single rows of equal width.
 > When you change a setting, the drawer **stays where it is** instead of jumping back to the top; only switching tabs takes you back to the top.
 
-**Offline cache** See how many works are cached and how much space they take, cache every work in one click, clear the cache, set the cache limit (200 MB – 2 GB, default 400 MB),
+**Offline cache** See how many works are cached and how much space they take (display images and thumbnails listed separately), cache every work in one click, clean up cache for works no longer in the collection, clear the cache, set the cache limit (200 MB – 2 GB, default 400 MB),
 **Export as image files**, **Open folder**, and see the cache's actual path on disk, with one-click copy
 
 > You can also change the main settings under `chrome://extensions/` → Corridor → **Extension options**.
@@ -799,19 +799,38 @@ once enrichment has finished it also translates a small batch (at most 12 works 
 
 ## 6. How offline works
 
-After a work's image is shown for the first time, it is stored in the browser's local IndexedDB; the next time you open a new tab it is read locally,
-with no network request. Every three hours the background quietly prefetches a few works that aren't cached yet, and each time the picture changes it prefetches the next three.
-**What happens when the cache is full**: every time writes add up to 12 MB, usage is checked; when it is over the limit, the cache is cleaned out “**least recently seen goes first**”,
-until it is down to 90% of the limit (leaving some headroom, so it doesn't fill up again right after a cleanup). **Works you've favorited are the last to be touched**, and favorites from online galleries are never removed.
+After a work's image is shown for the first time, it is stored in the browser's local IndexedDB; the next time you open a new tab it is read locally, with no network request.
+
+**Each work keeps just two copies**: one display image and one thumbnail.
+The display image is the largest size this device has needed (it follows your screen width, display scaling and the “Image quality” setting), and it **only ever grows**: once you zoom into a work and a larger copy is stored, the smaller one is deleted.
+The thumbnail is about 512 pixels wide and is made locally from the display image, with no extra download; the Library, Masonry, Today's Selection and the details page all use it.
+Every other size is produced by the browser scaling one of these two copies on screen, instead of storing a separate copy for each size.
+
+**The picture never sits waiting on the network.** Whatever is already on hand (even a smaller copy, or only the thumbnail) goes up on the wall right away, and is swapped for a sharper one in the background when the network allows.
+Only when nothing is cached does it go to the network, and then it waits only briefly: 1.5 seconds when a new tab opens, 4 seconds after that. If the image doesn't arrive in time, a new tab or automatic rotation moves on to a work that is cached;
+a work you picked yourself shows its placeholder first, and the image replaces it as soon as it arrives.
+Every request has a timeout. When the image source keeps failing, Corridor remembers it for a few minutes; during that time new tabs don't wait on the network at all and show cached works straight away.
+The note is cleared as soon as the browser reports that it is back online.
+
+**When you're offline**: rotation only moves through cached works; in the Library, works that aren't cached are marked “Not cached”, and Masonry puts the cached ones first.
+A work that has never been cached shows the tiny blurred placeholder bundled with the extension (about 0.5 KB each), filling the frame at the work's real proportions.
+
+**Background prefetch**: once an hour it stores favorites, Today's Selection, the built-in collection and older daily additions, in that order, at this device's display width, downloading at most a dozen or so per round.
+New daily additions are stored as soon as they arrive, so Today's Selection works offline too. When the image source is unreachable or the cache is nearly full, the background leaves it alone. Each time the picture changes, the next three are prefetched as well.
+
+**What happens when the cache is full**: usage is checked after each write. When it is over the limit, space is freed in this order, until it is down to 90% of the limit:
+first, works that are no longer in any collection (daily additions that have rotated out, works removed from an online gallery);
+then large images from zooming in are shrunk locally to the width this device actually uses;
+only if that isn't enough are display images removed, “**least recently seen goes first**”. **Thumbnails and favorites stay to the end**, and favorites from online galleries are never removed.
 Only the local copy is deleted; it is fetched again the next time it's shown, and your settings, favorites and history are unaffected.
+Settings → Offline cache also lists the part that is “no longer in the collection” on its own line, with a one-click cleanup.
 
-Images and the index are kept in two separate stores: `images` holds only the images, `meta` holds only `{size, last used time, work id}`.
-Measuring usage and running eviction both read only `meta`, so hundreds of megabytes of images never get loaded into memory whole just to “work out how much is used” —
-and a cache hit only updates the timestamp in meta instead of writing the whole image back.
+Images and the index are kept in two separate stores: `images` holds only the images, `meta` holds only `{size, last used time, work id, kind, width}`.
+Measuring usage, running eviction and checking whether a work is cached all read only `meta`, so hundreds of megabytes of images never get loaded into memory whole just to “work out how much is used”.
 
-When you're offline, cached works still display normally; if a work has never been cached at all, it falls back to a tiny built-in placeholder (about 0.5 KB each, bundled with the extension).
+When upgrading from a version before 1.26, the several sizes an older cache kept for the same work are merged into one automatically, and thumbnails are filled in by the background over time.
 
-To stock up on everything at once: Settings → Offline cache → **Cache every work**. At the default image quality this takes about 300–600 MB.
+To stock up on everything at once: Settings → Offline cache → **Cache every work**. It stops on its own when the cache is close to its limit.
 
 ### Where the cache actually lives on disk
 
@@ -830,7 +849,7 @@ Those are LevelDB database files, though — **you can't browse them as images**
 ### One-click image export (works on Windows and macOS)
 
 Settings → Offline cache → **Export cached works**.
-Each work is written to **Downloads / Corridor Gallery /** as `Artist - Title (Year).jpg`; file names are sanitized to ASCII,
+Each work's display image is written to **Downloads / Corridor Gallery /** as `Artist - Title (Year).jpg` (the few that were shrunk locally are `.webp`); file names are sanitized to ASCII,
 so nothing goes wrong on either a Chinese or an English system. When the export is done, click **Open folder** next to it, and that folder opens directly in Windows File Explorer / macOS Finder /
 your Linux file manager — no need to go hunting for the path yourself.
 

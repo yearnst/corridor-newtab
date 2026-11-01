@@ -4,6 +4,8 @@ export const STR = {
     appName: '长廊',
     loading: '正在布展…',
     offline: '离线模式 · 显示已缓存作品',
+    netDown: '图源暂时连不上 · 先展出已缓存的作品',
+    notCached: '未缓存',
     noResult: '没有符合条件的作品',
     prev: '上一幅', next: '下一幅', pause: '暂停轮换', play: '继续轮换',
     fav: '收藏', unfav: '取消收藏', favAdded: '已加入收藏', favRemoved: '已移出收藏',
@@ -50,7 +52,7 @@ export const STR = {
     frame: '画框', mat: '留白方式', wall: '墙面颜色', tex: '墙面纹理',
     cachePath: '缓存位置', cachePathDesc: '缓存所在的数据库文件夹', cachePathDescMore: '存在浏览器分给这个扩展的 IndexedDB 里。下面是数据库的路径，里面不是一张张图片文件。',
     copyPath: '复制路径', exportTitle: '导出为图片文件',
-    exportDesc: '存成 .jpg，放在 下载 / Corridor Gallery',
+    exportDesc: '每幅存成一张图片（多为 .jpg），放在 下载 / Corridor Gallery',
     exportBtn: '导出已缓存作品', exportAll: '缓存并导出全部', openFolder: '打开文件夹',
     exporting: '正在导出', exported: '已导出 {n} 张到 下载/Corridor Gallery',
     noCache: '还没有缓存任何作品',
@@ -143,7 +145,7 @@ export const STR = {
     aiVars: '占位符：',
     aiVarsDesc: '发送前会换成真实内容', aiVarsDescMore: '词表过滤在代码里做，这里改坏了也污染不了筛选；但删掉 {shape}，模型就不知道该回什么结构了。',
     aiPLang: '内置提示词跟着界面语言走', aiPLangMore: '中文界面发中文那套，其余语言发英文那套。改过之后，发出去的就一直是你改的那份。',
-    evict: '缓存满了怎么办', evictDesc: '超上限时先清最久没看的，收藏过的最后才动。',
+    evict: '缓存满了怎么办', evictDesc: '超上限时，先清已不在目录里的；再把放大看过的大图在本地缩小；还不够，才删最久没看的展示图。缩略图和收藏留到最后。',
     country: '国家 · 地区', subject: '题材',
     about: '关于', version: '版本', author: '作者',
     credits: '作品图片来自 Wikimedia Commons 的公有领域高清扫描；导览文字为本项目原创。',
@@ -162,7 +164,9 @@ export const STR = {
     scrollPan: '手卷横向卷动',
     cache: '离线缓存', cached: '已缓存', cacheSize: '占用空间', cacheAll: '缓存全部作品',
     cacheClear: '清空缓存', caching: '正在缓存…', cacheDone: '缓存完成', works: '幅',
-    cacheDesc: '看过的图存在本地，离线也能开新标签页。',
+    cacheDesc: '看过的作品存在本地，断网也能开新标签页。每幅只存一份展示图和一张缩略图。',
+    cacheSplit: '展示图 {main} · 缩略图 {n} 幅 {thumb}',
+    cacheOrphan: '另有 {n} 幅已不在目录 · {size}', cacheOrphanBtn: '清理',
     quality: '图像质量', qAuto: '自动（按屏幕）', qHigh: '高（1920）', qMax: '最高（3840）', qSaver: '省流（1280）',
     shuffle: '随机顺序', sequential: '按年代顺序',
     order: '播放顺序', scope: '播放范围', scopeAll: '全部藏品', scopeFav: '仅收藏夹', scopeFilter: '当前筛选结果',
@@ -444,6 +448,8 @@ export const STR = {
     appName: 'Corridor',
     loading: 'Hanging the show…',
     offline: 'Offline — showing cached works',
+    netDown: 'Image source unreachable — showing cached works',
+    notCached: 'Not cached',
     noResult: 'No works match these filters',
     prev: 'Previous', next: 'Next', pause: 'Pause rotation', play: 'Resume rotation',
     fav: 'Favorite', unfav: 'Unfavorite', favAdded: 'Added to Favorites', favRemoved: 'Removed from Favorites',
@@ -491,7 +497,7 @@ export const STR = {
     frame: 'Frame', mat: 'Mount', wall: 'Wall color', tex: 'Wall texture',
     cachePath: 'Where the cache lives', cachePathDesc: 'Where the cache database lives', cachePathDescMore: 'Stored in the IndexedDB Chrome gives this extension. The path below is the database folder, not image files.',
     copyPath: 'Copy path', exportTitle: 'Export as image files',
-    exportDesc: 'Saves .jpg files to Downloads / Corridor Gallery',
+    exportDesc: 'Saves one image per work (mostly .jpg) to Downloads / Corridor Gallery',
     exportBtn: 'Export cached works', exportAll: 'Cache everything, then export', openFolder: 'Open folder',
     exporting: 'Exporting', exported: 'Exported {n} files to Downloads/Corridor Gallery',
     noCache: 'Nothing cached yet',
@@ -585,7 +591,7 @@ export const STR = {
     aiVars: 'Placeholders: ',
     aiVarsDesc: 'Replaced with real values before sending', aiVarsDescMore: 'The vocabulary filter runs in code, so an edit here can’t pollute the filters; but drop {shape} and the model no longer knows what to return.',
     aiPLang: 'Built-in prompts follow the interface language', aiPLangMore: 'Chinese for a Chinese interface, English for every other. Once you edit one, your version is what gets sent.',
-    evict: 'When the cache is full', evictDesc: 'Least-recently-seen go first; favorites are the last to go.',
+    evict: 'When the cache is full', evictDesc: 'Over the limit, works no longer in the collection go first; then large images from zooming in are shrunk locally; only then are the least-recently-seen display images removed. Thumbnails and favorites stay to the end.',
     country: 'Country \u00b7 Region', subject: 'Subject',
     about: 'About', version: 'Version', author: 'Author',
     credits: 'Images are public-domain scans from Wikimedia Commons; the curatorial notes are original to this project.',
@@ -604,7 +610,9 @@ export const STR = {
     scrollPan: 'Pan handscrolls horizontally',
     cache: 'Offline cache', cached: 'Cached', cacheSize: 'Storage used', cacheAll: 'Cache every work',
     cacheClear: 'Clear cache', caching: 'Caching…', cacheDone: 'Cache complete', works: 'works',
-    cacheDesc: 'Images you have seen are stored locally, so new tabs work offline.',
+    cacheDesc: 'Works you have seen are kept locally, so new tabs still work offline. Each work keeps one display image and one thumbnail.',
+    cacheSplit: 'Display images {main} · {n} thumbnails {thumb}',
+    cacheOrphan: '{n} more no longer in the collection · {size}', cacheOrphanBtn: 'Clean up',
     quality: 'Image quality', qAuto: 'Auto (match screen)', qHigh: 'High (1920)', qMax: 'Maximum (3840)', qSaver: 'Data saver (1280)',
     shuffle: 'Shuffled', sequential: 'Chronological',
     order: 'Order', scope: 'Show from', scopeAll: 'Whole collection', scopeFav: 'Favorites only', scopeFilter: 'Current filters',
@@ -1107,8 +1115,8 @@ export const PACK_NS = ['ui', 'mv', 'rg', 'tg', 'frame', 'liner', 'wall', 'texg'
 /* 语言包是按键存的：中英原文改过的键，旧包里那条译文就对不上了。
    PACK_REV 每改一轮加一；REVISED[n] 是第 n 轮改过原文的键 —— 包的 rev 比它小，这些键就当没译过：
    先借英文显示，下次「译界面」时补译。 */
-export const PACK_REV = 3;
-export const REVISED = { 2: ['aiBaseTip', 'aiDesc', 'aiKeyLocal', 'aiLocalNote', 'aiPLang', 'aiPrivacy', 'aiRedoDesc', 'aiRenameDesc', 'aiRetryDesc', 'aiSchedDesc', 'aiSplitDesc', 'aiVarsDesc', 'bkDesc', 'bkEncNote', 'bkKeysDesc', 'bkModeMergeDesc', 'bkModeReplaceDesc', 'bkNotIncluded', 'bkPlainWarn', 'cachePathDesc', 'dailyDesc', 'dgModelNote', 'exportDesc', 'filmStyleDesc', 'footerDesc', 'footerStep1', 'footerStep2', 'goneDesc', 'goneEmpty', 'goneLostDesc', 'kbd', 'langLocked', 'libLast', 'libNone', 'libSum', 'libUrlTip', 'localDesc', 'offBlockedDesc', 'offDesc', 'offHiddenDesc', 'offNDesc', 'offTabsNote', 'offTopNote', 'pfKeep', 'texOwnColour', 'trDesc', 'trPackDesc', 'videoLenDesc', 'videoVolDesc'], 3: ['libUrlTip'] };
+export const PACK_REV = 4;
+export const REVISED = { 2: ['aiBaseTip', 'aiDesc', 'aiKeyLocal', 'aiLocalNote', 'aiPLang', 'aiPrivacy', 'aiRedoDesc', 'aiRenameDesc', 'aiRetryDesc', 'aiSchedDesc', 'aiSplitDesc', 'aiVarsDesc', 'bkDesc', 'bkEncNote', 'bkKeysDesc', 'bkModeMergeDesc', 'bkModeReplaceDesc', 'bkNotIncluded', 'bkPlainWarn', 'cachePathDesc', 'dailyDesc', 'dgModelNote', 'exportDesc', 'filmStyleDesc', 'footerDesc', 'footerStep1', 'footerStep2', 'goneDesc', 'goneEmpty', 'goneLostDesc', 'kbd', 'langLocked', 'libLast', 'libNone', 'libSum', 'libUrlTip', 'localDesc', 'offBlockedDesc', 'offDesc', 'offHiddenDesc', 'offNDesc', 'offTabsNote', 'offTopNote', 'pfKeep', 'texOwnColour', 'trDesc', 'trPackDesc', 'videoLenDesc', 'videoVolDesc'], 3: ['libUrlTip'], 4: ['cacheDesc', 'evictDesc', 'exportDesc'] };
 export const staleKeys = (rev) => {
   const out = new Set();
   for (const [n, ks] of Object.entries(REVISED)) if ((Number(rev) || 1) < Number(n)) ks.forEach(k => out.add(k));

@@ -605,10 +605,20 @@ export async function getCursor() { return (await area().get('cursor')).cursor |
 export async function setCursor(c) { await area().set({ cursor: c }); }
 
 /* ---------------- IndexedDB 图片缓存 ----------------
-   两个 store：images 只放 blob，meta 只放 {size, used, id}。
+   两个 store：images 只放 blob，meta 只放 {url, size, used, id, kind, px}。
    统计和淘汰都只读 meta，几百兆的图片不会因为「算一下占用」被整个读进内存。
+
+   1.26 起每幅作品只存两份：
+     主图（kind main）：这台设备要过的最大那一档，只升不降 —— 存进更大的一份，小的那份就删掉；
+     缩略图（kind thumb，键 thumb:<作品 id>）：约 512 宽，从主图在本地缩出来，
+       手里还没有主图时才去网上取一张 500 的。
+   中间的尺寸都交给浏览器显示时缩放。视频的静帧（kind poster）算它的主图。
+   查缓存一律按作品 id 查（meta 上的 id 索引），不再认具体地址：
+   要 1280 时手里有 1920，就直接用 1920。
    ---------------------------------------------------- */
-const DB_NAME = 'corridor-cache', DB_VER = 2, STORE = 'images', META = 'meta';
+const DB_NAME = 'corridor-cache', DB_VER = 3, STORE = 'images', META = 'meta';
+export const THUMB_W = 512;
+const ORIG = 100000;               // 没有尺寸阶梯的原图（网址来源、飞书附件）记作「最大」
 let dbp = null;
 function db() {
   if (dbp) return dbp;
@@ -620,19 +630,33 @@ function db() {
         const s = d.createObjectStore(STORE, { keyPath: 'url' });
         s.createIndex('used', 'used');
       }
-      if (!d.objectStoreNames.contains(META)) {
-        const m = d.createObjectStore(META, { keyPath: 'url' });
-        m.createIndex('used', 'used');
-      }
+      const m = d.objectStoreNames.contains(META) ? r.transaction.objectStore(META)
+        : d.createObjectStore(META, { keyPath: 'url' });
+      if (!m.indexNames.contains('used')) m.createIndex('used', 'used');
+      if (!m.indexNames.contains('id')) m.createIndex('id', 'id');
     };
-    r.onsuccess = () => res(r.result);
-    r.onerror = () => rej(r.error);
+    r.onsuccess = () => {
+      const d = r.result;
+      d.onversionchange = () => { d.close(); dbp = null; };     // 新版本要升级库：让出来
+      res(d);
+    };
+    r.onerror = () => { dbp = null; rej(r.error); };
+    /* 还开着旧版本的页面挡着升级：别让这一页一直等，先当没有缓存，稍后再试 */
+    r.onblocked = () => setTimeout(() => { dbp = null; rej(new Error('blocked')); }, 3000);
   });
   return dbp;
 }
 function tx(mode) { return db().then(d => d.transaction(STORE, mode).objectStore(STORE)); }
 function mtx(mode) { return db().then(d => d.transaction(META, mode).objectStore(META)); }
 const wrap = (req) => new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); });
+
+const pxOfKey = (u) => { const m = String(u || '').match(/\/(\d+)px-/); return m ? +m[1] : 0; };
+function kindOf(r) {
+  if (r.kind) return r.kind;
+  const u = String(r.url || '');
+  return u.startsWith('thumb:') ? 'thumb' : u.startsWith('poster:') ? 'poster' : 'main';
+}
+const pxOf = (r) => Number(r.px) || pxOfKey(r.url) || (kindOf(r) === 'thumb' ? THUMB_W : ORIG);
 
 /* 老版本升级上来时，把 meta 补齐（只跑一次） */
 let metaReady = null;
@@ -651,6 +675,12 @@ function ensureMeta() {
   })();
   return metaReady;
 }
+async function metaAll() { const m = await mtx('readonly'); return wrap(m.getAll()); }
+
+/* 存进来、删掉了：本页里关心这件事的（「哪些作品手里有图」那张表）跟着改 */
+const storedFns = new Set();
+export function onStored(fn) { storedFns.add(fn); return () => storedFns.delete(fn); }
+const emit = (e) => { for (const f of storedFns) { try { f(e); } catch { } } };
 
 export async function cacheGet(url) {
   try {
@@ -661,6 +691,9 @@ export async function cacheGet(url) {
     return rec.blob;
   } catch { return null; }
 }
+async function rawGet(url) {                      // 不算「看过」：整理缓存时读
+  try { const s = await tx('readonly'); return (await wrap(s.get(url)))?.blob || null; } catch { return null; }
+}
 async function touch(url) {
   try {
     const m = await mtx('readwrite');
@@ -670,38 +703,327 @@ async function touch(url) {
 }
 export async function cachePut(url, blob, meta = {}) {
   try {
-    const now = Date.now();
-    const s = await tx('readwrite');
-    await wrap(s.put({ url, blob, size: blob.size, used: now, added: now, ...meta }));
-    const m = await mtx('readwrite');
-    m.put({ url, size: blob.size, used: now, id: meta.id });
-  } catch {}
+    const now = Date.now(), used = Number(meta.used) || now;
+    const rec = { url, size: blob.size, used, id: meta.id, kind: meta.kind || 'main', px: Number(meta.px) || 0 };
+    if (meta.big) rec.big = 1;
+    if (meta.dg) rec.dg = 1;
+    const d = await db();
+    await new Promise((res, rej) => {
+      const t = d.transaction([STORE, META], 'readwrite');
+      t.objectStore(STORE).put({ url, blob, size: blob.size, used, added: now, id: meta.id });
+      t.objectStore(META).put(rec);
+      t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+    });
+    return true;
+  } catch { return false; }
+}
+async function cacheDel(urls) {
+  if (!urls.length) return;
+  try {
+    const d = await db();
+    await new Promise((res, rej) => {
+      const t = d.transaction([STORE, META], 'readwrite');
+      const si = t.objectStore(STORE), mi = t.objectStore(META);
+      for (const u of urls) { si.delete(u); mi.delete(u); }
+      t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+    });
+  } catch { }
 }
 export async function cacheHas(url) {
   try { const s = await tx('readonly'); return !!(await wrap(s.getKey(url))); } catch { return false; }
 }
-/* 列出全部缓存条目（用于导出） */
+
+/* 一幅作品手里有什么：最大的那份主图、缩略图、以及多出来该清掉的 */
+export async function artState(id) {
+  const out = { main: null, thumb: null, extra: [] };
+  if (!id) return out;
+  try {
+    await ensureMeta();
+    const m = await mtx('readonly');
+    const rs = await wrap(m.index('id').getAll(id));
+    for (const r of rs) {
+      r.px = pxOf(r);
+      if (kindOf(r) === 'thumb') { if (!out.thumb) out.thumb = r; else out.extra.push(r); continue; }
+      if (!out.main || r.px > out.main.px) { if (out.main) out.extra.push(out.main); out.main = r; }
+      else out.extra.push(r);
+    }
+  } catch { }
+  return out;
+}
+/* 整张表：作品 id → { px 主图宽度（0＝没有主图）, thumb 有没有缩略图, bytes } */
+export async function cacheIndex() {
+  const map = new Map();
+  try {
+    await ensureMeta();
+    for (const r of await metaAll()) {
+      if (!r.id) continue;
+      const e = map.get(r.id) || { px: 0, thumb: false, bytes: 0 };
+      e.bytes += r.size || 0;
+      if (kindOf(r) === 'thumb') e.thumb = true; else e.px = Math.max(e.px, pxOf(r));
+      map.set(r.id, e);
+    }
+  } catch { }
+  return map;
+}
+
+/* 只升不降：存进一份主图，比它小的主图都删掉；手里已经有更大的就不存 */
+async function putMain(id, url, blob, px, o = {}) {
+  if (!id || !blob) return false;          // 认不出是谁的不进缓存：以后既用不上，也清不掉
+  const st = await artState(id);
+  if (st.main && st.main.url !== url && st.main.px >= px) return false;
+  if (!(await cachePut(url, blob, { id, kind: o.kind || 'main', px, big: o.big }))) return false;
+  const dead = [st.main, ...st.extra].filter(r => r && r.url !== url && kindOf(r) !== 'thumb');
+  if (dead.length) await cacheDel(dead.map(r => r.url));
+  emit({ id, kind: o.kind || 'main', px });
+  maybeTrim();
+  return true;
+}
+
+/* 缩略图：从手里那张大图在本地缩一张 webp，不联网。
+   createImageBitmap 的缩放比画布一步缩小细腻；不支持就退回画布。 */
+const thumbWait = new Map();
+export function makeThumb(id, blob, ar) {
+  if (!id || !blob) return Promise.resolve(null);
+  if (thumbWait.has(id)) return thumbWait.get(id);
+  const p = (async () => {
+    if (typeof createImageBitmap !== 'function' || typeof OffscreenCanvas !== 'function') return null;
+    const bmp = await bitmapOf(blob);
+    const r = Number(ar) || (bmp.width / bmp.height) || 1;
+    let W = THUMB_W;
+    if (r > 2) W = Math.min(1600, Math.round(256 * r));      // 手卷这类横长的，别缩成一条线
+    let H = Math.round(W / r);
+    if (H > 1200) { H = 1200; W = Math.round(H * r); }
+    if (W >= bmp.width) { W = bmp.width; H = bmp.height; }
+    let small = null;
+    try { small = await createImageBitmap(bmp, { resizeWidth: W, resizeHeight: H, resizeQuality: 'high' }); } catch { }
+    const c = new OffscreenCanvas(W, H), g = c.getContext('2d');
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(small || bmp, 0, 0, W, H);
+    small?.close(); bmp.close();
+    const out = await c.convertToBlob({ type: 'image/webp', quality: 0.84 });
+    if (!out?.size) return null;
+    if (!(await cachePut('thumb:' + id, out, { id, kind: 'thumb', px: W }))) return out;
+    emit({ id, kind: 'thumb', px: W });
+    maybeTrim();
+    return out;
+  })().catch(() => null).finally(() => thumbWait.delete(id));
+  thumbWait.set(id, p);
+  return p;
+}
+/* 有主图、还没缩略图的，补一张（后台慢慢补） */
+export async function ensureThumb(w) {
+  const st = await artState(w?.id);
+  if (st.thumb || !st.main) return !!st.thumb;
+  const b = await rawGet(st.main.url);
+  return !!(b && await makeThumb(w.id, b, w.img?.ar));
+}
+
+/* ---------------- 网络：超时，以及「这个图源刚刚连不上」 ----------------
+   受限的网络里，浏览器多半仍然报告「在线」，请求却一直挂着，要等系统的连接超时（几十秒）。
+   这里给每个请求一个等响应头的时限，过了就放弃；连着失败就把这个图源记成「暂时连不上」，
+   记在 storage.session 里，所有标签页和后台共用 —— 后面开的新标签页不再傻等，直接用手里有的。
+   记号会自己到期（2 → 5 → 10 分钟），到期后的第一个请求就是试探；浏览器报告重新联网时立刻清掉。 */
+const NETK = 'netbad';
+let netMem = {}, netLoaded = null;
+const sess = () => globalThis.chrome?.storage?.session || null;
+export function netLoad() {
+  if (netLoaded) return netLoaded;
+  netLoaded = (async () => {
+    try {
+      const s = sess(); if (!s) return;
+      netMem = (await s.get(NETK))?.[NETK] || {};
+      chrome.storage.onChanged.addListener((ch, a) => { if (a === 'session' && ch[NETK]) netMem = ch[NETK].newValue || {}; });
+    } catch { }
+  })();
+  return netLoaded;
+}
+export const hostOf = (u) => { try { return new URL(u).host; } catch { return ''; } };
+export const WM = 'https://upload.wikimedia.org/';
+/* 同步版：页面启动时 netLoad() 过一次就能用 */
+export function netOkSync(url = WM) {
+  if (globalThis.navigator && navigator.onLine === false) return false;
+  const r = netMem[hostOf(url)];
+  return !r || r.until <= Date.now();
+}
+export async function netOk(url = WM) { await netLoad(); return netOkSync(url); }
+async function netMark(host, bad) {
+  if (!host) return;
+  await netLoad();
+  const cur = netMem[host];
+  if (!bad) { if (!cur) return; netMem = { ...netMem }; delete netMem[host]; }
+  else {
+    const n = Math.min(3, (cur?.n || 0) + 1);
+    netMem = { ...netMem, [host]: { n, until: Date.now() + [0, 2, 5, 10][n] * 60000 } };
+  }
+  try { await sess()?.set({ [NETK]: netMem }); } catch { }
+}
+export async function netReset() { netMem = {}; try { await sess()?.set({ [NETK]: {} }); } catch { } }
+
+/* 取一张网上的图。headMs：等响应头的时限（连不上就在这一步卡住）；bodyMs：读完整张的时限 */
+async function fetchNet(url, { headMs = 9000, bodyMs = 120000, signal } = {}) {
+  const host = hostOf(url);
+  const ac = new AbortController();
+  let timedOut = false;
+  const t = setTimeout(() => { timedOut = true; ac.abort(); }, headMs);
+  const stop = () => ac.abort();
+  signal?.addEventListener('abort', stop);
+  try {
+    let resp;
+    try { resp = await fetch(url, { credentials: 'omit', cache: 'no-store', signal: ac.signal }); }
+    catch (e) {
+      /* 连不上（不是我们自己喊停的）：记一笔 */
+      if (!signal?.aborted && (timedOut || e instanceof TypeError)) netMark(host, true);
+      const err = new Error(timedOut ? 'timeout ' + url : (e?.message || 'network') + ' ' + url);
+      err.code = 'net';
+      throw err;
+    } finally { clearTimeout(t); }
+    netMark(host, false);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + url);
+    const t2 = setTimeout(stop, bodyMs);
+    try { return await resp.blob(); } finally { clearTimeout(t2); }
+  } finally { signal?.removeEventListener('abort', stop); }
+}
+/* 同一张图同时被好几处要：只发一次请求 */
+const inflight = new Map();
+function once(key, fn) {
+  if (inflight.has(key)) return inflight.get(key);
+  const p = fn().finally(() => inflight.delete(key));
+  inflight.set(key, p);
+  return p;
+}
+async function getNetBlob(url, o = {}) {
+  let blob = FS.isCover(url) ? await FS.fetchCover(url) : await fetchNet(url, o);   // 飞书附件要带飞书的 cookie
+  if (needsConvert(url)) blob = await convertBlob(blob, url);
+  return blob;
+}
+const offErr = () => { const e = new Error('offline'); e.code = 'offline'; return e; };
+
+/* ---------------- 按作品取图 ----------------
+   want：这一处要多宽（像素）。不超过缩略图那么宽的，走缩略图；其余走主图。
+   选项：
+     quick      手里有什么先给什么（主图小一点、只有缩略图都行，low 标出来），一点没有才联网
+     cacheOnly  只看手里的，不联网
+     noFallback 要的就是联网换清楚的那一份：拿不到就报错，别拿手里的旧图顶
+     main       一定走主图（即使 want 很小）
+     headMs     联网时等响应头的时限
+   返回 { blob, px, low, fromCache }。本机文件夹里的图直接读盘，不进缓存。 */
+const isDisk = (w) => String(w?.img?.base || '').startsWith('local:');
+export function artSize(w, target) {
+  const a = (w?.img?.sizes || []).filter(Boolean);
+  if (!a.length) return ORIG;
+  for (const s of a) if (s >= target) return s;
+  return a[a.length - 1];
+}
+export function artUrl(w, px) { return w.local ? w.img.base : `${w.img.base}/${px}px-${w.img.name}`; }
+/* 手里那份主图够不够这一处用：宽度到了要的（或者已经是这幅能取到的最大那档） */
+function goodFor(w, want, m) {
+  if (!m) return false;
+  const top = w.local ? ORIG : artSize(w, 1e9);
+  return m.px >= Math.min(want, top);
+}
+export async function hasGood(w, want) { return goodFor(w, want, (await artState(w.id)).main); }
+
+export async function getArt(w, want = 1920, o = {}) {
+  if (!w?.img) throw new Error('no image');
+  if (w.video || isVideoURL(w.img.base)) return fetchPoster(w.img.base, { id: w.id });
+  if (isDisk(w)) return fetchImage(w.img.base);
+  const st = await artState(w.id);
+  const hit = async (r, low) => {
+    const b = r && await cacheGet(r.url);
+    return b ? { blob: b, px: r.px, low, fromCache: true } : null;
+  };
+  /* 退路：手里有什么先拿什么 —— 主图（哪怕小一点）、缩略图 */
+  const fallback = async () => (await hit(st.main, !goodFor(w, want, st.main))) || (await hit(st.thumb, true));
+
+  if (want <= THUMB_W * 1.05 && !o.main) {
+    if (st.thumb) { const r = await hit(st.thumb, false); if (r) return r; }
+    if (st.main) {
+      const b = await cacheGet(st.main.url);
+      if (b) { const t = await makeThumb(w.id, b, w.img.ar); return { blob: t || b, px: t ? THUMB_W : st.main.px, low: false, fromCache: true }; }
+    }
+    if (o.cacheOnly) throw offErr();
+    if (w.local) {                       // 网址来源没有小图可取：原图当主图存下，再缩一张
+      const r = await fetchMain(w, ORIG, { ...o, noThumb: true });
+      const t = await makeThumb(w.id, r.blob, w.img.ar);
+      return { blob: t || r.blob, px: THUMB_W, low: false, fromCache: false };
+    }
+    const tpx = artSize(w, 500), url = artUrl(w, tpx);
+    if (!(await netOk(url))) throw offErr();
+    const blob = await once(url, () => getNetBlob(url, o));
+    if ((await cachePut('thumb:' + w.id, blob, { id: w.id, kind: 'thumb', px: tpx }))) { emit({ id: w.id, kind: 'thumb', px: tpx }); maybeTrim(); }
+    return { blob, px: tpx, low: false, fromCache: false };
+  }
+
+  if (goodFor(w, want, st.main)) { const r = await hit(st.main, false); if (r) return r; }
+  if (o.quick || o.cacheOnly) {
+    const f = await fallback(); if (f) return f;
+    if (o.cacheOnly) throw offErr();
+  }
+  const target = w.local ? ORIG : artSize(w, want);
+  const url = artUrl(w, target);
+  if (!(await netOk(url))) {
+    if (!o.noFallback) { const f = await fallback(); if (f) return f; }
+    throw offErr();
+  }
+  try { return await fetchMain(w, target, o); }
+  catch (e) {
+    if (o.noFallback) throw e;
+    const f = await fallback(); if (f) return f;
+    throw e;
+  }
+}
+async function fetchMain(w, px, o = {}) {
+  const url = artUrl(w, px);
+  const blob = await once(url, () => getNetBlob(url, o));
+  await putMain(w.id, url, blob, px, { big: w.format === 'scroll' });
+  /* 第一次有了主图：顺手缩一张缩略图 */
+  if (!o.noThumb) artState(w.id).then(s => { if (!s.thumb) makeThumb(w.id, blob, w.img.ar); }).catch(() => { });
+  return { blob, px, low: false, fromCache: false };
+}
+
+/* 这台设备的展示宽度：页面每次上墙时记下要过的最大那档，后台预取与「降级」都按它来 */
+export async function dispPx() {
+  const s = await getSettings();
+  if (s.quality === 'saver') return 1280;
+  if (s.quality === 'high') return 1920;
+  if (s.quality === 'max') return 3840;
+  const d = (await area().get('dispPx')).dispPx;
+  return Math.min(3840, Math.max(960, Number(d?.px) || 1920));
+}
+export async function noteDisp(px) {
+  px = Math.round(Number(px) || 0);
+  if (px <= 0) return;
+  const d = (await area().get('dispPx')).dispPx;
+  if (!d || px > (Number(d.px) || 0)) await area().set({ dispPx: { px: Math.min(3840, px), at: Date.now() } });
+}
+
+/* 列出全部主图（用于导出：缩略图不导） */
 export async function cacheList() {
   await ensureMeta();
   try {
-    const m = await mtx('readonly');
-    const all = await wrap(m.getAll());
-    return all.map(r => ({ url: r.url, id: r.id, size: r.size || 0 }));
+    const all = await metaAll();
+    return all.filter(r => kindOf(r) !== 'thumb').map(r => ({ url: r.url, id: r.id, size: r.size || 0 }));
   } catch { return []; }
 }
 export async function cacheStats() {
   await ensureMeta();
   try {
-    const m = await mtx('readonly');
-    const all = await wrap(m.getAll());
-    const ids = new Set(all.map(r => r.id).filter(Boolean));
-    return { count: all.length, works: ids.size || all.length, bytes: all.reduce((n, r) => n + (r.size || 0), 0) };
-  } catch { return { count: 0, works: 0, bytes: 0 }; }
+    const all = await metaAll();
+    const main = new Set(), thumb = new Set();
+    let bytes = 0, mainBytes = 0, thumbBytes = 0;
+    for (const r of all) {
+      const n = r.size || 0; bytes += n;
+      if (kindOf(r) === 'thumb') { thumbBytes += n; if (r.id) thumb.add(r.id); }
+      else { mainBytes += n; if (r.id) main.add(r.id); }
+    }
+    return { count: all.length, works: main.size, thumbs: thumb.size, bytes, mainBytes, thumbBytes };
+  } catch { return { count: 0, works: 0, thumbs: 0, bytes: 0, mainBytes: 0, thumbBytes: 0 }; }
 }
 export async function cacheClear() {
   try {
     const s = await tx('readwrite'); await wrap(s.clear());
     const m = await mtx('readwrite'); await wrap(m.clear());
+    emit({ cleared: true });
   } catch {}
 }
 /* 按作品 id 删缓存。某些作品已经彻底不在了 —— 来源撤了、每日新作换过 ——
@@ -712,52 +1034,177 @@ export async function cacheDropIds(ids) {
   const want = new Set((Array.isArray(ids) ? ids : []).map(x => String(x || '')).filter(Boolean));
   if (!want.size) return { removed: 0, bytes: 0 };
   try {
-    const m = await mtx('readonly');
-    const all = await wrap(m.getAll());
-    const dead = all.filter(r => want.has(r.id));
-    if (dead.length) {
-      const si = await tx('readwrite'), mi = await mtx('readwrite');
-      for (const r of dead) { si.delete(r.url); mi.delete(r.url); }
-    }
+    const dead = (await metaAll()).filter(r => want.has(r.id));
+    await cacheDel(dead.map(r => r.url));
+    for (const id of want) emit({ id, dropped: true, all: true });
     return { removed: dead.length, bytes: dead.reduce((n, r) => n + (r.size || 0), 0) };
   } catch { return { removed: 0, bytes: 0 }; }
 }
-/* 超过上限就按「最久没看过的先删」，一直删到上限的 90%，留出余量少折腾 */
-export async function cacheTrim(limitBytes) {
-  await ensureMeta();
+
+/* 现在还认得的作品：内置馆藏 + 每日新作 + 自定义图库（开关关着的也算 —— 它们只是暂时不展出） */
+async function knownIds() {
+  const ids = new Set();
   try {
-    const favs = new Set(await getFavs());                  // 收藏过的最后才动
-    const m = await mtx('readonly');
-    /* 在线图库里收藏过的那几张一张都不删：线上可能已经没有了，缓存就是仅存的一份 */
-    const all = (await wrap(m.getAll())).filter(r => !(favs.has(r.id) && String(r.id || '').startsWith('lb-')));
-    let total = all.reduce((n, r) => n + (r.size || 0), 0);
-    if (total <= limitBytes) return { total, removed: 0 };
-    all.sort((a, b) => (favs.has(a.id) - favs.has(b.id)) || ((a.used || 0) - (b.used || 0)));
-    const dead = [];
-    for (const r of all) {
-      if (total <= limitBytes * 0.9) break;
-      dead.push(r.url); total -= (r.size || 0);
+    const url = globalThis.chrome?.runtime?.getURL ? chrome.runtime.getURL('data/catalog.json') : 'data/catalog.json';
+    (await (await fetch(url)).json()).forEach(w => ids.add(w.id));
+    (await getDaily()).works.forEach(w => ids.add(w.id));
+    (await getLocalLib()).works.forEach(w => ids.add(w.id));
+  } catch { return null; }
+  return ids;
+}
+/* 不在目录里了的那些：{ n 幅, bytes }（收藏的不算 —— 它们不会被清） */
+export async function cacheOrphans() {
+  const ids = await knownIds();
+  if (!ids) return { n: 0, bytes: 0 };
+  const favs = new Set(await getFavs());
+  const by = new Map();
+  try {
+    for (const r of await metaAll()) {
+      if (r.id && (ids.has(r.id) || favs.has(r.id))) continue;
+      const k = r.id || r.url;
+      by.set(k, (by.get(k) || 0) + (r.size || 0));
     }
-    if (dead.length) {
-      const si = await tx('readwrite'); const mi = await mtx('readwrite');
-      for (const u of dead) { si.delete(u); mi.delete(u); }
-    }
-    return { total, removed: dead.length };
-  } catch { return { total: 0, removed: 0 }; }
+  } catch { }
+  return { n: by.size, bytes: [...by.values()].reduce((a, b) => a + b, 0) };
+}
+export async function cacheDropOrphans() {
+  const ids = await knownIds();
+  if (!ids) return { removed: 0, bytes: 0 };
+  const favs = new Set(await getFavs());
+  const dead = (await metaAll()).filter(r => !(r.id && (ids.has(r.id) || favs.has(r.id))));
+  await cacheDel(dead.map(r => r.url));
+  return { removed: dead.length, bytes: dead.reduce((n, r) => n + (r.size || 0), 0) };
 }
 
-/* 取图：先查本地缓存，未命中再抓取并存入本地 */
-let sinceTrim = 0, trimT = null;
-/* 新写入累计到 12 MB 就检查一次上限，避免每张图都全表扫一遍 */
-function maybeTrim(bytes) {
-  sinceTrim += bytes;
-  if (sinceTrim < 12 * 1048576) return;
-  sinceTrim = 0;
+/* 降级：一张大主图在本地缩到这台设备用得着的宽度，换下原来那份。返回省下的字节 */
+async function shrinkMain(r, disp) {
+  try {
+    if (typeof createImageBitmap !== 'function' || typeof OffscreenCanvas !== 'function') return 0;
+    const blob = await rawGet(r.url); if (!blob) return 0;
+    const bmp = await createImageBitmap(blob);
+    const W = Math.min(bmp.width, Math.max(960, disp));
+    if (W >= bmp.width * 0.85) { bmp.close(); return 0; }
+    const H = Math.max(1, Math.round(W * bmp.height / bmp.width));
+    let small = null;
+    try { small = await createImageBitmap(bmp, { resizeWidth: W, resizeHeight: H, resizeQuality: 'high' }); } catch { }
+    const c = new OffscreenCanvas(W, H), g = c.getContext('2d');
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(small || bmp, 0, 0, W, H);
+    small?.close(); bmp.close();
+    const out = await c.convertToBlob({ type: 'image/webp', quality: 0.9 });
+    if (!out?.size || out.size >= (r.size || 0)) return 0;
+    const key = 'dg:' + W + ':' + String(r.url).replace(/^dg:\d+:/, '');
+    if (!(await cachePut(key, out, { id: r.id, kind: 'main', px: W, used: r.used, dg: 1 }))) return 0;
+    await cacheDel([r.url]);
+    const saved = (r.size || 0) - out.size;
+    Object.assign(r, { url: key, size: out.size, px: W, dg: 1 });
+    emit({ id: r.id, kind: 'main', px: W });
+    return saved;
+  } catch { return 0; }
+}
+
+/* 超过上限时，按这个顺序腾地方，一直腾到上限的 90%：
+     ① 已经不在任何目录里、也没收藏的作品的图；
+     ② 降级：比这台设备用得着的大得多的主图，在本地缩小（放大看过的那些）；
+     ③ 删主图：最久没看的先走，收藏的最后；缩略图留着 —— 断网时藏品库照样清楚；
+     ④ 上限比缩略图总量还小时，缩略图也按最久没看的删。
+   在线图库里收藏过的那几张一张都不删：线上可能已经没有了，缓存就是仅存的一份。
+   同一时刻只让一处在整理（Web Locks），别的页面、后台撞上了就跳过。 */
+export async function cacheTrim(limitBytes) {
+  const run = () => trimNow(limitBytes);
+  if (globalThis.navigator?.locks) {
+    return navigator.locks.request('corridor-cache-trim', { ifAvailable: true },
+      (l) => l ? run() : { total: 0, removed: 0, shrunk: 0, busy: true });
+  }
+  return run();
+}
+async function trimNow(limit) {
+  await ensureMeta();
+  try {
+    const all = await metaAll();
+    let total = all.reduce((n, r) => n + (r.size || 0), 0);
+    if (total <= limit) return { total, removed: 0, shrunk: 0 };
+    const goal = limit * 0.9;
+    const favs = new Set(await getFavs());
+    const keep = (r) => favs.has(r.id) && String(r.id || '').startsWith('lb-');
+    const lru = (a, b) => (favs.has(a.id) - favs.has(b.id)) || ((a.used || 0) - (b.used || 0));
+    const dead = [];
+    const drop = (r) => { dead.push(r.url); total -= (r.size || 0); r._dead = true; };
+    const ids = await knownIds();
+    if (ids) for (const r of all) {
+      if (total <= goal) break;
+      if (!r.id || (!ids.has(r.id) && !favs.has(r.id))) drop(r);
+    }
+    let shrunk = 0;
+    if (total > goal) {
+      const disp = await dispPx();
+      const cand = all.filter(r => !r._dead && kindOf(r) === 'main' && !r.big && pxOf(r) > disp * 1.3 && (r.size || 0) > 300 * 1024).sort(lru);
+      const t0 = Date.now();
+      for (const r of cand) {
+        if (total <= goal || Date.now() - t0 > 30000) break;
+        const saved = await shrinkMain(r, disp);
+        if (saved > 0) { total -= saved; shrunk++; }
+      }
+    }
+    if (total > goal) for (const r of all.filter(r => !r._dead && kindOf(r) !== 'thumb' && !keep(r)).sort(lru)) {
+      if (total <= goal) break;
+      drop(r);
+    }
+    if (total > goal) for (const r of all.filter(r => !r._dead && kindOf(r) === 'thumb' && !keep(r)).sort(lru)) {
+      if (total <= goal) break;
+      drop(r);
+    }
+    await cacheDel(dead);
+    for (const r of all) if (r._dead && r.id) emit({ id: r.id, dropped: true, kind: kindOf(r) });
+    return { total, removed: dead.length, shrunk };
+  } catch { return { total: 0, removed: 0, shrunk: 0 }; }
+}
+/* 每次写入后过一会儿看一眼上限（连着写只看一次） */
+let trimT = null;
+function maybeTrim() {
   clearTimeout(trimT);
   trimT = setTimeout(async () => {
-    const s = await getSettings();
-    cacheTrim((s.cacheLimitMB || 400) * 1048576);
-  }, 1200);
+    try { const s = await getSettings(); await cacheTrim((s.cacheLimitMB || 400) * 1048576); } catch { }
+  }, 2500);
+}
+
+/* 1.26 的一次性整理：老缓存里同一幅存了好几种尺寸 —— 每幅只留最大的一份当主图，其余删掉；
+   最大的也只有缩略图那么大的（只在藏品库里见过），改记成缩略图；
+   认不出是谁的（以前今日画夹存的那些没带作品 id）直接删。缩略图之后由后台慢慢补。 */
+export async function cacheConsolidate() {
+  if (((await area().get('cacheV')).cacheV || 0) >= 3) return null;
+  const run = async () => {
+    if (((await area().get('cacheV')).cacheV || 0) >= 3) return null;
+    await ensureMeta();
+    const all = await metaAll();
+    const by = new Map(), dead = [];
+    for (const r of all) {
+      if (!r.id) { dead.push(r.url); continue; }
+      if (!by.has(r.id)) by.set(r.id, []);
+      by.get(r.id).push(r);
+    }
+    let thumbs = 0;
+    for (const [id, rs] of by) {
+      const ts = rs.filter(r => kindOf(r) === 'thumb');
+      ts.slice(1).forEach(r => dead.push(r.url));
+      const mains = rs.filter(r => kindOf(r) !== 'thumb').sort((a, b) => pxOf(b) - pxOf(a));
+      if (!mains.length) continue;
+      const top = mains[0];
+      mains.slice(1).forEach(r => dead.push(r.url));
+      if (kindOf(top) === 'main' && pxOf(top) <= THUMB_W * 1.05 && !ts.length) {
+        const b = await rawGet(top.url);
+        if (b && await cachePut('thumb:' + id, b, { id, kind: 'thumb', px: pxOf(top), used: top.used })) thumbs++;
+        dead.push(top.url);
+      } else if (!top.kind || !top.px) {
+        try { const m = await mtx('readwrite'); await wrap(m.put({ ...top, kind: kindOf(top), px: pxOf(top) })); } catch { }
+      }
+    }
+    await cacheDel(dead);
+    await area().set({ cacheV: 3 });
+    return { removed: dead.length, thumbs };
+  };
+  if (globalThis.navigator?.locks) return navigator.locks.request('corridor-cache-trim', run);
+  return run();
 }
 let localReader = null;
 /* app 启动时注入本地文件读取器，store 本身不依赖 File System API */
@@ -789,7 +1236,7 @@ async function fetchPoster(url, meta) {
     const blob = await posterMaker(src);
     if (posters.size > 60) posters.delete(posters.keys().next().value);
     posters.set(url, blob);
-    if (!local) cachePut(key, blob, meta);
+    if (!local && meta?.id) putMain(meta.id, key, blob, ORIG, { kind: 'poster' });
     return blob;
   })().finally(() => posterWait.delete(url)));
   return { blob: await posterWait.get(url), fromCache: false };
@@ -841,17 +1288,14 @@ export async function fetchImage(url, meta = {}) {
     converted.set(key, blob);
     return { blob, fromCache: true };
   }
-  const hit = await cacheGet(url);
-  if (hit) return { blob: hit, fromCache: true };
-  let blob;
-  if (FS.isCover(url)) blob = await FS.fetchCover(url);   // 飞书分享视图的附件：要带飞书的 cookie
-  else {
-    const resp = await fetch(url, { credentials: 'omit', cache: 'force-cache' });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + url);
-    blob = await resp.blob();
+  /* 网上的图：有作品 id 的按作品查、按「只升不降」存；没有 id 的不进缓存 */
+  /* 自定义图库（lb-）的图没有尺寸阶梯，取到的就是原图 */
+  const px = String(meta.id || '').startsWith('lb-') ? ORIG : (pxOfKey(url) || ORIG);
+  if (meta.id) {
+    const st = await artState(meta.id);
+    if (st.main && st.main.px >= px) { const b = await cacheGet(st.main.url); if (b) return { blob: b, fromCache: true }; }
   }
-  if (needsConvert(url)) blob = await convertBlob(blob, url);
-  cachePut(url, blob, meta);
-  maybeTrim(blob.size);
+  const blob = await once(url, () => getNetBlob(url));
+  if (meta.id) await putMain(meta.id, url, blob, px);
   return { blob, fromCache: false };
 }

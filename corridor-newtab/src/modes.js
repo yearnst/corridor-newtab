@@ -23,15 +23,20 @@ async function pic(w, px) {
   if (M.imgs.has(key)) return M.imgs.get(key);
   await slot();
   try {
-    const r = await C.S.fetchImage(C.imgUrl(w, C.pickSize(w, px)), { id: w.id });
+    /* 按作品取：手里有更大的就用更大的；连得上才联网（有超时），连不上用手里有的 */
+    const r = await C.S.getArt(w, px);
     const u = URL.createObjectURL(r.blob);
-    C.A.objUrls.add(u); M.imgs.set(key, u); return u;
+    C.A.objUrls.add(u);
+    if (!r.low) M.imgs.set(key, u);           // 小一号的先顶着，不记下来：下回还要清楚的
+    return u;
   } finally { release(); }
 }
 /* 取图失败时先挂占位图，过一会儿再试一次；不然一张 20px 的小图会永远糊在墙上 */
 function retryLater(el, fn) {
   clearTimeout(el._rt);
-  el._rt = setTimeout(() => { el.dataset.id = ''; fn(el); }, 1600 + Math.floor(Math.random() * 1600));
+  /* 图源连不上时别一两秒就敲一次门：半分钟后再看 */
+  const base = C.S.netOkSync() ? 1600 : 30000;
+  el._rt = setTimeout(() => { el.dataset.id = ''; fn(el); }, base + Math.floor(Math.random() * 1600));
 }
 
 /* ============================================================ 瀑布流 */
@@ -40,7 +45,12 @@ export function paintMasonry() {
   /* 顺着 A.list 取前 72 幅：这一段正是别的模式已经预取过的，
      所以一进来顶上那一屏几乎立刻就有图。换成随机抽选看着更「新鲜」，
      代价是几乎全都没缓存，第一屏会糊很久 —— 试过，不划算。 */
-  const list = C.A.list.slice(0, 72);
+  let list = C.A.list.slice(0, 72);
+  /* 图源连不上：手里有图的排到前面，别铺一墙模糊的占位图 */
+  if (C.netDown?.()) {
+    const have = C.A.list.filter(w => C.hasLocal(w));
+    if (have.length) list = have.concat(list.filter(w => !C.hasLocal(w))).slice(0, 72);
+  }
   if (!list.length) return;
   const n = Math.max(3, Math.min(6, Math.round(C.stageW() / 330)));
   box.style.setProperty('--mgap', Math.round(C.stageW() / 120) + 'px');
@@ -292,14 +302,14 @@ async function fillItem(el) {
   const w = C.A.list[((M.cidx + d) % L + L) % L];
   if (!w || el.dataset.id === w.id) return;
   el.dataset.id = w.id;
-  el.classList.add('swapping');                // 换图期间藏起来，不让旧图一闪
+  /* 先挂这一幅的占位图（按真图的比例撑开画格），旧图不会一闪；取到了再换上 */
+  const f = $('.cframe img', el);
+  if (f) { f.src = C.lqSrc(w) || w.vis.lqip || ''; f.classList.add('lq'); }
   let u;
   try { u = await pic(w, Math.abs(d) <= 1 ? 960 : 500); }
-  catch { el.classList.remove('swapping'); retryLater(el, fillItem); return; }
+  catch { retryLater(el, fillItem); return; }
   if (el.dataset.id !== w.id) return;
-  const f = $('.cframe img', el);
-  if (f) f.src = u;
-  el.classList.remove('swapping');
+  if (f) { f.src = u; f.classList.remove('lq'); }
 }
 
 function startSpin() {

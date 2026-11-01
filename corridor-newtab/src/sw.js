@@ -4,34 +4,44 @@ import { runDaily } from './daily.js';
 import * as AI from './ai.js';
 import * as NET from './localnet.js';
 
-const LADDER = [120, 250, 330, 500, 960, 1280, 1920, 3840];
-const url = (w, px) => `${w.img.base}/${px}px-${w.img.name}`;
-const pick = (w, target) => w.img.sizes.find(s => s >= target) ?? w.img.sizes.at(-1);
-
 async function catalog() {
   const r = await fetch(chrome.runtime.getURL('data/catalog.json'));
   return r.json();
 }
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-async function prefetch(limit = 8) {
-  if (!navigator.onLine) return;
+/* 后台预取：让断网时也有图可看。
+   范围是内置馆藏与每日新作（关掉每日新作就不管它）；每幅按这台设备的展示宽度存一份主图，
+   再在本地缩一张缩略图。先收藏的，再今日画夹里的那几幅，再内置馆藏，最后是更早的每日新作。
+   图源连不上、快到缓存上限时只补缩略图，不下载。 */
+async function prefetch(limit = 12, only = null) {
+  try { await S.cacheConsolidate(); } catch { }
+  /* 连不上图源时不下载，只把缺的缩略图从手里的展示图补上（这一步不联网） */
+  const online = navigator.onLine && await S.netOk(S.WM);
   const set = await S.getSettings();
-  const st = await S.cacheStats();
-  if (st.bytes > set.cacheLimitMB * 1048576 * 0.95) return;
-  const cat = await catalog();
-  const gone = new Set(await S.getGone());          // 去除过的不值得占缓存
-  const target = set.quality === 'saver' ? 1280 : set.quality === 'max' ? 3840 : 1920;
-  let n = 0;
-  for (const w of cat) {
-    if (n >= limit) break;
-    if (gone.has(w.id)) continue;
-    if (set.workSafe && w.mature) continue;
-    const u = url(w, pick(w, target));
-    if (await S.cacheHas(u)) continue;
-    try { await S.fetchImage(u, { id: w.id }); n++; } catch { /* 忽略网络错误 */ }
-    await new Promise(r => setTimeout(r, 400));
+  const lim = set.cacheLimitMB * 1048576;
+  const disp = await S.dispPx();
+  const [cat, daily, favs, gone] = await Promise.all([catalog(), S.getDaily(), S.getFavs(), S.getGone()]);
+  const dw = set.dailyNew || only ? (daily.works || []) : [];
+  const fav = new Set(favs), gn = new Set(gone), fresh = new Set(dw.slice(-5).map(w => w.id));
+  const rank = (w) => fav.has(w.id) ? 0 : fresh.has(w.id) ? 1 : w.daily ? 3 : 2;
+  let pool = dw.map(w => ({ ...w, daily: true })).concat(cat);
+  if (only) pool = pool.filter(w => only.has(w.id));
+  pool = pool.filter(w => !gn.has(w.id) && !(set.workSafe && w.mature)).sort((a, b) => rank(a) - rank(b));
+  let n = 0, full = (await S.cacheStats()).bytes > lim * 0.9;
+  const t0 = Date.now();
+  for (const w of pool) {
+    if (Date.now() - t0 > 4 * 60000) break;           // 一轮最多忙四分钟
+    const want = w.format === 'scroll' ? 3840 : disp;
+    await S.ensureThumb(w).catch(() => { });            // 有展示图、缺缩略图的，先在本地补一张
+    if (await S.hasGood(w, want)) continue;
+    if (!online || n >= limit || full) continue;        // 不下载了：余下的只补缩略图
+    try { await S.getArt(w, want, { noFallback: true, headMs: 15000 }); n++; }
+    catch { if (!(await S.netOk(S.WM))) break; }
+    if (n % 4 === 0) full = (await S.cacheStats()).bytes > lim * 0.9;
+    await sleep(400);
   }
-  await S.cacheTrim(set.cacheLimitMB * 1048576);
+  await S.cacheTrim(lim);
 }
 
 /* ---------- AI 补全 ----------
@@ -99,15 +109,16 @@ globalThis.__corridorUpdate = { applyUpdate, pagesOpen, UPD };   // 测试用
 
 chrome.runtime.onInstalled.addListener(async (d) => {
   if (d.reason === 'update') dropUpdate();       // 新版已经换上
+  S.cacheConsolidate().catch(() => { });         // 1.26：老缓存里同一幅的好几种尺寸并成一份
   await S.setSettings({});                     // 写入默认值
-  chrome.alarms.create('corridor-prefetch', { delayInMinutes: 1, periodInMinutes: 180 });
+  chrome.alarms.create('corridor-prefetch', { delayInMinutes: 1, periodInMinutes: 60 });
   chrome.alarms.create('corridor-daily', { delayInMinutes: 3, periodInMinutes: 360 });
   chrome.alarms.create('corridor-updcheck', { delayInMinutes: 30, periodInMinutes: 1440 });
   armAI(); armNet();
   if (d.reason === 'install') chrome.tabs.create({});
 });
 chrome.runtime.onStartup.addListener(() => {
-  chrome.alarms.create('corridor-prefetch', { delayInMinutes: 2, periodInMinutes: 180 });
+  chrome.alarms.create('corridor-prefetch', { delayInMinutes: 2, periodInMinutes: 60 });
   chrome.alarms.create('corridor-daily', { delayInMinutes: 4, periodInMinutes: 360 });
   chrome.alarms.create('corridor-updcheck', { delayInMinutes: 30, periodInMinutes: 1440 });
   armAI(); armNet();
@@ -123,6 +134,8 @@ chrome.alarms.onAlarm.addListener(a => {
 /* 新作进来了就顺手补全，省得等下一个整点 */
 async function dailyThenAI(force = false) {
   const n = await runDaily(force);
+  /* 新作一进来就把它们的图存好：今日画夹断网也看得到 */
+  if (n) { try { const ws = (await S.getDaily()).works || []; await prefetch(n, new Set(ws.slice(-n).map(w => w.id))); } catch { } }
   const ai = (await S.getSettings()).ai || {};
   if (n && ai.auto && AI.configured(ai)) { try { await AI.runBatch({ scope: 'daily' }); } catch { } }
   return n;

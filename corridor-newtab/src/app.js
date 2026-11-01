@@ -70,7 +70,9 @@ const A = {                       // 应用状态
   libSrcs: [], libOpen: '', libAbort: null,
   /* 暂歇「整理」的临时状态：当前那一屏的清单、是否在整理、勾中了哪几条 —— 都不进设置 */
   offList: [], offTidy: false, offSel: new Set(),
-  infoAlt: false        // 详情页翻到另一种语言（只管这一页，不改全局语言）
+  infoAlt: false,       // 详情页翻到另一种语言（只管这一页，不改全局语言）
+  have: new Map(),      // 作品 id → { px 主图宽度, thumb }：手里有哪些图
+  booted: false, offToast: false
 };
 const T = (k, v) => t(A.lang, k, v);
 const dt = (v) => A.lang === 'zh' ? String(v ?? '') : enDate(v);   // 年代/生卒/尺寸的中文限定词
@@ -157,6 +159,65 @@ function pickSize(w, targetPx) {
   return avail[avail.length - 1];
 }
 function imgUrl(w, px) { return w.local ? w.img.base : `${w.img.base}/${px}px-${w.img.name}`; }
+/* 占位图：把作品自带的 20px 模糊小图包进一张 SVG，SVG 报的是原作的真实尺寸 ——
+   画框、卡纸、环形长廊的画格、放大页都照真图的大小排，不会缩成一个小方块 */
+const lqMemo = new Map();
+function lqSrc(w) {
+  const q = w?.vis?.lqip;
+  if (!q) return '';
+  if (lqMemo.has(w.id)) return lqMemo.get(w.id);
+  const ar = Number(w.img?.ar) || ((w.img?.w && w.img?.h) ? w.img.w / w.img.h : 1);
+  const W = Math.max(1, Math.round(w.img?.w || 1600)), H = Math.max(1, Math.round(W / ar));
+  const vh = Math.max(1, Math.round(10000 / ar) / 100);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 100 ${vh}" preserveAspectRatio="none">` +
+    `<filter id="b" x="0" y="0" width="1" height="1"><feGaussianBlur stdDeviation="2.4"/></filter>` +
+    `<image href="${q}" x="-5" y="-5" width="110" height="${vh + 10}" preserveAspectRatio="none" filter="url(#b)"/></svg>`;
+  const u = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  if (lqMemo.size > 400) lqMemo.delete(lqMemo.keys().next().value);
+  lqMemo.set(w.id, u);
+  return u;
+}
+/* 本机文件夹里的作品：直接读盘，跟联网无关 */
+const isDiskW = (w) => String(w?.img?.base || '').startsWith('local:');
+/* 手里有没有这幅的图（主图，或者本机文件夹里的） */
+const hasLocal = (w) => !!w && (isDiskW(w) || (!w.video && (A.have.get(w.id)?.px || 0) > 0));
+/* 此刻展得出来吗：手里有，或者它的图源连得上 */
+function canShow(w) {
+  if (!w) return false;
+  if (isDiskW(w)) return true;
+  if (w.video) return S.netOkSync(w.img.base);      // 网址来源的视频要串流，断网放不了
+  return hasLocal(w) || S.netOkSync(imgUrl(w, 960));
+}
+const netDown = () => !S.netOkSync(S.WM);
+/* 从 from 往 dir 方向找下一幅展得出来的（cachedOnly：只认手里有图的） */
+function findShowable(from, dir, cachedOnly = false) {
+  const L = A.list.length; dir = dir < 0 ? -1 : 1;
+  for (let k = 1; k < L; k++) {
+    const i = ((from + dir * k) % L + L) % L, w = A.list[i];
+    if (cachedOnly ? hasLocal(w) : canShow(w)) return i;
+  }
+  return -1;
+}
+function noteOffline() {
+  if (A.offToast) return;
+  A.offToast = true;
+  toast(navigator.onLine === false ? T('offline') : T('netDown'));
+}
+const within = (p, ms) => Promise.race([p, new Promise(r => setTimeout(() => r(null), ms))]);
+/* 「哪些作品手里有图」：开页读一遍，之后本页存进 / 删掉什么跟着改；切回这一页时再对一遍（后台也在存） */
+async function refreshHave() { A.have = await S.cacheIndex(); }
+function onStored(e) {
+  if (e.cleared) { A.have.clear(); return; }
+  if (!e.id) return;
+  const c = A.have.get(e.id) || { px: 0, thumb: false, bytes: 0 };
+  if (e.dropped) {
+    if (e.all) A.have.delete(e.id);
+    else { if (e.kind === 'thumb') c.thumb = false; else c.px = 0; A.have.set(e.id, c); }
+    return;
+  }
+  if (e.kind === 'thumb') c.thumb = true; else c.px = Math.max(c.px, e.px || 0);
+  A.have.set(e.id, c);
+}
 /* 沉浸式画面适配：横幅接近屏幕比例时铺满，否则完整显示 + 模糊底 */
 function fitMode(w) {
   if (w.format === 'scroll' && A.set.scrollPan) return 'cover';
@@ -298,8 +359,14 @@ async function checkGrant() {
   try { if ((await LOCAL.needGrant(dirIds())).length) askGrant(); } catch { }
 }
 
-async function show(w, dir = 1) {
+async function show(w, dir = 1, o = {}) {
   if (!w) return;
+  /* 连不上图源、这一幅手里又没有：开页与轮换时跳到下一幅有图的（点名要看的那一幅不跳） */
+  if (o.skip && !canShow(w)) {
+    const i = findShowable(A.idx, dir);
+    if (i >= 0) { A.idx = i; w = A.list[i]; S.setCursor({ idx: A.idx, at: Date.now(), sig: listSig() }); }
+    noteOffline();
+  }
   paintMeta(w);
 
   const mode = A.set.mode;
@@ -307,15 +374,15 @@ async function show(w, dir = 1) {
   if (mode === 'masonry' || mode === 'carousel' || mode === 'film') {
     if (A.painted !== mode) { await MODES.paintMode(mode); A.painted = mode; }
     else if (mode === 'carousel') MODES.syncCarousel(A.idx);
-    $('#boot').classList.add('gone');
+    $('#boot').classList.add('gone'); A.booted = true;
     S.pushHistory(w.id).then(h => A.hist = h);
     resetProgress(); prefetchAhead();
     return;
   }
   A.painted = null; MODES.stopLoops();
 
-  const px = pickSize(w, targetWidthFor(w, mode));
-  const url = imgUrl(w, px);
+  const want = targetWidthFor(w, mode);
+  if (w.format !== 'scroll' && !w.local) S.noteDisp(want);
 
   /* 视频：只在沉浸式与展墙里真的放。本机文件给一个 blob: 地址（浏览器按需读盘），
      网址来源直接串流；拿不到就退回静帧，至少有画 */
@@ -325,37 +392,85 @@ async function show(w, dir = 1) {
     if (A.cur !== w) { revoke(vsrc); return; }          // 取地址的工夫里又换了一幅
     if (mode === 'wall') await paintWall(w, vsrc, true);
     else await paintImmersive(w, vsrc, dir, true);
-    $('#boot').classList.add('gone');
+    $('#boot').classList.add('gone'); A.booted = true;
     S.pushHistory(w.id).then(h => A.hist = h);
     startTimer();
     prefetchAhead();
     return;
   }
 
-  // 先用 LQIP 占位，避免空白
-  let src = w.vis.lqip, cached = false;
-  try {
-    const r = await S.fetchImage(url, { id: w.id });
-    src = URL.createObjectURL(r.blob); A.objUrls.add(src); cached = r.fromCache;
-  } catch (e) {
-    // 离线且未缓存：退回更小尺寸 / LQIP
-    for (const alt of w.img.sizes.filter(s => s < px).reverse()) {
-      const b = await S.cacheGet(imgUrl(w, alt));
-      if (b) { src = URL.createObjectURL(b); A.objUrls.add(src); cached = true; break; }
+  /* 取图从不让画面干等：手里有的（哪怕小一号、只有缩略图）马上上墙；
+     一点没有就联网，但最多等一小会儿（开页 1.5 秒，之后 4 秒）——
+     等不到：轮换与开页换一幅手里有的，点名要看的先挂占位图，图到了当场换上 */
+  const job = S.getArt(w, want, { quick: true });
+  job.catch(() => { });
+  let r = null;
+  try { r = await within(job, A.booted ? 4000 : 1500); } catch { r = null; }
+  if (A.cur !== w) return;                         // 等的工夫里又换了一幅
+  if (!r && o.skip) {
+    const i = findShowable(A.idx, dir, true);
+    if (i >= 0 && A.list[i] !== w) {
+      A.idx = i; S.setCursor({ idx: A.idx, at: Date.now(), sig: listSig() });
+      noteOffline();
+      return show(A.list[i], dir);
     }
   }
+  if (!r && netDown()) noteOffline();
+  let src = lqSrc(w) || w.vis.lqip, ph = true, low = false;
+  if (r) { src = URL.createObjectURL(r.blob); A.objUrls.add(src); ph = false; low = r.low; }
 
-  if (mode === 'wall') await paintWall(w, src);
-  else await paintImmersive(w, src, dir);
+  if (mode === 'wall') await paintWall(w, src, false, { ph, low });
+  else await paintImmersive(w, src, dir, false, { ph });
 
-  $('#boot').classList.add('gone');
+  $('#boot').classList.add('gone'); A.booted = true;
   S.pushHistory(w.id).then(h => A.hist = h);
   startTimer();                 // 每换一幅重新计时：手动翻过去也从头算，和进度条对得上
   prefetchAhead();
-  if (!cached) S.cacheTrim(A.set.cacheLimitMB * 1048576);
+  /* 先上墙的是占位图或小一号的：等到的、联网换清楚的，当场换上 */
+  if (!r) job.then(r2 => upgradeTo(w, r2, want)).catch(() => { });
+  else if (low && S.netOkSync(imgUrl(w, 960))) S.getArt(w, want, { noFallback: true }).then(r2 => upgradeTo(w, r2, want)).catch(() => { });
+}
+/* 同一幅换一张更清楚的：不重放转场，直接换图 */
+function upgradeTo(w, r, want) {
+  if (!r?.blob || A.cur !== w || pausedOn()) return;
+  const mode = A.set.mode;
+  const img = mode === 'wall' ? $('#wallImg') : mode === 'immersive' ? $('#lay' + A.layer + ' img') : null;
+  if (!img || (mode === 'wall' && img.parentElement.classList.contains('vid'))) return;
+  const u = URL.createObjectURL(r.blob); A.objUrls.add(u);
+  const pre = new Image();
+  pre.onload = () => {
+    if (A.cur !== w || A.set.mode !== mode) { revoke(u); return; }
+    const old = img.src;
+    img.src = u; img.classList.remove('lq');
+    if (mode === 'wall') wallFit(w, img, r.low);
+    else {
+      const bg = $('.imm-bg', $('#lay' + A.layer));
+      if (bg && bg.style.backgroundImage && bg.style.backgroundImage !== 'none') bg.style.backgroundImage = `url("${u}")`;
+    }
+    setTimeout(() => revoke(old), 400);
+    /* 还是小一号的，又连得上：再要一次清楚的 */
+    if (r.low && S.netOkSync(imgUrl(w, 960))) S.getArt(w, want, { noFallback: true }).then(r2 => upgradeTo(w, r2, want)).catch(() => { });
+  };
+  pre.onerror = () => revoke(u);
+  pre.src = u;
+}
+/* 展墙上的图比画框要的小（小一号的主图、缩略图）：照真图该有的大小撑开，别把画框缩小。
+   占位图是 SVG，自己报真实尺寸，用不着这一步 */
+function wallFit(w, img, low) {
+  img.dataset.low = low ? '1' : '';
+  img.style.width = ''; img.style.height = '';
+  if (!low || !(w?.img?.ar > 0)) return;
+  const px = (el, p) => (el ? parseFloat(getComputedStyle(el)[p]) : 0) || 0;
+  const fw = $('.frame-wrap'), fr = $('.frame'), mat = $('.mat'), bev = img.parentElement;
+  const edge = 2 * (px(fr, 'borderLeftWidth') + px(mat, 'paddingLeft') + px(bev, 'borderLeftWidth'));
+  const maxW = (px(fw, 'maxWidth') || innerWidth * 0.62) - edge;
+  const maxH = px(img, 'maxHeight') || innerHeight * 0.5;
+  const W = Math.max(40, Math.min(maxW, maxH * w.img.ar, w.img.w || 1e9));
+  img.style.width = Math.round(W) + 'px';
+  img.style.height = Math.round(W / w.img.ar) + 'px';
 }
 
-function paintImmersive(w, src, dir, vid = false) {
+function paintImmersive(w, src, dir, vid = false, o = {}) {
   return new Promise(res => {
     const next = A.layer === 'A' ? 'B' : 'A';
     const el = $('#lay' + next), img = $('img', el), old = $('#lay' + A.layer);
@@ -372,7 +487,7 @@ function paintImmersive(w, src, dir, vid = false) {
       const v = $('.imm-vid', el);
       loadVideo(v, src).then(() => {
         /* 放不了（编码不认、文件挪走了）：退回那张模糊的占位图，计时也回到按间隔 */
-        if (v._bad) { el.classList.remove('vid'); stopVideo(v); img.src = w.vis.lqip || ''; }
+        if (v._bad) { el.classList.remove('vid'); stopVideo(v); img.src = lqSrc(w) || w.vis.lqip || ''; img.classList.add('lq'); }
         el.classList.add('on'); old.classList.remove('on'); A.layer = next;
         setTimeout(() => { if (A.layer !== old.id.slice(3)) { stopVideo(oldVid); if (!$('.imm-vid', old).src) revoke($('img', old).src), $('img', old).removeAttribute('src'); } }, 1300);
         res();
@@ -406,11 +521,12 @@ function paintImmersive(w, src, dir, vid = false) {
       res();
     };
     img.onload = done; img.onerror = done;
+    img.classList.toggle('lq', !!o.ph);
     img.src = src;
   });
 }
 
-function paintWall(w, src, vid = false) {
+function paintWall(w, src, vid = false, o = {}) {
   return new Promise(res => {
     const wall = $('#wall'), img = $('#wallImg'), v = $('#wallVid'), bev = img.parentElement;
     const oldSrc = img.src;
@@ -420,13 +536,15 @@ function paintWall(w, src, vid = false) {
       if (vid) {
         const oldV = v.src;
         loadVideo(v, src).then(() => {
-          if (v._bad) { stopVideo(v); bev.classList.remove('vid'); img.src = w.vis.lqip || ''; wall.classList.remove('fading'); revoke(oldSrc); res(); return; }
+          if (v._bad) { stopVideo(v); bev.classList.remove('vid'); img.src = lqSrc(w) || w.vis.lqip || ''; img.classList.add('lq'); wallFit(w, img, false); wall.classList.remove('fading'); revoke(oldSrc); res(); return; }
           bev.classList.add('vid'); img.removeAttribute('src');
           wall.classList.remove('fading'); revoke(oldSrc); if (oldV !== v.src) revoke(oldV); res();
         });
         return;
       }
       img.classList.toggle('scrollimg', w.format === 'scroll');
+      img.classList.toggle('lq', !!o.ph);
+      wallFit(w, img, !!o.low && !o.ph);
       img.onload = img.onerror = () => { bev.classList.remove('vid'); stopVideo(v); wall.classList.remove('fading'); revoke(oldSrc); res(); };
       img.src = src;
     }, 380);
@@ -866,13 +984,15 @@ async function togglePause(force) {
   if (drawerOpen()) renderDrawer();
 }
 
-/* 预取后续作品，供离线使用 */
+/* 预取后续作品，供离线使用：只在连得上、手里那份又不够用时才取 */
 async function prefetchAhead(n = 3) {
   for (let i = 1; i <= n; i++) {
-    const w = A.list[(A.idx + i) % A.list.length]; if (!w || w.local) continue;   // 本机图片无须预取
-    const url = imgUrl(w, pickSize(w, targetWidthFor(w, A.set.mode)));
-    if (await S.cacheHas(url)) continue;
-    try { await S.fetchImage(url, { id: w.id }); } catch {}
+    const w = A.list[(A.idx + i) % A.list.length];
+    if (!w || isDiskW(w) || w.video) continue;             // 本机图片无须预取；视频是串流
+    const want = targetWidthFor(w, A.set.mode);
+    if (!S.netOkSync(imgUrl(w, 960))) return;
+    if (await S.hasGood(w, want)) continue;
+    try { await S.getArt(w, want, { noFallback: true }); } catch { }
     await new Promise(r => setTimeout(r, 220));
   }
 }
@@ -885,8 +1005,8 @@ async function go(delta) {
   A.busy = true;
   A.idx = (A.idx + delta % A.list.length + A.list.length) % A.list.length;
   await S.setCursor({ idx: A.idx, at: Date.now(), sig: listSig() });
-  await show(A.list[A.idx], Math.sign(delta) || 1);
-  A.busy = false;
+  try { await show(A.list[A.idx], Math.sign(delta) || 1, { skip: true }); }
+  finally { A.busy = false; }
 }
 /* 能完整看一幅作品的模式；瀑布流 / 环形长廊里点开一幅要落到展墙 */
 const viewMode = () => ['immersive', 'wall'].includes(A.set.mode) ? A.set.mode : 'wall';
@@ -1120,14 +1240,14 @@ async function openReveal() {
     const tilt = [-6.5, 3.2, -2.4, 5.1, -4.2];
     stage.innerHTML = show.map((w, i) => `
       <figure class="rvcard" data-id="${esc(w.id)}" style="--r:${tilt[i % 5]}deg;--r0:${tilt[i % 5] * 2.4}deg">
-        <span class="mat"><img alt="" src="${esc(w.vis.lqip || '')}"
-          data-real="${esc(imgUrl(w, w.img.sizes.includes(500) ? 500 : w.img.sizes.at(-1)))}"></span>
+        <span class="mat"><img alt="" class="lq" src="${esc(lqSrc(w) || w.vis.lqip || '')}" data-id="${esc(w.id)}"></span>
         <figcaption class="cap"><b>${esc(tx(w.title))}</b>${esc(tx(w.artist))}${w.year ? ' · ' + esc(dtw(w, 'year')) : ''}</figcaption>
       </figure>`).join('');
     $$('.rvcard img', stage).forEach(async (img) => {
+      const w = show.find(x => x.id === img.dataset.id); if (!w) return;
       try {
-        const r = await S.fetchImage(img.dataset.real, {});
-        const u = URL.createObjectURL(r.blob); A.objUrls.add(u); img.src = u;
+        const r = await S.getArt(w, 500);
+        const u = URL.createObjectURL(r.blob); A.objUrls.add(u); img.src = u; img.classList.remove('lq');
       } catch { }
     });
     $$('.rvcard', stage).forEach(c => c.onclick = async () => { closeSheets(); await jumpTo(c.dataset.id, viewMode()); });
@@ -1216,7 +1336,8 @@ function renderGrid() {
   g.innerHTML = list.map(w => `
     <div class="cell${w.id === A.cur?.id ? ' cur' : ''}" data-id="${w.id}" title="${esc(tx(w.title))} — ${esc(tx(w.artist))}">
       <img class="lq" src="${esc(w.vis.lqip || '')}" alt="">
-      <img class="real" data-id="${w.id}" data-src="${esc(imgUrl(w, w.img.sizes.includes(330) ? 330 : w.img.sizes[0]))}" alt="">
+      <img class="real" data-id="${w.id}" alt="">
+      ${!canShow(w) ? `<span class="ncbadge">${esc(T('notCached'))}</span>` : ''}
       ${A.favs.includes(w.id) ? '<span class="star"><svg><use href="#i-star"></use></svg></span>' : ''}
       ${A.set.workSafe && w.mature ? `<span class="skipbadge" title="${esc(T('skipTip'))}">${esc(T('skipBadge'))}</span>` : ''}
       ${w.video ? vbadge(w) : ''}
@@ -1229,8 +1350,9 @@ const io = new IntersectionObserver(async (ents) => {
   for (const e of ents) {
     if (!e.isIntersecting) continue;
     const img = e.target; io.unobserve(img);
-    const url = img.dataset.src; if (!url) continue;
-    try { const r = await S.fetchImage(url, { id: img.dataset.id }); const u = URL.createObjectURL(r.blob); A.objUrls.add(u); img.src = u; img.classList.add('in'); }
+    const w = A.byId.get(img.dataset.id) || A.everById.get(img.dataset.id); if (!w) continue;
+    /* 缩略图：手里有就用；有主图就在本地缩一张；都没有、又连得上才去网上取一张小的 */
+    try { const r = await S.getArt(w, 330); const u = URL.createObjectURL(r.blob); A.objUrls.add(u); img.src = u; img.classList.add('in'); }
     catch { img.remove(); }
   }
 }, { rootMargin: '320px' });
@@ -1258,7 +1380,7 @@ function renderInfo(w) {
   const M = (k, v) => v ? `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>` : '';
   $('#infoBody').innerHTML = `
     <div class="info-hero">
-      <img src="${esc(w.vis.lqip || '')}" data-hero="${esc(imgUrl(w, w.img.sizes.includes(500) ? 500 : w.img.sizes.at(-1)))}" alt="">
+      <img src="${esc(lqSrc(w) || w.vis.lqip || '')}" data-hero="1" alt="">
       <div class="info-meta">
         <h3>${esc(g(w.title))}${(() => { const o = pickAlt(w.title, L === A.lang ? A.other : A.lang, g(w.title)); return o && o !== g(w.title) ? `<em>${esc(o)}</em>` : ''; })()}</h3>
         <div class="metarow">
@@ -1282,7 +1404,7 @@ function renderInfo(w) {
       <br>${esc(w.img.w)} × ${esc(w.img.h)} px
     </div>`;
   const hero = $('#infoBody img[data-hero]');
-  S.fetchImage(hero.dataset.hero).then(r => { const u = URL.createObjectURL(r.blob); A.objUrls.add(u); hero.src = u; }).catch(() => {});
+  S.getArt(w, 500).then(r => { const u = URL.createObjectURL(r.blob); A.objUrls.add(u); hero.src = u; }).catch(() => {});
 }
 
 /* ============================================================
@@ -1318,12 +1440,13 @@ async function zoomOpen(w) {
   $('#zoomHint').textContent = T('zoomHint');
   $('#zoomHint').style.opacity = 1;
   const px = pickSize(w, Math.min(3840, Math.max(1920, innerWidth * (devicePixelRatio || 1) * 1.6)));
-  const url = imgUrl(w, px);
-  const img = $('#zoomImg'); img.src = w.vis.lqip;
+  const img = $('#zoomImg'); img.src = lqSrc(w) || w.vis.lqip;
   try {
-    const r = await S.fetchImage(url, { id: w.id });
+    /* 放大要最大的那档：连得上就取（取到了就成了这幅的主图，只升不降）；连不上用手里最大的 */
+    const r = await S.getArt(w, px);
     const u = URL.createObjectURL(r.blob); A.objUrls.add(u); Z.url = u;
     await new Promise(res => { img.onload = res; img.onerror = res; img.src = u; });
+    if (r.low && !w.local) toast(T('offlineHD'));
   } catch (e) {
     /* 本机图片读不出来跟联网无关，别说「离线」 */
     toast(e?.code === 'noperm' || e?.code === 'nohandle' ? T('libLost') : w.local ? T('libUnread') : T('offlineHD'));
@@ -2489,12 +2612,18 @@ async function buildTab(tab, s) {
 
   /* ---------- 存储 ---------- */
   if (tab === 'data') {
-    const st = await S.cacheStats();
+    const [st, orph] = await Promise.all([S.cacheStats(), S.cacheOrphans(), refreshHave()]);
     const ver = globalThis.chrome?.runtime?.getManifest?.().version || '';
+    /* 「已缓存 X / Y」：Y 只算能缓存的（本机文件夹里的本来就不复制），X 是其中手里有展示图的 */
+    const able = A.cat.filter(w => !isDiskW(w));
+    const got = able.filter(w => (A.have.get(w.id)?.px || 0) > 0).length;
     return grp('cache', T('cache'),
-      `<div class="dblock"><div class="dbt">${esc(T('cached'))} ${st.works} / ${A.cat.length} ${esc(T('works'))}</div>
+      `<div class="dblock"><div class="dbt">${esc(T('cached'))} ${got} / ${able.length} ${esc(T('works'))}</div>
         <div class="dbd">${esc(T('cacheDesc'))}</div>
         <div class="dbd" style="margin-top:6px">${esc(T('cacheSize'))}: ${fmtBytes(st.bytes)} / ${s.cacheLimitMB} MB</div>
+        <div class="dbd" style="opacity:.75">${esc(T('cacheSplit', { main: fmtBytes(st.mainBytes), n: st.thumbs, thumb: fmtBytes(st.thumbBytes) }))}</div>
+        ${orph.n ? `<div class="dbd orphrow">${esc(T('cacheOrphan', { n: orph.n, size: fmtBytes(orph.bytes) }))}
+          <button class="bigbtn" id="btnCacheOrphan">${esc(T('cacheOrphanBtn'))}</button></div>` : ''}
         <div class="cachebar"><i style="width:${Math.min(100, st.bytes / (s.cacheLimitMB * 1048576) * 100).toFixed(1)}%"></i></div>
         <div class="dbc btnrow">
           <button class="bigbtn pri" id="btnCacheAll">${esc(T('cacheAll'))}</button>
@@ -3202,6 +3331,12 @@ async function renderDrawer(toTop = false) {
   bindPickers(body);
   const cA = $('#btnCacheAll'); if (cA) cA.onclick = cacheAll;
   const cC = $('#btnCacheClear'); if (cC) cC.onclick = async () => { await S.cacheClear(); toast(T('done')); renderDrawer(); };
+  const cO = $('#btnCacheOrphan'); if (cO) cO.onclick = async () => {
+    cO.disabled = true;
+    const r = await S.cacheDropOrphans();
+    toast(r.bytes ? `${T('done')} · ${fmtBytes(r.bytes)}` : T('done'));
+    renderDrawer();
+  };
   bindBackup(body);
   bindOff(body);
   /* 已移除：逐幅放回，或一次全放回来 */
@@ -3609,7 +3744,9 @@ function bindPickers(root) {
 
 /* 抽屉开合或窗口变化后，重新判断铺满/完整显示 */
 function refit() {
-  const w = A.cur; if (!w || A.set.mode !== 'immersive') return;
+  const w = A.cur;
+  if (w && A.set.mode === 'wall') { const im = $('#wallImg'); if (im?.dataset.low) wallFit(w, im, true); return; }
+  if (!w || A.set.mode !== 'immersive') return;
   const el = $('#lay' + A.layer), img = $('img', el);
   const scrolling = w.format === 'scroll' && A.set.scrollPan;
   el.classList.toggle('contain', fitMode(w) === 'contain' && !scrolling);
@@ -3763,7 +3900,8 @@ async function exportCache() {
     const blob = await S.cacheGet(e.url); if (!blob) continue;
     const url = URL.createObjectURL(blob);
     const yr = safeName(w.year);
-    const fn = `${EXPORT_DIR}/${safeName(w.artist.en, 'Unknown')} - ${safeName(w.title.en, w.id)}${yr ? ` (${yr})` : ''}.jpg`;
+    const ext = /webp/i.test(blob.type) ? 'webp' : /png/i.test(blob.type) ? 'png' : /gif/i.test(blob.type) ? 'gif' : 'jpg';
+    const fn = `${EXPORT_DIR}/${safeName(w.artist.en, 'Unknown')} - ${safeName(w.title.en, w.id)}${yr ? ` (${yr})` : ''}.${ext}`;
     try {
       const dlId = await chrome.downloads.download({ url, filename: fn, conflictAction: 'overwrite', saveAs: false });
       A.lastDl = dlId; trackDownload(dlId, url); n++;
@@ -3798,18 +3936,31 @@ async function openFolder() {
   catch { toast(T('noCache')); }
 }
 
+/* 缓存全部：内置馆藏、每日新作与网址来源，每幅按这台设备的展示宽度存一份主图，再缩一张缩略图。
+   先收藏的，再今日画夹里的，再内置馆藏；快到上限就停 */
 async function cacheAll() {
-  const btn = $('#btnCacheAll'); if (!btn) return;
+  const btn = $('#btnCacheAll'); if (!btn || btn.disabled) return;
+  if (netDown()) { toast(navigator.onLine === false ? T('offline') : T('netDown')); return; }
   btn.disabled = true;
-  const pool = A.cat.filter(w => !(A.set.workSafe && w.mature));
+  const disp = await S.dispPx();
+  const favs = new Set(A.favs);
+  const rank = (w) => favs.has(w.id) ? 0 : w.daily ? 1 : w.local ? 3 : 2;
+  const pool = A.cat.filter(w => !w._gone && !isDiskW(w) && !w.video && !(A.set.workSafe && w.mature))
+    .sort((a, b) => rank(a) - rank(b));
+  const lim = A.set.cacheLimitMB * 1048576;
   let done = 0;
   for (const w of pool) {
-    const url = imgUrl(w, pickSize(w, targetWidthFor(w, A.set.mode)));
-    try { if (!await S.cacheHas(url)) await S.fetchImage(url, { id: w.id }); } catch {}
+    const want = w.format === 'scroll' ? 3840 : disp;
+    try {
+      if (!(await S.hasGood(w, want))) await S.getArt(w, want, { noFallback: true });
+      await S.ensureThumb(w);
+    } catch { if (!S.netOkSync(imgUrl(w, 960))) { toast(T('netDown')); break; } }
     done++;
     btn.textContent = `${T('caching')} ${done}/${pool.length}`;
-    if (done % 6 === 0) { const st = await S.cacheStats(); if (st.bytes > A.set.cacheLimitMB * 1048576) break; }
+    if (done % 6 === 0) { const st = await S.cacheStats(); if (st.bytes > lim * 0.95) break; }
   }
+  await S.cacheTrim(lim);
+  await refreshHave();
   toast(T('cacheDone')); renderDrawer();
 }
 
@@ -4154,11 +4305,15 @@ async function reloadDaily(keepView = false) {
    启动
    ============================================================ */
 async function init() {
-  const [cat, set, favs, hist, cur, daily, lib, tr, packs, gone] = await Promise.all([
+  const [cat, set, favs, hist, cur, daily, lib, tr, packs, gone, have] = await Promise.all([
     fetch(rt('data/catalog.json')).then(r => r.json()),
     S.getSettings(), S.getFavs(), S.getHistory(), S.getCursor(), S.getDaily(), S.getLocalLib(),
-    S.getTr(), S.getPacks(), S.getGone()
+    S.getTr(), S.getPacks(), S.getGone(),
+    /* 手里有哪些图、图源刚才连不连得上：都是本机读，不联网 */
+    S.cacheIndex(), S.netLoad()
   ]);
+  A.have = have || new Map();
+  S.onStored(onStored);
   S.setLocalReader(LOCAL.readFile);
   LOCAL.onNeedGrant(() => askGrant());
   S.setPosterMaker(LOCAL.videoPoster);
@@ -4195,17 +4350,22 @@ async function init() {
   await S.setCursor({ idx: A.idx, at: Date.now(), sig: listSig() });
 
   MODES.setupModes({
-    S, A, imgUrl, pickSize, stageW, esc, tx, dt, dtw, capHTML, vbadge,
+    S, A, imgUrl, pickSize, lqSrc, hasLocal, netDown, stageW, esc, tx, dt, dtw, capHTML, vbadge,
     T, jumpTo, setIndex,
     zoomCurrent: () => A.cur && zoomOpen(A.cur)
   });
   MODES.applyPace(A.set);
   wire(); applyTips(); startClock(); startTimer(); armIdle(); paintSeal();
+  if (!navigator.onLine) { A.offToast = true; toast(T('offline')); }
   if (pausedOn()) await paintPaused();                 // 暂歇：连第一幅都不用画
-  else await show(A.list[A.idx]);
+  else await show(A.list[A.idx], 1, { skip: true });
 
   if (!A.set.seenFirstRun) { setTimeout(() => toast(T('firstRun')), 900); S.setSettings({ seenFirstRun: true }); }
-  if (!navigator.onLine) toast(T('offline'));
+  /* 浏览器报告重新联网：「图源连不上」的记号作废，下一次取图就是试探 */
+  addEventListener('online', () => { S.netReset(); A.offToast = false; });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshHave().catch(() => { }); });
+  /* 1.26 的一次性整理：老缓存里同一幅存的好几种尺寸并成一份（后台多半已经做过了） */
+  setTimeout(() => S.cacheConsolidate().then(r => r && refreshHave()).catch(() => { }), 4000);
   checkGrant();
   setTimeout(() => { if (!document.hidden) aiTick().catch(() => { }); }, 6000);
   /* 在线图库定时同步：开页 9 秒后看一眼，之后每分钟看一眼 */
