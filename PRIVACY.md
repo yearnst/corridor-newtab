@@ -1,7 +1,7 @@
 # Privacy Policy · 隐私政策
 
 **Corridor · Art New Tab** · 长廊 Corridor · 艺术新标签页
-Last updated: 22 September 2026 · 最后更新：2026-09-22
+Last updated: 1 November 2026 · 最后更新：2026-11-01
 
 **English** · [中文](#中文)
 
@@ -35,7 +35,7 @@ Only in these cases, all of which you control:
 1. **Artwork images** — requests to `upload.wikimedia.org` for public-domain paintings. No identifying information is attached.
 2. **Daily additions** (on by default) — metadata queries to `commons.wikimedia.org` and `www.wikidata.org`.
 3. **AI enrichment / multilingual** (off by default, needs your own endpoint) — sends a JPEG downscaled to at most 1024px, plus the prompt, to **the endpoint address you entered**. Leave it blank and not a single request is made.
-4. **Online gallery sources** (off by default, needs a URL from you) — requests the page, images and videos from **the URL you entered**. Chrome asks you for permission for that host the first time.
+4. **Online gallery sources** (off by default, needs a URL from you) — requests the page, images and videos from **the site you entered**. Some sites (shared tables, cloud drives and the like) need their sign-in domains as well; Chrome lists every domain in its permission prompt the first time, before anything is sent. For those sites the extension uses that site's cookies in your browser, exactly as if you opened the link yourself — if you are signed in there, the site sees your account. Nothing from the site is sent anywhere else.
 
 The Pause Gallery screen makes no network requests and fetches no site icons. If your model runs on your own machine (`localhost` and the like), its requests never leave that machine.
 
@@ -83,7 +83,7 @@ Pause Gallery can list sites from three places: the ones you pin yourself, Chrom
 | `topSites` (optional) | Showing Chrome's most-visited sites in Pause Gallery. Not requested at install; asked for when you turn it on |
 | `tabs` (optional) | Showing your open tabs in Pause Gallery, and "Close selected tabs" in tidy mode. Also asked for only when needed |
 | Three Wikimedia hosts | Fetching public-domain artwork images and metadata |
-| All other hosts (optional) | **Never requested up front.** Only when you enter your own AI endpoint or gallery URL and press a button does Chrome ask you about that one host |
+| All other hosts (optional) | **Never requested up front.** Only when you enter your own AI endpoint or gallery URL and press a button does Chrome ask you about the domains that source needs — usually just that one host |
 
 ### Changes
 
@@ -123,7 +123,7 @@ Charles Chern · achillesmars@gmail.com
 1. **取画作图片** —— 向 `upload.wikimedia.org` 请求公有领域画作的图片文件。这是扩展默认就有的能力，请求里不带任何身份信息。
 2. **每日新作**（默认开启）—— 向 `commons.wikimedia.org` 与 `www.wikidata.org` 查询公有领域画作的元数据。
 3. **AI 补全 / 多语言**（默认关闭，需要你自己填接口）—— 把图片缩成不超过 1024px 的 JPEG，连同提示词发往**你自己填写的那个接口地址**。你不填，一个请求都不会发。
-4. **在线图库**（默认关闭，需要你自己填网址）—— 向**你自己填写的那个网址**请求页面、图片与视频。第一次使用时浏览器会弹窗向你要这个域名的权限。
+4. **在线图库**（默认关闭，需要你自己填网址）—— 只向**你填写的那个网站**请求页面、图片与视频。有些网站（共享表格、网盘之类）还需要它自己的登录域名；第一次使用时，浏览器会在弹窗里列出全部域名，你同意之后才发请求。对这类网站，扩展用的是浏览器里该网站的 cookie，等同于你自己打开那个链接：如果你在那里登录着，对方看到的就是你的账号。从网站取回的内容不会发往任何其他地方。
 
 暂歇那一屏不发任何网络请求，也不取站点图标。接的如果是本机模型（`localhost` 这类地址），请求不出这台电脑。
 
@@ -171,7 +171,7 @@ Charles Chern · achillesmars@gmail.com
 | `topSites`（可选权限） | 暂歇显示 Chrome 常访问的站点。装上时不申请，打开那一项时才问你 |
 | `tabs`（可选权限） | 暂歇显示此刻开着的标签页，以及整理模式里的「关掉所选标签页」。同样是用到时才问你 |
 | `upload.wikimedia.org` 等三个域名 | 取公有领域画作的图片与元数据 |
-| 其他所有域名（可选权限） | **不会预先索取**。只有当你填了自己的 AI 接口或在线图库网址、并点下按钮时，浏览器才会就那一个域名向你确认 |
+| 其他所有域名（可选权限） | **不会预先索取**。只有当你填了自己的 AI 接口或在线图库网址、并点下按钮时，浏览器才会就这个来源需要的域名向你确认 —— 通常只有那一个 |
 
 ### 变更
 

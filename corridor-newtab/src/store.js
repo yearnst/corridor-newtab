@@ -1,4 +1,5 @@
 // 设置、收藏、历史 与 本地图片缓存 / settings, favorites, history and the local image cache
+import * as FS from './feishu.js';
 
 /* 新装时的母语跟着浏览器走：首选语言是中文就是中文（外语配英文），其余一律英文（外语配中文）。
    这只决定「默认值」—— 装过的用户，onInstalled 那一下早把整份 settings 写进了 storage，
@@ -799,9 +800,13 @@ export async function fetchImage(url, meta = {}) {
   }
   const hit = await cacheGet(url);
   if (hit) return { blob: hit, fromCache: true };
-  const resp = await fetch(url, { credentials: 'omit', cache: 'force-cache' });
-  if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + url);
-  let blob = await resp.blob();
+  let blob;
+  if (FS.isCover(url)) blob = await FS.fetchCover(url);   // 飞书分享视图的附件：要带飞书的 cookie
+  else {
+    const resp = await fetch(url, { credentials: 'omit', cache: 'force-cache' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + url);
+    blob = await resp.blob();
+  }
   if (needsConvert(url)) blob = await convertBlob(blob, url);
   cachePut(url, blob, meta);
   maybeTrim(blob.size);

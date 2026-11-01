@@ -19,6 +19,37 @@ Every entry is in English first; the Chinese text is folded under **中文**.
 
 ---
 
+## [1.25.4] — 2026-11-01
+
+A public Feishu Base view can now hang on the wall as a gallery source.
+
+### Added
+
+* **Feishu Base shared views as a source**
+  In Settings → Sources, “+ URL” now accepts a Feishu Base view that is shared publicly (a link like `…feishu.cn/share/base/view/shr…`). Every image attached in that view comes in at full size; the view's primary field becomes the title, and the table name fills the artist line.
+  If the link is an ordinary Base link, isn't public, or has expired, the source card says so. Lark (larksuite.com) links aren't supported yet.
+
+### Privacy and permissions
+
+* For a Feishu link, Chrome asks for three domains at once: the link's own host, plus Feishu's sign-in hosts `accounts.feishu.cn` and `login.feishu.cn`. The images are fetched with the Feishu cookies in your browser, just as if you had opened the link yourself; if you are signed in to Feishu, Feishu sees your account. Nothing is sent anywhere else. The privacy policy now describes this.
+
+<details>
+<summary markdown="span">中文</summary>
+
+飞书多维表格的公开分享视图，现在也能挂上展墙。
+
+### 新增
+
+* **飞书多维表格的分享视图可以当图库来源**
+  设置 → 图库 →「＋ 网址」里，填入公开分享的多维表格视图链接（形如 `…feishu.cn/share/base/view/shr…`），视图里所有附件图片都以原图收进来；视图的主字段当作标题，表名写在作者那一行。
+  链接是普通的多维表格链接、没有公开，或者已经失效时，来源卡片上会直接说明。Lark（larksuite.com）的链接暂时还不支持。
+
+### 隐私与权限
+
+* 飞书链接会一次向你申请三个域名：链接本身所在的域名，以及飞书的登录域名 `accounts.feishu.cn`、`login.feishu.cn`。取图时用的是浏览器里飞书的 cookie，等同于你自己打开这个链接；如果你登录着飞书，飞书看到的就是你的账号。内容不会发往别处。隐私政策已经写明这一点。
+
+</details>
+
 ## [1.25.3] — 2026-10-05
 
 New versions from the Chrome Web Store now take effect sooner, instead of waiting for a browser restart.

@@ -6,12 +6,14 @@
        目录句柄按来源存在 IndexedDB 里，下次打开新标签页直接复用。
        图片始终留在你自己的硬盘上，扩展不复制、不上传，只在显示时读一次。
      · 网址   —— 一个在线图库。可以是目录索引页、普通网页、
-       一份 JSON 清单、一行一个网址的纯文本，或者干脆就是一张图。
+       一份 JSON 清单、一行一个网址的纯文本，或者干脆就是一张图；
+       也可以是飞书多维表格的公开分享视图（见 feishu.js）。
        这一类要先拿到那个域名的访问权限。
 
    每个来源各自带一套筛选：包含 / 排除（通配符或正则）、允许的格式、最小边长。
    ============================================================ */
 import * as S from './store.js';
+import * as FS from './feishu.js';
 
 /* 图片：前 7 种浏览器直接认；svg 补上宽高再显示；tif/tiff、heic/heif、jxl 浏览器解得了就直接用，
    解不了交给 vendor/ 里的解码工人（见下面 rasterBitmap） */
@@ -126,15 +128,17 @@ export async function pickFolder(id) {
 
 /* ---------------- 网址那一类 ---------------- */
 export const originOf = (u) => { try { return new URL(S1(u)).origin + '/*'; } catch { return ''; } };
+/* 一个来源要授权的域名。多数只有一个；飞书分享视图还要带上它的两个登录跳转域名，一次问完 */
+export const originsOf = (u) => FS.originsFor(u) || [originOf(u)].filter(Boolean);
 export async function hasHost(u) {
-  const o = originOf(u); if (!o) return false;
+  const o = originsOf(u); if (!o.length) return false;
   if (!globalThis.chrome?.permissions) return true;
-  try { return await chrome.permissions.contains({ origins: [o] }); } catch { return false; }
+  try { return await chrome.permissions.contains({ origins: o }); } catch { return false; }
 }
 export async function askHost(u) {              // 必须在用户点击里调用
-  const o = originOf(u); if (!o) return false;
+  const o = originsOf(u); if (!o.length) return false;
   if (!globalThis.chrome?.permissions) return true;
-  try { return await chrome.permissions.request({ origins: [o] }); } catch { return false; }
+  try { return await chrome.permissions.request({ origins: o }); } catch { return false; }
 }
 
 /* 从一个网址里把图片地址捞出来。认四种东西：
@@ -201,6 +205,10 @@ export function pickFromText(txt, baseUrl) {
 export async function listURL(url, signal) {
   const u = S1(url);
   if (!/^https?:\/\//i.test(u)) return { ok: false, err: '网址要以 http:// 或 https:// 开头', items: [] };
+  /* 飞书多维表格的分享视图另走一条路；飞书的其他链接给出该换哪种链接的提示 */
+  if (FS.parseShare(u)) return FS.listShare(u, { max: MAX_FILES, signal });
+  const bad = FS.badLink(u);
+  if (bad) return { ok: false, err: bad, items: [] };
   let r;
   try { r = await fetch(u, { credentials: 'omit', signal }); }
   catch (e) { return { ok: false, err: '取不到这个网址 · ' + S1(e.message).slice(0, 60), items: [] }; }
@@ -547,19 +555,19 @@ export async function scanURL(src, onProgress, signal) {
 
   const got = await listURL(src.url, signal);
   if (!got.ok) return { ok: false, err: got.err, works: [] };
-  let items = got.items.filter(x => {
-    let name = '';
-    try { name = decodeURIComponent(new URL(x.u).pathname.split('/').pop() || ''); } catch { name = x.u.split('/').pop() || ''; }
-    return f.test(name, x.u);
-  });
+  /* 文件名：清单里给了就用（飞书的附件地址里看不出名字和后缀），没给就取地址的最后一段 */
+  const nameOf = (x) => {
+    if (x.n) return x.n;
+    try { return decodeURIComponent(new URL(x.u).pathname.split('/').pop() || ''); } catch { return x.u.split('/').pop() || ''; }
+  };
+  let items = got.items.filter(x => f.test(nameOf(x), x.u));
   items = items.slice(0, MAX_FILES);
   const host = (() => { try { return new URL(src.url).hostname.replace(/^www\./, ''); } catch { return ''; } })();
   const works = [], skip = {};
   for (let i = 0; i < items.length; i++) {
     if (signal?.aborted) break;
     const it = items[i];
-    let name = '';
-    try { name = decodeURIComponent(new URL(it.u).pathname.split('/').pop() || ''); } catch { name = it.u.split('/').pop() || ''; }
+    const name = nameOf(it);
     try {
       let a;
       if (isVideoName(name) || isVideoName(it.u)) {
@@ -572,7 +580,7 @@ export async function scanURL(src, onProgress, signal) {
         a = await analyse(blob, S.needsConvert(name) && !SVG_RE.test(name) ? '' : name);
       }
       if (a.w < f.minPx || a.h < f.minPx) continue;
-      works.push(mkWork(sid, { key: it.u, name, folder: S1(src.name) || host, title: it.t }, a, it.u));
+      works.push(mkWork(sid, { key: it.u, name, folder: S1(src.name) || S1(got.name) || host, title: it.t }, a, it.u));
     } catch (e) {
       if (e?.code === 'unsupported') skip[e.ext] = (skip[e.ext] || 0) + 1;
     }

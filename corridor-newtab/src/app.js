@@ -1752,6 +1752,9 @@ async function applySrc(key, val) {
   A.libSrcs = l2.srcs; A.lib = (l2.works || []).length;
 }
 
+/* 扫描回来的错误：权限类和飞书类给的是文案的键，其余原样显示 */
+const libErr = (e) => e === 'noperm' || e === 'nohandle' ? T('libNeedGrant') : /^libFs[A-Z]/.test(String(e || '')) ? T(e) : e;
+
 /* 一个来源扫一遍：进度写在它自己那张卡里，扫完只换掉它名下的作品 */
 async function scanOne(src, opt = {}) {
   const line = () => $(`[data-srcstat="${CSS.escape(src.id)}"]`, $('#drawerBody')) || $('#libStatus');
@@ -1774,9 +1777,9 @@ async function scanOne(src, opt = {}) {
       say(`${T('libScanning')} ${i} / ${n}`);
     }, opt.signal);
     if (!r.ok) {
-      await S.setLibSource({ ...src, err: r.err === 'noperm' ? T('libNeedGrant') : r.err === 'nohandle' ? T('libNeedGrant') : r.err },
+      await S.setLibSource({ ...src, err: libErr(r.err) },
                            (await S.getLocalLib()).works.filter(w => w.sid === src.id));
-      say(r.err === 'noperm' || r.err === 'nohandle' ? T('libNeedGrant') : r.err);
+      say(libErr(r.err));
       return r;
     }
     await S.setLibSource({ ...src, err: '', skip: r.skip || {} }, r.works);

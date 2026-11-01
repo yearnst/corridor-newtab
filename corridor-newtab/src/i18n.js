@@ -385,13 +385,18 @@ export const STR = {
     libAddDir: '＋ 文件夹', libAddUrl: '＋ 网址',
     libScanAll: '全部重扫', libClearAll: '清空图库', libRepick: '重选文件夹',
     libName: '名称', libUrl: '网址',
-    libUrlTip: '目录页、图库页、JSON、网址清单或单个文件',
+    libUrlTip: '目录页、图库页、JSON、网址清单、单个文件，或飞书多维表格的公开分享视图',
     libInc: '只要', libExc: '排除', libRx: '正则',
     libRxDesc: '按正则匹配；关掉时 * ? 当通配符',
     libExt: '格式', libMinPx: '最小边长', libNoMin: '不限',
     libLast: '收了 {n} 件',
     libSkip: '跳过 {list}：文件打不开，可能已损坏',
     libNeedHost: '要先允许访问这个域名',
+    libFsNotPublic: '这个飞书视图没有公开分享，或者链接已经失效',
+    libFsNeedShare: '请改用多维表格视图的分享链接，形如 …feishu.cn/share/base/view/shr…',
+    libFsLark: '暂时还不支持 Lark（larksuite.com）的链接',
+    libFsNet: '连不上飞书',
+    libFsFormat: '飞书返回的数据读不懂，可能是它的接口改了',
     aiRoles: '文字与识图',
     aiSplit: '文字与识图分开设',
     aiSplitDesc: '翻译用文字模型，补全用识图模型', aiSplitDescMore: '翻译只要文字，补全要看图。分开设，便宜的小模型管翻译，多模态模型只在看图时才调用。',
@@ -799,13 +804,18 @@ export const STR = {
     libAddDir: '+ Folder', libAddUrl: '+ URL',
     libScanAll: 'Rescan all', libClearAll: 'Remove all sources', libRepick: 'Pick another folder',
     libName: 'Name', libUrl: 'URL',
-    libUrlTip: 'A directory, gallery page, JSON, URL list or single file',
+    libUrlTip: 'A directory, gallery page, JSON, URL list, single file, or a public Feishu Base view',
     libInc: 'Include', libExc: 'Exclude', libRx: 'regex',
     libRxDesc: 'Match by regex; off, * and ? are wildcards',
     libExt: 'Formats', libMinPx: 'Min. side', libNoMin: 'any',
     libLast: 'Items: {n}',
     libSkip: 'skipped {list}: couldn’t be opened, possibly damaged',
     libNeedHost: 'Allow access to that host first',
+    libFsNotPublic: 'This Feishu view isn\u2019t shared publicly, or the link has expired',
+    libFsNeedShare: 'Use the share link of a Base view instead, like \u2026feishu.cn/share/base/view/shr\u2026',
+    libFsLark: 'Lark (larksuite.com) links aren\u2019t supported yet',
+    libFsNet: 'Couldn\u2019t reach Feishu',
+    libFsFormat: 'Feishu sent back something unreadable; its interface may have changed',
     aiRoles: 'Text & vision',
     aiSplit: 'Split text and vision',
     aiSplitDesc: 'A text model to translate, a vision model to enrich', aiSplitDescMore: 'Translating is text only; enrichment needs to see the picture. Split them, and a cheap model does the translating while the multimodal one is called only for pictures.',
@@ -1065,8 +1075,8 @@ export const PACK_NS = ['ui', 'mv', 'rg', 'tg', 'frame', 'liner', 'wall', 'texg'
 /* 语言包是按键存的：中英原文改过的键，旧包里那条译文就对不上了。
    PACK_REV 每改一轮加一；REVISED[n] 是第 n 轮改过原文的键 —— 包的 rev 比它小，这些键就当没译过：
    先借英文显示，下次「译界面」时补译。 */
-export const PACK_REV = 2;
-export const REVISED = { 2: ['aiBaseTip', 'aiDesc', 'aiKeyLocal', 'aiLocalNote', 'aiPLang', 'aiPrivacy', 'aiRedoDesc', 'aiRenameDesc', 'aiRetryDesc', 'aiSchedDesc', 'aiSplitDesc', 'aiVarsDesc', 'bkDesc', 'bkEncNote', 'bkKeysDesc', 'bkModeMergeDesc', 'bkModeReplaceDesc', 'bkNotIncluded', 'bkPlainWarn', 'cachePathDesc', 'dailyDesc', 'dgModelNote', 'exportDesc', 'filmStyleDesc', 'footerDesc', 'footerStep1', 'footerStep2', 'goneDesc', 'goneEmpty', 'goneLostDesc', 'kbd', 'langLocked', 'libLast', 'libNone', 'libSum', 'libUrlTip', 'localDesc', 'offBlockedDesc', 'offDesc', 'offHiddenDesc', 'offNDesc', 'offTabsNote', 'offTopNote', 'pfKeep', 'texOwnColour', 'trDesc', 'trPackDesc', 'videoLenDesc', 'videoVolDesc'] };
+export const PACK_REV = 3;
+export const REVISED = { 2: ['aiBaseTip', 'aiDesc', 'aiKeyLocal', 'aiLocalNote', 'aiPLang', 'aiPrivacy', 'aiRedoDesc', 'aiRenameDesc', 'aiRetryDesc', 'aiSchedDesc', 'aiSplitDesc', 'aiVarsDesc', 'bkDesc', 'bkEncNote', 'bkKeysDesc', 'bkModeMergeDesc', 'bkModeReplaceDesc', 'bkNotIncluded', 'bkPlainWarn', 'cachePathDesc', 'dailyDesc', 'dgModelNote', 'exportDesc', 'filmStyleDesc', 'footerDesc', 'footerStep1', 'footerStep2', 'goneDesc', 'goneEmpty', 'goneLostDesc', 'kbd', 'langLocked', 'libLast', 'libNone', 'libSum', 'libUrlTip', 'localDesc', 'offBlockedDesc', 'offDesc', 'offHiddenDesc', 'offNDesc', 'offTabsNote', 'offTopNote', 'pfKeep', 'texOwnColour', 'trDesc', 'trPackDesc', 'videoLenDesc', 'videoVolDesc'], 3: ['libUrlTip'] };
 export const staleKeys = (rev) => {
   const out = new Set();
   for (const [n, ks] of Object.entries(REVISED)) if ((Number(rev) || 1) < Number(n)) ks.forEach(k => out.add(k));
