@@ -21,7 +21,7 @@ Every entry is in English first; the Chinese text is folded under **中文**.
 
 ## [1.26.0] — 2026-11-02
 
-Corridor now copes properly with being offline or on a poor connection: each work keeps one display image and one thumbnail, and a new tab no longer waits on the network.
+Corridor now copes properly with being offline or on a poor connection: each work keeps one display image and one thumbnail, and a new tab no longer waits on the network. Lark Base share views can now be added as online galleries too.
 
 ### Added
 
@@ -29,6 +29,8 @@ Corridor now copes properly with being offline or on a poor connection: each wor
   When the image source can't be reached, rotation moves only through cached works, and a new tab opens straight onto one that is cached. In the Library, works that aren't cached are marked “Not cached”; Masonry puts the cached ones first.
 * **Today's Selection works offline**
   New daily additions are stored as soon as they arrive. Background prefetch now includes daily additions too, starting with favorites and the works in Today's Selection.
+* **Lark Base share views as online galleries**
+  Like Feishu, a publicly shared Lark Base view (a link like `…larksuite.com/share/base/view/shr…`) can be added under Sources → “+ URL”. Every attached image comes in at full size, with the primary field as its title. A Base's ordinary `/base/…` link needs a sign-in, so Corridor now asks for the view's share link instead.
 
 ### Fixes and improvements
 
@@ -43,10 +45,14 @@ Corridor now copes properly with being offline or on a poor connection: each wor
 * Background prefetch now runs every hour and stores images at this device's actual display width, instead of always 1920 pixels.
 * Exported images are named after their actual format; the few shrunk locally are `.webp`.
 
+### Privacy and permissions
+
+* Adding a Lark share view asks for access to `larksuite.com` as a whole: opening the share page passes through Lark's sign-in hosts, which differ by region. As with Feishu, nothing is requested until you add the link, and images are fetched with your browser's own Lark cookies. The privacy policy already covers this; no new permissions in the manifest.
+
 <details>
 <summary markdown="span">中文</summary>
 
-断网和弱网下的长廊重新做了一遍：每幅只存一份展示图和一张缩略图，打开新标签页不再等网络。
+断网和弱网下的长廊重新做了一遍：每幅只存一份展示图和一张缩略图，打开新标签页不再等网络。另外，Lark 多维表格的分享视图也能当在线图库了。
 
 ### 新增
 
@@ -54,6 +60,8 @@ Corridor now copes properly with being offline or on a poor connection: each wor
   连不上图源时，轮换只在已缓存的作品里转，新标签页直接打开一幅手里有图的作品。藏品库里没缓存的作品标着「未缓存」，瀑布流把有图的排在前面。
 * **今日画夹断网也看得到**
   每日新作一进来，就把它的图存好。后台预取也把每日新作算了进来，先存收藏和今日画夹里的那几幅。
+* **Lark 多维表格的分享视图可以当在线图库**
+  和飞书一样，公开分享的 Lark 多维表格视图（形如 `…larksuite.com/share/base/view/shr…`）可以在 图库 →「＋ 网址」里添加，视图里的附件图片都以原图收进来，主字段当标题。多维表格的普通 `/base/…` 链接要登录，现在会提示改用视图的分享链接。
 
 ### 修复与优化
 
@@ -67,6 +75,10 @@ Corridor now copes properly with being offline or on a poor connection: each wor
 * 设置 → 离线缓存里的「已缓存 X / Y 幅」只统计能缓存的作品，不会再出现前一个数比后一个大的情况；占用分开列出展示图和缩略图，已不在目录里的那部分可以一键清理。
 * 后台预取改为每小时一轮，按这台设备实际的展示宽度存图，不再固定存 1920 像素宽。
 * 导出的图片按实际格式命名，在本地缩小过的几幅是 `.webp`。
+
+### 隐私与权限
+
+* 添加 Lark 分享视图时，浏览器会问你要整个 `larksuite.com` 的访问权限：打开分享页要经过 Lark 的登录域名，而这些域名按地区各不相同。和飞书一样，添加链接之前什么都不会申请，取图用的是浏览器里你自己的 Lark cookie。隐私政策已经涵盖这一点；manifest 里没有新增权限。
 
 </details>
 

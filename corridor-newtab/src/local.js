@@ -7,7 +7,7 @@
        图片始终留在你自己的硬盘上，扩展不复制、不上传，只在显示时读一次。
      · 网址   —— 一个在线图库。可以是目录索引页、普通网页、
        一份 JSON 清单、一行一个网址的纯文本，或者干脆就是一张图；
-       也可以是飞书多维表格的公开分享视图（见 feishu.js）。
+       也可以是飞书 / Lark 多维表格的公开分享视图（见 feishu.js）。
        这一类要先拿到那个域名的访问权限。
 
    每个来源各自带一套筛选：包含 / 排除（通配符或正则）、允许的格式、最小边长。
@@ -128,7 +128,7 @@ export async function pickFolder(id) {
 
 /* ---------------- 网址那一类 ---------------- */
 export const originOf = (u) => { try { return new URL(S1(u)).origin + '/*'; } catch { return ''; } };
-/* 一个来源要授权的域名。多数只有一个；飞书分享视图还要带上它的两个登录跳转域名，一次问完 */
+/* 一个来源要授权的域名。多数只有一个；飞书 / Lark 分享视图还要带上登录跳转的域名，一次问完 */
 export const originsOf = (u) => FS.originsFor(u) || [originOf(u)].filter(Boolean);
 export async function hasHost(u) {
   const o = originsOf(u); if (!o.length) return false;

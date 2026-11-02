@@ -1,21 +1,26 @@
 /* ============================================================
-   飞书多维表格的「公开分享视图」，当作一个在线图库。
+   飞书 / Lark 多维表格的「公开分享视图」，当作一个在线图库。
    链接形如 https://xxx.feishu.cn/share/base/view/shr…
+         或 https://xxx.jp.larksuite.com/share/base/view/shr…（Lark 国际版，接口与飞书一样）
 
    飞书没有给这类链接开放接口，这里用的是分享页自己调的那几条：
      · records_and_meta / records_by_page —— 整个视图的记录（附件、主字段）
      · box/stream/download/v2/cover/<附件> —— 附件原图
    不带飞书的 cookie 一律回「Login Required」。没登录飞书的人，打开一次分享页
    就会拿到一个访客 cookie，等同于自己在浏览器里打开这个链接；登录着的人直接用他自己的。
-   打开分享页时会经过 accounts.feishu.cn、login.feishu.cn 两次跳转，
-   所以授权要连这两个域名一起要，少一个跳转就被拦下。
+   打开分享页时会经过登录域名跳转一圈，授权要连那几个域名一起要，少一个跳转就被拦下：
+     飞书 —— accounts.feishu.cn、login.feishu.cn 两个；
+     Lark —— 按租户所在地区走 accounts-jp / accounts / login-sg / accounts-sg ……，
+             各地区不一样，所以直接要 *.larksuite.com 一整个。
    ============================================================ */
 
 const S1 = (v) => String(v ?? '').trim();
-const SHARE_RE = /^https:\/\/((?:[a-z0-9-]+\.)*feishu\.cn)\/share\/base\/view\/(shr[0-9a-z]+)/i;
-const COVER_RE = /^https:\/\/(?:[a-z0-9-]+\.)*feishu\.cn\/space\/api\/box\/stream\/download\/v2\/cover\//i;
+const SHARE_RE = /^https:\/\/((?:[a-z0-9-]+\.)*(?:feishu\.cn|larksuite\.com))\/share\/base\/view\/(shr[0-9a-z]+)/i;
+const COVER_RE = /^https:\/\/(?:[a-z0-9-]+\.)*(?:feishu\.cn|larksuite\.com)\/space\/api\/box\/stream\/download\/v2\/cover\//i;
 const FS_HOST_RE = /^https?:\/\/(?:[a-z0-9-]+\.)*(?:feishu\.cn|larksuite\.com)(?:[/:?#]|$)/i;
 export const LOGIN_ORIGINS = ['https://accounts.feishu.cn/*', 'https://login.feishu.cn/*'];
+export const LARK_ORIGINS = ['https://*.larksuite.com/*'];
+const isLark = (origin) => /larksuite\.com$/i.test(String(origin || ''));
 /* 浏览器能直接显示的几种；heic、tiff 这类没有后缀可认，转不了，扫描时略过 */
 const SHOWABLE = /^image\/(jpe?g|pjpeg|png|gif|webp|avif|bmp)$/i;
 const EXT_OF = { 'image/jpeg': 'jpg', 'image/pjpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/gif': 'gif',
@@ -27,16 +32,18 @@ export function parseShare(u) {
   return m ? { origin: 'https://' + m[1].toLowerCase(), token: m[2] } : null;
 }
 export const isCover = (u) => COVER_RE.test(S1(u));
-/* 是飞书或 Lark 的地址、却不是能用的分享视图链接：回一个提示的键，好告诉用户该换哪种链接 */
+/* 是飞书或 Lark 的地址、却不是能用的分享视图链接（普通的 /base/、/wiki/ 链接要登录）：
+   回一个提示的键，好告诉用户该换哪种链接 */
 export function badLink(u) {
   const s = S1(u);
   if (!FS_HOST_RE.test(s) || parseShare(s)) return '';
-  return /larksuite\.com/i.test(s) ? 'libFsLark' : 'libFsNeedShare';
+  return 'libFsNeedShare';
 }
-/* 这个来源要授权的全部域名：分享链接所在的那个，加上两个登录跳转域名 */
+/* 这个来源要授权的全部域名：分享链接所在的那个，加上登录跳转要经过的那几个 */
 export function originsFor(u) {
   const p = parseShare(u) || shareOfCover(u);
-  return p ? [p.origin + '/*', ...LOGIN_ORIGINS] : null;
+  if (!p) return null;
+  return isLark(new URL(p.origin).hostname) ? [...LARK_ORIGINS] : [p.origin + '/*', ...LOGIN_ORIGINS];
 }
 
 /* ---------------- 访客会话 ----------------
@@ -135,7 +142,7 @@ export async function listShare(u, { max = 800, signal } = {}) {
     if (e?.name === 'AbortError') throw e;
     return { ok: false, err: e?.status ? 'HTTP ' + e.status : 'libFsNet', items: [] };
   }
-  /* 5 = 要登录（建立访客会话后仍然要，就是没公开），3 = 找不到；飞书回了别的错误码也按「没公开或失效」说 */
+  /* 5 = 要登录（建立访客会话后仍然要，就是没公开），3 = 找不到；回了别的错误码也按「没公开或失效」说 */
   if (typeof j?.code !== 'number') return { ok: false, err: 'libFsFormat', items: [] };
   if (j.code !== 0) return { ok: false, err: 'libFsNotPublic', items: [] };
   let snap = null;
@@ -169,7 +176,7 @@ export async function listShare(u, { max = 800, signal } = {}) {
     }
   };
   take(v);
-  /* 记录多到一页装不下才会有下一页；飞书一页给得很多，到上限就停 */
+  /* 记录多到一页装不下才会有下一页；一页给得很多，到上限就停 */
   for (let guard = 0; v.hasMore && items.length < max && guard < 100; guard++) {
     const q = { offset: S1(v.offset) };
     if (v.offsetNum != null) q.offsetNum = v.offsetNum;
